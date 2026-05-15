@@ -1,0 +1,12 @@
+# IMMUTABLE BASELINE — THE CODE AGENT MUST NEVER MODIFY THIS FILE.
+# This is the starting configuration. The first experiment optimizes against this.
+# The weighted_score for this config is established in Phase 0 and stored in SQLite.
+
+chunk_size: 1024
+chunk_overlap: 200
+top_k: 5
+hybrid_alpha: 0.5
+embedding_model: "openai/text-embedding-small"
+reranker: null
+reranker_top_n: null
+generator_model: "deepseek/deepseek-v4-flash"

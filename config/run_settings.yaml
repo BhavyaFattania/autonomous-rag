@@ -1,0 +1,28 @@
+# Runtime constraints for an overnight run.
+run:
+  max_experiments: 20
+  max_hours: 6
+  cost_hard_ceiling_usd: 10.00      # HARD STOP. Never exceed this. Kill loop immediately.
+  cost_warning_threshold_usd: 7.00  # Log WARNING but continue.
+  consecutive_failure_limit: 3       # Pause loop after N consecutive failures.
+  random_seed: 42
+
+evaluation:
+  n_eval_runs: 3                    # Number of evaluation runs per experiment (minimum 3).
+  n_questions: 50                   # Questions per evaluation run.
+  smoke_test_n_questions: 5         # Questions for smoke test (subset of the 50).
+  max_runtime_sec_per_eval: 900     # 15 minutes. Kill eval if exceeded.
+
+acceptance:
+  min_weighted_score_improvement: 0.03   # 3% relative improvement required.
+  max_variance_between_runs: 0.035       # Max std-dev across 3 runs.
+  max_metric_regression: 0.02           # No single metric may fall by more than 2%.
+
+explore_exploit:
+  exploit_probability: 0.70
+  explore_probability: 0.30
+
+reflection:
+  update_every_n_experiments: 3
+  compact_every_n_experiments: 8
+  max_history_tokens: 4000           # Truncate scientist context to this limit.

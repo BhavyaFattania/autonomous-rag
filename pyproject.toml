@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "autonomous-rag-optimizer"
+version = "0.1.0"
+description = "Overnight autonomous RAG hyperparameter optimization"
+authors = ["Your Name"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+# LlamaIndex — modular (NOT the old monolithic llamaindex package)
+llama-index-core = "0.12.5"
+llama-index-vector-stores-chroma = ">=0.4.0"
+llama-index-embeddings-openai = ">=0.3.0"
+llama-index-embeddings-cohere = ">=0.3.0"
+llama-index-llms-openai = ">=0.3.0"
+llama-index-postprocessor-cohere-rerank = ">=0.3.0"
+llama-index-retrievers-bm25 = ">=0.4.0"
+
+# Vector store (local — no cloud, no version mismatches)
+chromadb = ">=0.6.0"
+
+# Evaluation
+ragas = "0.2.9"
+datasets = "3.3.2"
+
+# Orchestration
+langgraph = "*"
+langchain-core = "*"
+langchain-openai = "*"
+
+# HTTP
+httpx = "0.28.1"
+
+# Config & validation
+pydantic = "2.11.3"
+pydantic-settings = "2.8.1"
+python-dotenv = "1.1.0"
+pyyaml = "6.0.2"
+
+# Storage
+aiosqlite = "0.21.0"
+
+# Logging
+structlog = "24.4.0"
+
+# CLI
+click = "8.1.8"
+rich = ">=13.0.0"
+
+# Utilities
+tenacity = "9.1.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "8.3.5"
+pytest-asyncio = "0.24.0"
+pytest-mock = "3.14.0"
+black = "24.10.0"
+ruff = "0.8.6"
+mypy = "1.13.0"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]

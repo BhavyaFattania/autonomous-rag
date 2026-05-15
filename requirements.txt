@@ -1,0 +1,50 @@
+# Core dependencies
+llama-index-core==0.12.5
+llama-index-vector-stores-qdrant>=0.4.0
+llama-index-embeddings-openai>=0.3.0
+llama-index-embeddings-cohere>=0.3.0
+llama-index-llms-openai>=0.3.0
+llama-index-postprocessor-cohere-rerank>=0.3.0
+llama-index-retrievers-bm25>=0.4.0
+
+# Vector store
+qdrant-client==1.13.3
+
+# Evaluation
+ragas==0.2.9
+datasets==3.3.2
+
+# Orchestration
+langgraph
+langgraph-checkpoint-sqlite
+langchain-core
+langchain-openai
+
+# HTTP
+httpx==0.28.1
+
+# Config & validation
+pydantic==2.11.3
+pydantic-settings==2.8.1
+python-dotenv==1.1.0
+pyyaml==6.0.2
+
+# Storage
+aiosqlite==0.21.0
+
+# Logging
+structlog==24.4.0
+
+# CLI
+click==8.1.8
+
+# Utilities
+tenacity==9.1.2
+
+# Testing & Dev
+pytest==8.3.5
+pytest-asyncio==0.24.0
+pytest-mock==3.14.0
+black==24.10.0
+ruff==0.8.6
+mypy==1.13.0
