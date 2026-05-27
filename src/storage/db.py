@@ -55,4 +55,13 @@ async def init_db():
         await db.execute(CREATE_EXPERIMENTS_TABLE)
         await db.execute(CREATE_CONFIG_HASHES_TABLE)
         await db.execute(CREATE_RUNS_TABLE)
+        await db.execute(
+            """
+            INSERT OR IGNORE INTO config_hashes (config_hash, first_seen)
+            SELECT config_hash, MIN(started_at)
+            FROM experiments
+            WHERE config_hash IS NOT NULL AND config_hash != ''
+            GROUP BY config_hash
+            """
+        )
         await db.commit()

@@ -24,7 +24,7 @@ def test_warning_at_threshold(caplog):
     import logging
     with caplog.at_level(logging.WARNING):
         add_cost(7.5)
-    
+
     assert get_total() == 7.5
     # Since we use structlog to standard logging, it might appear in caplog
     assert any("budget_warning" in rec.message for rec in caplog.records)

@@ -21,11 +21,7 @@ if [ ! -f .env ]; then
     echo "[INFO] .env created from .env.example. Fill in your API keys."
 fi
 
-# 5. Start Qdrant via Docker (local dev)
-docker compose up -d qdrant
-echo "[OK] Qdrant started"
-
-# 6. Create required directories
+# 5. Create required directories
 mkdir -p data/hotpotqa data/corpus logs reports prompts
 echo "[OK] Directories created"
 

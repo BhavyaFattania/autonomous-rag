@@ -6,7 +6,7 @@ chunk_size: 1024
 chunk_overlap: 200
 top_k: 5
 hybrid_alpha: 0.5
-embedding_model: "openai/text-embedding-small"
+embedding_model: "openai/text-embedding-3-small"
 reranker: null
 reranker_top_n: null
 generator_model: "deepseek/deepseek-v4-flash"

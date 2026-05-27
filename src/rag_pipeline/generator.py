@@ -1,6 +1,10 @@
 from src.utils.openrouter import call_openrouter
 
-async def generate_answer(question: str, contexts: list[str]) -> str:
+async def generate_answer(
+    question: str,
+    contexts: list[str],
+    model_id: str = "deepseek/deepseek-v4-flash",
+) -> str:
     """
     Returns answer string.
     Uses free V4-Flash first; falls back to paid V4-Flash on rate limit.
@@ -16,12 +20,12 @@ Question: {question}
 Answer:"""
 
     answer = await call_openrouter(
-        model_id="deepseek/deepseek-v4-flash:free",
+        model_id=model_id,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=512,
+        max_tokens=1024,
         task="rag_generation",
         reasoning_effort=None,
         temperature=0.1,
-        fallback_model_id="deepseek/deepseek-v4-flash",
+        fallback_model_id="deepseek/deepseek-v4-flash" if model_id.endswith(":free") else None,
     )
     return answer

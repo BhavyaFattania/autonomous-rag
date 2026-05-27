@@ -98,7 +98,8 @@ def _after_recorder(state: WorkflowState) -> str:
     if state["status"] == "BUDGET_EXCEEDED":
         return "report_writer"
 
-    if state.get("experiments_completed", 0) >= settings["run"]["max_experiments"]:
+    max_experiments = state.get("max_experiments", settings["run"]["max_experiments"])
+    if state.get("experiments_completed", 0) >= max_experiments:
         return "report_writer"
 
     if state.get("consecutive_failures", 0) >= settings["run"]["consecutive_failure_limit"]:
@@ -106,7 +107,8 @@ def _after_recorder(state: WorkflowState) -> str:
 
     started = datetime.fromisoformat(state["run_started_at"])
     elapsed_hours = (datetime.now(timezone.utc) - started).total_seconds() / 3600
-    if elapsed_hours >= settings["run"]["max_hours"]:
+    max_hours = state.get("max_hours", settings["run"]["max_hours"])
+    if elapsed_hours >= max_hours:
         return "report_writer"
 
     return "reflection"

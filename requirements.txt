@@ -1,6 +1,6 @@
 # Core dependencies
 llama-index-core==0.12.5
-llama-index-vector-stores-qdrant>=0.4.0
+llama-index-vector-stores-chroma>=0.4.0
 llama-index-embeddings-openai>=0.3.0
 llama-index-embeddings-cohere>=0.3.0
 llama-index-llms-openai>=0.3.0
@@ -8,11 +8,12 @@ llama-index-postprocessor-cohere-rerank>=0.3.0
 llama-index-retrievers-bm25>=0.4.0
 
 # Vector store
-qdrant-client==1.13.3
+chromadb>=0.6.0
 
 # Evaluation
 ragas==0.2.9
 datasets==3.3.2
+ranx>=0.3.20
 
 # Orchestration
 langgraph
@@ -37,6 +38,7 @@ structlog==24.4.0
 
 # CLI
 click==8.1.8
+rich>=13.0.0
 
 # Utilities
 tenacity==9.1.2

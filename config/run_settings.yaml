@@ -8,21 +8,46 @@ run:
   random_seed: 42
 
 evaluation:
-  n_eval_runs: 3                    # Number of evaluation runs per experiment (minimum 3).
-  n_questions: 50                   # Questions per evaluation run.
-  smoke_test_n_questions: 5         # Questions for smoke test (subset of the 50).
-  max_runtime_sec_per_eval: 900     # 15 minutes. Kill eval if exceeded.
+  baseline_score_override: 0.4       # Start search from a low bar; real configs can establish their own best.
+  n_eval_runs: 1                    # Fast live mode; increase to 3 for overnight robustness.
+  n_questions: 10                    # Questions per evaluation run; keep bounded for 5-minute experiments.
+  full_eval_n_questions: 50         # Full RAGAS suite size for periodic audits.
+  full_eval_every_n_experiments: 0  # Keep exploratory trials fast; audit best configs separately.
+  final_best_eval_n_questions: 50   # Run a final, larger evaluation on the best config after search completes.
+  run_final_best_eval: true         # Validate the winning config once all experiments finish.
+  ragas_audit_every_n_experiments: 1 # Run RAGAS for every experiment so all configured metrics are populated.
+  ragas_audit_policy: competitive    # Run RAGAS only when fast IR score is near the current best.
+  ragas_audit_score_tolerance: 0.02  # Candidate must be within this absolute score of best.
+  ragas_metrics: ["faithfulness", "answer_relevancy", "context_precision", "context_recall", "context_utilization"]
+  smoke_test_n_questions: 2         # Questions for smoke test (subset of the eval set).
+  max_runtime_sec_per_eval: 300     # 5 minutes. Kill eval if exceeded.
+  max_runtime_sec_per_ragas: 120    # Bound external judge scoring separately.
+  ragas_timeout_backoff_factor: 2.0 # If RAGAS times out, retry with a larger per-judge timeout.
+  ragas_max_timeout_sec: 240        # Cap the exponential backoff timeout.
+  ragas_timeout_retries: 1          # One adaptive retry keeps audits resilient without looping.
+  max_concurrent_questions: 8       # Parallel RAG generation/retrieval calls per eval run.
+  allow_new_index_builds: false     # Overnight search should only use prebuilt local Chroma/BM25 indexes.
+  allow_expensive_parser_builds: false # Semantic parsers should be prebuilt, not built inside live runs.
+  max_docs_for_expensive_parsers: 1000 # Safety cap if expensive parser builds are explicitly enabled.
+  allow_summary_embedding_retriever: false # Summary indexes must be prebuilt/cached before live search.
 
 acceptance:
+  accept_any_score_gain: true           # Promote any config that improves the current best.
   min_weighted_score_improvement: 0.03   # 3% relative improvement required.
+  competitive_score_tolerance: 0.02      # Near-best configs become COMPETITIVE.
   max_variance_between_runs: 0.035       # Max std-dev across 3 runs.
   max_metric_regression: 0.02           # No single metric may fall by more than 2%.
 
 explore_exploit:
-  exploit_probability: 0.70
-  explore_probability: 0.30
+  exploit_probability: 0.45
+  explore_probability: 0.55
+  structured_exploration_experiments: 12  # Cover chunks/retrieval modes before heavy exploitation.
+  reranker_probe_every_n_experiments: 6  # Force occasional reranker evidence collection.
 
 reflection:
   update_every_n_experiments: 3
   compact_every_n_experiments: 8
   max_history_tokens: 4000           # Truncate scientist context to this limit.
+
+report:
+  use_llm_report: false              # Keep live tests fast; enable for overnight synthesis.

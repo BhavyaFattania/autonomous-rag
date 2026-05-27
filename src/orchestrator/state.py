@@ -14,12 +14,14 @@ class WorkflowState(TypedDict):
 
     # Scientist
     hypothesis: str
+    scientist_reasoning: str
     reflection_summary: str             # Updated every 3 experiments
 
     # Evaluation
     eval_results: list[dict]            # List of SingleRunMetrics dicts (3 items after eval)
     aggregated_metrics: dict            # AggregatedMetrics dict
     current_best_weighted_score: float  # Score of current_best_config
+    current_best_metrics: dict          # Median metric values for current_best_config
     proposed_weighted_score: float      # Score of proposed config
 
     # Status
@@ -40,3 +42,5 @@ class WorkflowState(TypedDict):
     # Timing
     run_started_at: str                 # ISO datetime string
     experiment_started_at: str          # ISO datetime string
+    max_experiments: int                # CLI override for this run
+    max_hours: float                    # CLI override for this run

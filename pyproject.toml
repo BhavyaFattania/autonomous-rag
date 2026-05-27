@@ -25,6 +25,7 @@ datasets = "3.3.2"
 
 # Orchestration
 langgraph = "*"
+langgraph-checkpoint-sqlite = "*"
 langchain-core = "*"
 langchain-openai = "*"
 
