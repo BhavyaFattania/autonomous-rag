@@ -1,5 +1,14 @@
+try:
+    from langsmith import traceable
+except ImportError:
+    def traceable(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
 from src.utils.openrouter import call_openrouter
 
+@traceable(name="generate_answer")
 async def generate_answer(
     question: str,
     contexts: list[str],

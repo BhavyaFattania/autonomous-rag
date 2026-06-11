@@ -3,6 +3,15 @@ import json
 import time
 from pathlib import Path
 
+try:
+    from langsmith import traceable
+except ImportError:
+    def traceable(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
+
 from src.models.rag_config import RAGConfig
 from src.rag_pipeline.retriever import build_retriever
 from src.rag_pipeline.generator import generate_answer
@@ -15,6 +24,7 @@ log = get_logger("pipeline")
 RETRIEVAL_CACHE_PATH = Path("data/retrieval_cache")
 RETRIEVAL_CACHE_PATH.mkdir(parents=True, exist_ok=True)
 
+@traceable(name="run_pipeline")
 async def run_pipeline(
     config: RAGConfig,
     questions: list[str],
@@ -110,6 +120,7 @@ async def retrieve_results(
     return results, get_total() - start_cost
 
 
+@traceable(name="get_or_build_contexts")
 async def _get_or_build_contexts(
     config: RAGConfig,
     questions: list[str],

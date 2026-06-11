@@ -90,6 +90,8 @@ class RerankingRetriever(BaseRetriever):
 
     async def _aretrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         nodes = await self.base_retriever.aretrieve(query_bundle)
+        if hasattr(self.reranker, "apostprocess_nodes"):
+            return await self.reranker.apostprocess_nodes(nodes, query_bundle=query_bundle)
         return self.reranker.postprocess_nodes(nodes, query_bundle=query_bundle)
 
 
@@ -260,16 +262,23 @@ def _build_query_fusion_llm(config: RAGConfig):
     )
 
 
+try:
+    from src.rag_pipeline.openrouter_reranker import OpenRouterRerank
+except ImportError:
+    OpenRouterRerank = None
+
+
 def _maybe_apply_reranker(retriever, config: RAGConfig):
     if config.reranker != "CohereRerank":
         return retriever
 
-    from llama_index.postprocessor.cohere_rerank import CohereRerank
+    if OpenRouterRerank is None:
+        raise ValueError("OpenRouterRerank dependencies are not installed.")
 
-    reranker = CohereRerank(top_n=config.reranker_top_n)
+    reranker = OpenRouterRerank(model="cohere/rerank-v3.5", top_n=config.reranker_top_n)
     log.info(
-        "retriever_reranker_enabled",
-        reranker=config.reranker,
+        "retriever_reranker_enabled_openrouter",
+        model="cohere/rerank-v3.5",
         top_n=config.reranker_top_n,
     )
     return RerankingRetriever(retriever, reranker)

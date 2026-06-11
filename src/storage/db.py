@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS runs (
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("PRAGMA journal_mode=WAL;")  # MANDATORY
+        await db.execute("PRAGMA synchronous=NORMAL;")
+        await db.execute("PRAGMA temp_store=MEMORY;")
         await db.execute("PRAGMA foreign_keys=ON;")
         await db.execute(CREATE_EXPERIMENTS_TABLE)
         await db.execute(CREATE_CONFIG_HASHES_TABLE)

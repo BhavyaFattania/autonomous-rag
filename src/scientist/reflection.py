@@ -1,9 +1,17 @@
+try:
+    from langsmith import traceable
+except ImportError:
+    def traceable(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
 from src.utils.logger import get_logger
 from src.utils.openrouter import call_openrouter
 
 log = get_logger("reflection")
 
-
+@traceable(name="reflection_node")
 async def reflection_node(state) -> dict:
     from src.orchestrator.config_loader import load_run_settings
 

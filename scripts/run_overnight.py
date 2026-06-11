@@ -122,7 +122,22 @@ async def _run(max_exp, max_hours, resume, settings):
 
     await init_db()
 
-    run_id = str(uuid.uuid4())
+    run_id = None
+    if resume:
+        try:
+            import aiosqlite
+            async with aiosqlite.connect("experiments.sqlite") as db:
+                cursor = await db.execute("SELECT run_id FROM runs ORDER BY started_at DESC LIMIT 1")
+                row = await cursor.fetchone()
+                if row:
+                    run_id = row[0]
+                    console.print(f"[bold yellow]Resuming previous run with ID: {run_id}[/]")
+        except Exception as e:
+            console.print(f"[bold red]Failed to fetch last run ID for resume: {e}[/]")
+
+    if not run_id:
+        run_id = str(uuid.uuid4())
+
     baseline = load_baseline_config()
     run_start = datetime.now(timezone.utc)
     baseline_override = settings["evaluation"].get("baseline_score_override")
@@ -179,7 +194,22 @@ async def _run(max_exp, max_hours, resume, settings):
             "recursion_limit": max(100, (max_exp * 12) + 50),
         }
 
-        async for event in graph.astream(initial_state, config=graph_config):
+        state_exists = False
+        if resume:
+            try:
+                state_val = await graph.aget_state(graph_config)
+                if state_val and state_val.values:
+                    state_exists = True
+                    console.print(f"[bold green]Found active checkpoint for run {run_id}. Resuming...[/]")
+                    await graph.aupdate_state(
+                        graph_config,
+                        {"max_experiments": max_exp, "max_hours": max_hours},
+                    )
+            except Exception as e:
+                console.print(f"[bold red]Error loading checkpoint: {e}[/]")
+
+        state_to_stream = None if state_exists else initial_state
+        async for event in graph.astream(state_to_stream, config=graph_config):
             if _stop_requested:
                 console.print(Rule("[bold yellow]Run paused by user[/]"))
                 break
