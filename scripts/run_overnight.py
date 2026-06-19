@@ -11,12 +11,28 @@ Signal handling:
     SIGTERM or Ctrl+C: gracefully pauses after current experiment completes.
     The SQLite checkpoint allows resuming with the same command.
 """
+import sys
+import subprocess
+from pathlib import Path
+
+def _ensure_venv():
+    in_venv = sys.prefix != sys.base_prefix or hasattr(sys, "real_prefix")
+    if not in_venv:
+        project_root = Path(__file__).resolve().parent.parent
+        if sys.platform.startswith("win"):
+            venv_python = project_root / "venv" / "Scripts" / "python.exe"
+        else:
+            venv_python = project_root / "venv" / "bin" / "python"
+        if venv_python.exists():
+            # Re-execute this script using the venv python interpreter
+            args = [str(venv_python)] + sys.argv
+            sys.exit(subprocess.call(args))
+
+_ensure_venv()
 
 import asyncio
 import signal
-import sys
 import uuid
-from pathlib import Path
 from datetime import datetime, timezone
 
 # Ensure project root is in path so 'src' module can be imported
@@ -119,6 +135,7 @@ async def _run(max_exp, max_hours, resume, settings):
     from src.orchestrator.graph import build_graph
     from src.orchestrator.config_loader import load_baseline_config
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+    from src.storage.cost_tracker import get_total
 
     await init_db()
 
@@ -168,10 +185,11 @@ async def _run(max_exp, max_hours, resume, settings):
         "status":                    "PENDING",
         "failure_reason":            "",
         "experiment_cost_usd":       0.0,
-        "total_cost_usd":            0.0,
+        "total_cost_usd":            get_total(),
         "experiments_completed":     0,
         "experiments_accepted":      0,
         "consecutive_failures":      0,
+        "experiments_repeated":      0,
         "successful_patterns":       [],
         "failed_patterns":           [],
         "run_started_at":            run_start.isoformat(),
@@ -189,9 +207,18 @@ async def _run(max_exp, max_hours, resume, settings):
 
     async with AsyncSqliteSaver.from_conn_string("experiments.sqlite") as memory:
         graph = build_graph(checkpointer=memory)
+
+        try:
+            from langfuse.langchain import CallbackHandler
+            langfuse_handler = CallbackHandler()
+            callbacks = [langfuse_handler]
+        except ImportError:
+            callbacks = []
+
         graph_config = {
             "configurable": {"thread_id": run_id},
             "recursion_limit": max(100, (max_exp * 12) + 50),
+            "callbacks": callbacks,
         }
 
         state_exists = False
@@ -201,6 +228,13 @@ async def _run(max_exp, max_hours, resume, settings):
                 if state_val and state_val.values:
                     state_exists = True
                     console.print(f"[bold green]Found active checkpoint for run {run_id}. Resuming...[/]")
+                    previous_cost = state_val.values.get("total_cost_usd", 0.0)
+                    from src.storage.cost_tracker import initialize as init_cost
+                    init_cost(
+                        hard_ceiling=settings["run"]["cost_hard_ceiling_usd"],
+                        warning_threshold=settings["run"]["cost_warning_threshold_usd"],
+                        start_cost=previous_cost
+                    )
                     await graph.aupdate_state(
                         graph_config,
                         {"max_experiments": max_exp, "max_hours": max_hours},
@@ -402,7 +436,8 @@ def _log_event(event: dict, ctx: dict, run_start: datetime):
         emoji, style, description = NODE_META.get(node_name, ("--", "white", node_name))
         status = output.get("status", "?")
         status_style, status_icon = STATUS_STYLE.get(status, ("white", "?"))
-        total_cost = output.get("total_cost_usd", 0.0)
+        from src.storage.cost_tracker import get_total
+        total_cost = get_total()
         elapsed = (datetime.now(timezone.utc) - run_start).total_seconds()
 
         # Print a separator when scientist fires (new experiment)
@@ -459,9 +494,11 @@ def _log_event(event: dict, ctx: dict, run_start: datetime):
             completed = output.get("experiments_completed", 0)
             accepted = output.get("experiments_accepted", 0)
             failures = output.get("consecutive_failures", 0)
+            repeated = output.get("experiments_repeated", 0)
             console.print(
                 f"  [dim]Completed: [white]{completed}[/]  "
                 f"Accepted: [green]{accepted}[/]  "
+                f"Repeated: [cyan]{repeated}[/]  "
                 f"Consecutive failures: [yellow]{failures}[/][/]"
             )
 

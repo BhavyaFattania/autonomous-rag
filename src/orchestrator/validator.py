@@ -25,8 +25,8 @@ def validator_node(state) -> dict:
                 )
         if config.reranker == "CohereRerank":
             import os
-            if not os.environ.get("COHERE_API_KEY"):
-                raise ValueError("COHERE_API_KEY must be set when reranker is CohereRerank")
+            if not os.environ.get("OPENROUTER_API_KEY"):
+                raise ValueError("OPENROUTER_API_KEY must be set when reranker is CohereRerank")
         return {
             "validated_config": config.model_dump(),
             "status": "RUNNING"

@@ -189,14 +189,14 @@ def _extract_reasoning_text(message: dict) -> str:
 
 
 try:
-    from langsmith import traceable
+    from langfuse.decorators import observe
 except ImportError:
-    def traceable(*args, **kwargs):
+    def observe(*args, **kwargs):
         def decorator(func):
             return func
         return decorator
 
-@traceable(name="call_openrouter")
+@observe(name="call_openrouter")
 async def call_openrouter(
     model_id: str,
     messages: list[dict],

@@ -20,7 +20,7 @@ langgraph
 langgraph-checkpoint-sqlite
 langchain-core
 langchain-openai
-langsmith
+langfuse
 
 # HTTP
 httpx==0.28.1

@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS experiments (
 CREATE_CONFIG_HASHES_TABLE = """
 CREATE TABLE IF NOT EXISTS config_hashes (
     config_hash  TEXT PRIMARY KEY,
-    first_seen   TEXT NOT NULL
+    first_seen   TEXT NOT NULL,
+    score        REAL
 )
 """
 
@@ -59,8 +60,8 @@ async def init_db():
         await db.execute(CREATE_RUNS_TABLE)
         await db.execute(
             """
-            INSERT OR IGNORE INTO config_hashes (config_hash, first_seen)
-            SELECT config_hash, MIN(started_at)
+            INSERT OR IGNORE INTO config_hashes (config_hash, first_seen, score)
+            SELECT config_hash, MIN(started_at), MAX(proposed_score)
             FROM experiments
             WHERE config_hash IS NOT NULL AND config_hash != ''
             GROUP BY config_hash

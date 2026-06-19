@@ -34,6 +34,7 @@ class WorkflowState(TypedDict):
     experiments_completed: int
     experiments_accepted: int
     consecutive_failures: int
+    experiments_repeated: int
 
     # History (for scientist context)
     successful_patterns: list[str]      # Short descriptions of accepted configs

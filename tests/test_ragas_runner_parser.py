@@ -7,7 +7,9 @@ from src.evaluator.ragas_runner import (
     _build_ragas_metrics,
     _build_openrouter_extra_body,
     _build_openrouter_model_kwargs,
-    _install_ragas_output_parser_compat_patch,
+)
+from src.utils.json_repair import (
+    install_ragas_output_parser_compat_patch as _install_ragas_output_parser_compat_patch,
 )
 
 

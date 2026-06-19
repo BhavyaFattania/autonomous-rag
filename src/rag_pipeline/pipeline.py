@@ -4,9 +4,9 @@ import time
 from pathlib import Path
 
 try:
-    from langsmith import traceable
+    from langfuse.decorators import observe
 except ImportError:
-    def traceable(*args, **kwargs):
+    def observe(*args, **kwargs):
         def decorator(func):
             return func
         return decorator
@@ -24,7 +24,7 @@ log = get_logger("pipeline")
 RETRIEVAL_CACHE_PATH = Path("data/retrieval_cache")
 RETRIEVAL_CACHE_PATH.mkdir(parents=True, exist_ok=True)
 
-@traceable(name="run_pipeline")
+@observe(name="run_pipeline")
 async def run_pipeline(
     config: RAGConfig,
     questions: list[str],
@@ -120,7 +120,7 @@ async def retrieve_results(
     return results, get_total() - start_cost
 
 
-@traceable(name="get_or_build_contexts")
+@observe(name="get_or_build_contexts")
 async def _get_or_build_contexts(
     config: RAGConfig,
     questions: list[str],

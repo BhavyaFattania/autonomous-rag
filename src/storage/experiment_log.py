@@ -11,7 +11,6 @@ PIPELINE_FAILURE_STATUSES = {
     "FAILED_TIMEOUT",
     "FAILED_API_ERROR",
     "FAILED_VALIDATION",
-    "FAILED_DUPLICATE",
 }
 
 def _logical_config(config: dict) -> dict:
@@ -71,18 +70,28 @@ async def recorder_node(state) -> dict:
             started_at,
             finished_at
         ))
+        # Update the config_hashes row with the best score achieved
+        if config_hash and proposed_score is not None:
+            await db.execute("""
+                UPDATE config_hashes
+                SET score = MAX(COALESCE(score, 0.0), ?)
+                WHERE config_hash = ?
+            """, (proposed_score, config_hash))
         await db.commit()
         experiment_id = cursor.lastrowid
 
     completed = state.get("experiments_completed", 0) + 1
     accepted = state.get("experiments_accepted", 0)
     failures = state.get("consecutive_failures", 0)
+    repeated = state.get("experiments_repeated", 0)
 
     if status == "ACCEPTED":
         accepted += 1
         failures = 0
     elif status in ("REJECTED", "COMPETITIVE"):
         failures = 0
+    elif status == "FAILED_DUPLICATE":
+        repeated += 1
     elif status in PIPELINE_FAILURE_STATUSES:
         failures += 1
 
@@ -99,7 +108,7 @@ async def recorder_node(state) -> dict:
         successful.append(
             f"COMPETITIVE {summary} score={proposed_score:.4f} best={baseline_score:.4f}: {state.get('hypothesis', '')}"
         )
-    elif status.startswith("FAILED_") or status == "REJECTED":
+    elif (status.startswith("FAILED_") and status != "FAILED_DUPLICATE") or status == "REJECTED":
         failed.append(
             f"{status} {summary} score={proposed_score:.4f} best={baseline_score:.4f}: {state.get('hypothesis', '')}"
         )
@@ -110,6 +119,7 @@ async def recorder_node(state) -> dict:
         "experiments_completed": completed,
         "experiments_accepted": accepted,
         "consecutive_failures": failures,
+        "experiments_repeated": repeated,
         "total_cost_usd": get_total(),
         "successful_patterns": successful,
         "failed_patterns": failed

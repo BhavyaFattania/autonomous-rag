@@ -28,8 +28,8 @@ async def deduplicator_node(state) -> dict:
         try:
             await db.execute(
                 """
-                INSERT INTO config_hashes (config_hash, first_seen)
-                VALUES (?, ?)
+                INSERT INTO config_hashes (config_hash, first_seen, score)
+                VALUES (?, ?, NULL)
                 """,
                 (config_hash, datetime.now(timezone.utc).isoformat()),
             )

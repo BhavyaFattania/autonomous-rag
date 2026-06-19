@@ -1,10 +1,10 @@
 # Runtime constraints for an overnight run.
 run:
-  max_experiments: 30
+  max_experiments: 40
   max_hours: 6
   cost_hard_ceiling_usd: 10.00      # HARD STOP. Never exceed this. Kill loop immediately.
   cost_warning_threshold_usd: 7.00  # Log WARNING but continue.
-  consecutive_failure_limit: 3       # Pause loop after N consecutive failures.
+  consecutive_failure_limit: 5      # Pause loop after N consecutive failures.
   random_seed: 42
 
 evaluation:

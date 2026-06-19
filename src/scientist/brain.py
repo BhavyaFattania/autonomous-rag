@@ -4,9 +4,9 @@ import json
 import time
 import uuid
 try:
-    from langsmith import traceable
+    from langfuse.decorators import observe
 except ImportError:
-    def traceable(*args, **kwargs):
+    def observe(*args, **kwargs):
         def decorator(func):
             return func
         return decorator
@@ -16,7 +16,7 @@ from src.utils.logger import get_logger
 
 log = get_logger("scientist")
 
-@traceable(name="scientist_node")
+@observe(name="scientist_node")
 async def scientist_node(state) -> dict:
     """
     Calls the scientist LLM (DeepSeek V4 Pro with reasoning) to propose the next config.

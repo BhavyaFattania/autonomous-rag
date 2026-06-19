@@ -14,12 +14,12 @@ _hard_ceiling: float = 10.00
 _warning_threshold: float = 7.00
 
 
-def initialize(hard_ceiling: float, warning_threshold: float):
+def initialize(hard_ceiling: float, warning_threshold: float, start_cost: float = 0.0):
     global _hard_ceiling, _warning_threshold, _total_cost_usd
     with _lock:
         _hard_ceiling = hard_ceiling
         _warning_threshold = warning_threshold
-        _total_cost_usd = 0.0
+        _total_cost_usd = start_cost
 
 
 def add_cost(usd: float) -> float:

@@ -94,7 +94,6 @@ def _available_index_configs(state) -> list[dict]:
     embedding_model = baseline.get("embedding_model", "openai/text-embedding-3-small")
     candidates = [
         {"embedding_model": embedding_model, "node_parser": "sentence", "chunk_size": 512, "chunk_overlap": 128},
-        {"embedding_model": embedding_model, "node_parser": "sentence", "chunk_size": 768, "chunk_overlap": 128},
         {"embedding_model": embedding_model, "node_parser": "sentence", "chunk_size": 1024, "chunk_overlap": 200},
         {"embedding_model": embedding_model, "node_parser": "token", "chunk_size": 768, "chunk_overlap": 128},
         {"embedding_model": embedding_model, "node_parser": "sentence_window", "chunk_size": 512, "chunk_overlap": 64, "window_size": 3},

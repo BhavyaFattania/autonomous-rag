@@ -28,3 +28,9 @@ def test_warning_at_threshold(caplog):
     assert get_total() == 7.5
     # Since we use structlog to standard logging, it might appear in caplog
     assert any("budget_warning" in rec.message for rec in caplog.records)
+
+def test_initialize_with_start_cost():
+    initialize(hard_ceiling=10.0, warning_threshold=7.0, start_cost=5.0)
+    assert get_total() == 5.0
+    add_cost(1.0)
+    assert get_total() == 6.0
