@@ -190,6 +190,7 @@ async def _run(max_exp, max_hours, resume, settings):
         "experiments_accepted":      0,
         "consecutive_failures":      0,
         "experiments_repeated":      0,
+        "experiments_competitive":   0,
         "successful_patterns":       [],
         "failed_patterns":           [],
         "run_started_at":            run_start.isoformat(),
@@ -495,10 +496,12 @@ def _log_event(event: dict, ctx: dict, run_start: datetime):
             accepted = output.get("experiments_accepted", 0)
             failures = output.get("consecutive_failures", 0)
             repeated = output.get("experiments_repeated", 0)
+            competitive = output.get("experiments_competitive", 0)
             console.print(
                 f"  [dim]Completed: [white]{completed}[/]  "
                 f"Accepted: [green]{accepted}[/]  "
-                f"Repeated: [cyan]{repeated}[/]  "
+                f"Competitive: [cyan]{competitive}[/]  "
+                f"Repeated: [blue]{repeated}[/]  "
                 f"Consecutive failures: [yellow]{failures}[/][/]"
             )
 

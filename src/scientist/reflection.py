@@ -11,6 +11,23 @@ from src.utils.openrouter import call_openrouter
 
 log = get_logger("reflection")
 
+_MAX_REFLECTION_CHARS = 4000
+
+
+def _truncate_to_sentence(text: str, max_chars: int) -> str:
+    """Truncate text at a sentence boundary to avoid cut-off bullet points."""
+    if len(text) <= max_chars:
+        return text
+    # Walk backwards from the limit to find the last sentence-ending punctuation.
+    window = text[:max_chars]
+    for sep in ("\n", ".", "!", "?"):
+        idx = window.rfind(sep)
+        if idx > max_chars // 2:  # Ensure we keep at least half the content
+            return window[: idx + 1].rstrip()
+    # No clean boundary found — fall back to the raw limit.
+    return window.rstrip()
+
+
 @observe(name="reflection_node")
 async def reflection_node(state) -> dict:
     from src.orchestrator.config_loader import load_run_settings
@@ -36,7 +53,7 @@ async def reflection_node(state) -> dict:
         log.warning("reflection_failed", error=str(e))
         return {}
 
-    return {"reflection_summary": summary.strip()[:4000]}
+    return {"reflection_summary": _truncate_to_sentence(summary.strip(), _MAX_REFLECTION_CHARS)}
 
 
 def _build_reflection_prompt(state) -> str:

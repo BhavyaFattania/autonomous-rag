@@ -16,6 +16,7 @@ class WorkflowState(TypedDict):
     hypothesis: str
     scientist_reasoning: str
     reflection_summary: str             # Updated every 3 experiments
+    history_summary: str                # Sliding-window LLM compression of old history entries
 
     # Evaluation
     eval_results: list[dict]            # List of SingleRunMetrics dicts (3 items after eval)
@@ -35,6 +36,7 @@ class WorkflowState(TypedDict):
     experiments_accepted: int
     consecutive_failures: int
     experiments_repeated: int
+    experiments_competitive: int
 
     # History (for scientist context)
     successful_patterns: list[str]      # Short descriptions of accepted configs

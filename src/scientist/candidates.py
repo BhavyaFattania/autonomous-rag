@@ -57,6 +57,34 @@ def get_fallback_candidates(state) -> list[dict]:
 
 
 def _combine_candidates(index_configs: list[dict], variants: list[dict], variants_first: bool) -> list[dict]:
+    from src.orchestrator.config_loader import load_run_settings
+    settings = load_run_settings()
+    search_space = settings.get("search_space") or {}
+    
+    allowed_retrievers = search_space.get("allowed_retrievers")
+    allowed_rerankers = search_space.get("allowed_rerankers")
+    allowed_generator_models = search_space.get("allowed_generator_models")
+
+    # Filter variants first
+    filtered_variants = []
+    for var in variants:
+        if allowed_retrievers is not None and var.get("retriever") not in allowed_retrievers:
+            continue
+        if allowed_rerankers is not None and var.get("reranker") not in allowed_rerankers:
+            continue
+        filtered_variants.append(var)
+    variants = filtered_variants
+
+    # Filter generator models
+    gen_models = ["deepseek/deepseek-v4-flash"]
+    if allowed_generator_models is not None:
+        gen_models = [m for m in gen_models if m in allowed_generator_models]
+        if not gen_models:
+            # Fallback if the user allowed other models but not the default flash model
+            gen_models = [allowed_generator_models[0]]
+
+    generator_model = gen_models[0]
+
     candidates = []
     if variants_first:
         for variant in variants:
@@ -64,7 +92,7 @@ def _combine_candidates(index_configs: list[dict], variants: list[dict], variant
                 candidates.append({
                     **index_config,
                     **variant,
-                    "generator_model": "deepseek/deepseek-v4-flash",
+                    "generator_model": generator_model,
                 })
         return candidates
 
@@ -73,7 +101,7 @@ def _combine_candidates(index_configs: list[dict], variants: list[dict], variant
             candidates.append({
                 **index_config,
                 **variant,
-                "generator_model": "deepseek/deepseek-v4-flash",
+                "generator_model": generator_model,
             })
     return candidates
 
@@ -82,13 +110,28 @@ def _available_index_configs(state) -> list[dict]:
     from src.orchestrator.config_loader import load_run_settings
 
     settings = load_run_settings()
+    search_space = settings.get("search_space") or {}
+    allowed_node_parsers = search_space.get("allowed_node_parsers")
+    allowed_chunk_sizes = search_space.get("allowed_chunk_sizes")
+    allowed_chunk_overlaps = search_space.get("allowed_chunk_overlaps")
+
     indexed_configs = []
     from src.indexer.collection_manager import collection_is_cached, list_available_index_configs
 
     if not settings["evaluation"].get("allow_new_index_builds", True):
         indexed_configs = list_available_index_configs()
     if indexed_configs:
-        return indexed_configs
+        # Filter available index configs according to search space constraints
+        filtered = []
+        for iconfig in indexed_configs:
+            if allowed_node_parsers is not None and iconfig.get("node_parser") not in allowed_node_parsers:
+                continue
+            if allowed_chunk_sizes is not None and iconfig.get("chunk_size") not in allowed_chunk_sizes:
+                continue
+            if allowed_chunk_overlaps is not None and iconfig.get("chunk_overlap") not in allowed_chunk_overlaps:
+                continue
+            filtered.append(iconfig)
+        return filtered
 
     baseline = state.get("baseline_config") or state.get("current_best_config") or {}
     embedding_model = baseline.get("embedding_model", "openai/text-embedding-3-small")
@@ -123,4 +166,16 @@ def _available_index_configs(state) -> list[dict]:
                     candidates.append(candidate)
             except ValueError:
                 continue
-    return candidates
+
+    # Filter mock candidates list
+    filtered = []
+    for cand in candidates:
+        if allowed_node_parsers is not None and cand.get("node_parser") not in allowed_node_parsers:
+            continue
+        if allowed_chunk_sizes is not None and cand.get("chunk_size") not in allowed_chunk_sizes:
+            continue
+        if allowed_chunk_overlaps is not None and cand.get("chunk_overlap") not in allowed_chunk_overlaps:
+            continue
+        filtered.append(cand)
+    return filtered
+

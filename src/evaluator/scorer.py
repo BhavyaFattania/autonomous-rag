@@ -59,14 +59,22 @@ def acceptance_node(state) -> dict:
     best_metrics_dict = state.get("current_best_metrics", {})
     if best_metrics_dict:
         current_best_metrics = SingleRunMetrics(**best_metrics_dict)
-        regression = current_best_metrics.recall_at_k - metrics.median_recall_at_k
-        if regression > thresholds["max_metric_regression"]:
-            reason = (
-                f"Metric regression on recall_at_k: dropped by {regression:.4f} "
-                f"(max allowed: {thresholds['max_metric_regression']})"
-            )
-            log.info("experiment_rejected", reason=reason)
-            return {"status": "REJECTED", "failure_reason": reason}
+        max_regression = thresholds["max_metric_regression"]
+
+        # Guard all three primary IR metrics — not just recall
+        metric_regressions = {
+            "recall_at_k": current_best_metrics.recall_at_k - metrics.median_recall_at_k,
+            "ndcg_at_k":   current_best_metrics.ndcg_at_k   - metrics.median_ndcg_at_k,
+            "mrr":         current_best_metrics.mrr          - metrics.median_mrr,
+        }
+        for metric_name, regression in metric_regressions.items():
+            if regression > max_regression:
+                reason = (
+                    f"Metric regression on {metric_name}: dropped by {regression:.4f} "
+                    f"(max allowed: {max_regression})"
+                )
+                log.info("experiment_rejected", reason=reason)
+                return {"status": "REJECTED", "failure_reason": reason}
 
     return _accept_best_config(
         state,

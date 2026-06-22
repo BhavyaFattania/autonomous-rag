@@ -84,12 +84,19 @@ async def recorder_node(state) -> dict:
     accepted = state.get("experiments_accepted", 0)
     failures = state.get("consecutive_failures", 0)
     repeated = state.get("experiments_repeated", 0)
-
+    experiments_competitive = state.get("experiments_competitive", 0)
+    
     if status == "ACCEPTED":
         accepted += 1
-        failures = 0
-    elif status in ("REJECTED", "COMPETITIVE"):
-        failures = 0
+        # Do NOT reset failures — never reinitialise counters to zero during a run.
+    elif status == "REJECTED":
+        # Failed to meet improvement requirements — counts as a failure.
+        failures += 1
+    elif status == "COMPETITIVE":
+        # Near-best but not promoted. Increment both the dedicated competitive counter
+        # and the failure counter so a long COMPETITIVE streak triggers the stop limit.
+        experiments_competitive += 1
+        failures += 1
     elif status == "FAILED_DUPLICATE":
         repeated += 1
     elif status in PIPELINE_FAILURE_STATUSES:
@@ -120,6 +127,7 @@ async def recorder_node(state) -> dict:
         "experiments_accepted": accepted,
         "consecutive_failures": failures,
         "experiments_repeated": repeated,
+        "experiments_competitive": experiments_competitive,
         "total_cost_usd": get_total(),
         "successful_patterns": successful,
         "failed_patterns": failed

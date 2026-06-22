@@ -4,6 +4,18 @@ from src.storage import db
 from src.utils.hashing import get_config_hash
 import aiosqlite
 import os
+import pytest
+from pathlib import Path
+
+
+@pytest.fixture
+def local_tmp_path(tmp_path_factory):
+    """Project-local temp dir to avoid Windows system temp permission errors."""
+    base = Path("pytest_temp")
+    base.mkdir(exist_ok=True)
+    d = base / "deduplicator_test"
+    d.mkdir(exist_ok=True)
+    return d
 
 
 def test_deduplicator_hash_ignores_internal_config_keys():
@@ -21,9 +33,9 @@ def test_deduplicator_hash_ignores_internal_config_keys():
     assert get_config_hash(_logical_config(validated_config)) == get_config_hash(stored_config)
 
 
-async def test_scientist_candidate_selection_skips_reserved_hash(tmp_path):
+async def test_scientist_candidate_selection_skips_reserved_hash(local_tmp_path):
     old_path = db.DB_PATH
-    db.DB_PATH = str(tmp_path / "experiments.sqlite")
+    db.DB_PATH = str(local_tmp_path / "experiments.sqlite")
     await db.init_db()
 
     first = _candidate(top_k=5)
@@ -40,7 +52,7 @@ async def test_scientist_candidate_selection_skips_reserved_hash(tmp_path):
     finally:
         db.DB_PATH = old_path
         for suffix in ("", "-wal", "-shm"):
-            path = str(tmp_path / f"experiments.sqlite{suffix}")
+            path = str(local_tmp_path / f"experiments.sqlite{suffix}")
             if os.path.exists(path):
                 os.remove(path)
 

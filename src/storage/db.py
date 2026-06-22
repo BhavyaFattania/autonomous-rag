@@ -58,6 +58,13 @@ async def init_db():
         await db.execute(CREATE_EXPERIMENTS_TABLE)
         await db.execute(CREATE_CONFIG_HASHES_TABLE)
         await db.execute(CREATE_RUNS_TABLE)
+        # Explicit index on config_hashes.config_hash for fast deduplicator lookups.
+        # config_hash IS the PRIMARY KEY (already implicitly indexed by SQLite), but
+        # this statement is idempotent and documents the performance expectation.
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_config_hashes_hash ON config_hashes (config_hash)"
+        )
+        # Ensure past proposed hashes are backfilled from completed experiments.
         await db.execute(
             """
             INSERT OR IGNORE INTO config_hashes (config_hash, first_seen, score)
