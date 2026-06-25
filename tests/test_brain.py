@@ -31,7 +31,7 @@ BASE_STATE = {
 def _make_prompt(state=None, exploit=False, settings_override=None):
     s = {**BASE_SETTINGS, **(settings_override or {})}
     st = {**BASE_STATE, **(state or {})}
-    with patch("src.orchestrator.config_loader.load_run_settings", return_value=s):
+    with patch("src.utils.config_loader.load_run_settings", return_value=s):
         with patch("pathlib.Path.read_text", return_value="SYSTEM_INSTRUCTIONS"):
             return _build_scientist_prompt(st, exploit=exploit)
 

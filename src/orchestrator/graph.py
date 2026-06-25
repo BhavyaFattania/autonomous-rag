@@ -92,7 +92,7 @@ def _after_evaluator(state: WorkflowState) -> str:
     return "acceptance"
 
 def _after_recorder(state: WorkflowState) -> str:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
     settings = load_run_settings()
 
     if state["status"] == "BUDGET_EXCEEDED":

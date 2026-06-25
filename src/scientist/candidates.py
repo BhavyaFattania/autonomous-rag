@@ -57,7 +57,7 @@ def get_fallback_candidates(state) -> list[dict]:
 
 
 def _combine_candidates(index_configs: list[dict], variants: list[dict], variants_first: bool) -> list[dict]:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
     settings = load_run_settings()
     search_space = settings.get("search_space") or {}
     
@@ -107,7 +107,7 @@ def _combine_candidates(index_configs: list[dict], variants: list[dict], variant
 
 
 def _available_index_configs(state) -> list[dict]:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
 
     settings = load_run_settings()
     search_space = settings.get("search_space") or {}

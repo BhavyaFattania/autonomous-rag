@@ -5,7 +5,7 @@ from src.utils.openrouter import call_openrouter
 
 
 async def report_writer_node(state) -> dict:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
 
     report_path = Path("reports/overnight_run_report.md")
     report_path.parent.mkdir(exist_ok=True)

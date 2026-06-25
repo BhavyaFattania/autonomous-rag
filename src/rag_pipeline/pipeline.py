@@ -27,7 +27,7 @@ async def run_pipeline(
     Run RAG pipeline for a list of questions.
     Returns (answers, contexts, cost_usd)
     """
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
     collection_name = collection_name or await get_or_build_collection(config)
     settings = load_run_settings()
     max_concurrency = settings["evaluation"].get("max_concurrent_questions", 4)
@@ -91,7 +91,7 @@ async def retrieve_results(
     questions: list[str],
     collection_name: str | None = None,
 ) -> tuple[list[list[dict]], float]:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
     from src.storage.cost_tracker import get_total
 
     collection_name = collection_name or await get_or_build_collection(config)

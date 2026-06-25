@@ -24,12 +24,8 @@ from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from src.indexer.collection_manager import (
-    _collection_name,
-    CHROMA_PATH,
-    load_bm25_nodes,
-    load_bm25_engine,
-)
+from src.indexer.collection_names import collection_name as _idx_collection_name, CHROMA_PATH
+from src.indexer.collection_cache import load_bm25_nodes, load_bm25_engine
 from src.models.rag_config import RAGConfig
 from src.utils.logger import get_logger
 
@@ -96,7 +92,7 @@ class RerankingRetriever(BaseRetriever):
 
 
 async def build_retriever(config: RAGConfig, collection_name: str | None = None):
-    collection_name = collection_name or _collection_name(config)
+    collection_name = collection_name or _idx_collection_name(config)
 
     dense_retriever, bm25_retriever, nodes, storage_context = _build_components(
         config,
@@ -154,7 +150,7 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None)
         return _maybe_apply_reranker(retriever, config)
 
     if config.retriever == "summary_embedding":
-        from src.orchestrator.config_loader import load_run_settings
+        from src.utils.config_loader import load_run_settings
 
         settings = load_run_settings()
         if not settings["evaluation"].get("allow_summary_embedding_retriever", False):

@@ -1,4 +1,3 @@
-import pickle
 from pathlib import Path
 
 from src.indexer.collection_names import (
@@ -144,26 +143,6 @@ async def get_or_build_collection(config: RAGConfig) -> str:
     log.info("building_collection", collection=name)
     await build_collection(config, name, chroma_client)
     return name
-
-
-def load_bm25_nodes(collection_name: str) -> list:
-    cache_path = bm25_cache_path(collection_name)
-    if not cache_path.exists():
-        raise FileNotFoundError(
-            f"BM25 node cache not found at {cache_path}. "
-            f"Delete the ChromaDB collection '{collection_name}' and re-index."
-        )
-    with open(cache_path, "rb") as f:
-        nodes = pickle.load(f)
-    return nodes
-
-
-def load_bm25_engine(collection_name: str):
-    engine_path = bm25_engine_path(collection_name)
-    if not engine_path.exists():
-        raise FileNotFoundError(f"BM25 engine cache not found at {engine_path}")
-    with open(engine_path, "rb") as f:
-        return pickle.load(f)
 
 
 async def indexer_node(state) -> dict:

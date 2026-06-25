@@ -23,7 +23,7 @@ def _truncate_to_sentence(text: str, max_chars: int) -> str:
 
 @observe(name="reflection_node")
 async def reflection_node(state) -> dict:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
 
     settings = load_run_settings()
     n = settings["reflection"]["update_every_n_experiments"]

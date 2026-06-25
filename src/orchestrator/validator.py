@@ -3,7 +3,7 @@ from src.models.rag_config import RAGConfig
 def validator_node(state) -> dict:
     try:
         config = RAGConfig(**state["proposed_config"])
-        from src.orchestrator.config_loader import load_run_settings
+        from src.utils.config_loader import load_run_settings
         settings = load_run_settings()
 
         # Developer search space constraints

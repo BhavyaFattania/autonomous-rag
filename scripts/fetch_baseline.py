@@ -1,6 +1,6 @@
 import asyncio
 import json
-from src.orchestrator.config_loader import load_baseline_config
+from src.utils.config_loader import load_baseline_config
 from src.models.rag_config import RAGConfig
 from src.rag_pipeline.pipeline import run_pipeline
 from src.evaluator.ragas_runner import run_single_eval

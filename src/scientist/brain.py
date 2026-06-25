@@ -28,7 +28,7 @@ def _should_force_reranker_probe(state, settings: dict) -> bool:
 
 @observe(name="scientist_node")
 async def scientist_node(state) -> dict:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
     from src.utils.conversation_summary import sliding_window_compress
     settings = load_run_settings()
 

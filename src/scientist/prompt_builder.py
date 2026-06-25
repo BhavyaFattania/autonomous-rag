@@ -11,7 +11,7 @@ def build_scientist_prompt(
     recent_history: list[str] | None = None,
     history_summary: str = "",
 ) -> str:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
 
     settings = load_run_settings()
     system_prompt = Path("prompts/scientist_v1.txt").read_text()

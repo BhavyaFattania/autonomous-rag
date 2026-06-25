@@ -143,7 +143,7 @@ async def run_single_eval(
 
 
 async def evaluator_node(state) -> dict:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
     from src.models.rag_config import RAGConfig
     from src.models.metrics import AggregatedMetrics
     from src.rag_pipeline.pipeline import retrieve_results, contexts_to_results

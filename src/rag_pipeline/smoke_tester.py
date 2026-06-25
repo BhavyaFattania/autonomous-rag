@@ -12,7 +12,7 @@ async def smoke_test_node(state) -> dict:
     This is not a quality gate and intentionally avoids LLM generation.
     """
     from src.models.rag_config import RAGConfig
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
     from src.rag_pipeline.pipeline import retrieve_contexts
 
     settings = load_run_settings()

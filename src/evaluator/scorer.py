@@ -1,7 +1,7 @@
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
 from src.utils.config_helpers import logical_config
 from src.utils.logger import get_logger
-from src.orchestrator.config_loader import load_run_settings
+from src.utils.config_loader import load_run_settings
 
 log = get_logger("scorer")
 

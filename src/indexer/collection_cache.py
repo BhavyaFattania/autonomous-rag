@@ -28,21 +28,21 @@ def cache_is_complete(collection_name: str, vector_count: int) -> bool:
 
 
 def new_index_builds_allowed() -> bool:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
 
     settings = load_run_settings()
     return settings["evaluation"].get("allow_new_index_builds", True)
 
 
 def expensive_parser_builds_allowed() -> bool:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
 
     settings = load_run_settings()
     return settings["evaluation"].get("allow_expensive_parser_builds", False)
 
 
 def effective_corpus_limit(config: RAGConfig) -> int:
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
 
     settings = load_run_settings()
     if config.node_parser in {"semantic", "semantic_double"}:
@@ -69,3 +69,23 @@ def build_embed_model(config: RAGConfig):
         model_name=config.embedding_model,
         api_key=os.environ.get("OPENROUTER_API_KEY"),
     )
+
+
+def load_bm25_nodes(collection_name: str) -> list:
+    cache_path = bm25_cache_path(collection_name)
+    if not cache_path.exists():
+        raise FileNotFoundError(
+            f"BM25 node cache not found at {cache_path}. "
+            f"Delete the ChromaDB collection and re-index."
+        )
+    with open(cache_path, "rb") as f:
+        nodes = pickle.load(f)
+    return nodes
+
+
+def load_bm25_engine(collection_name: str):
+    engine_path = bm25_engine_path(collection_name)
+    if not engine_path.exists():
+        raise FileNotFoundError(f"BM25 engine cache not found at {engine_path}")
+    with open(engine_path, "rb") as f:
+        return pickle.load(f)

@@ -74,7 +74,7 @@ signal.signal(signal.SIGINT, _handle_signal)
 def main(max_exp, max_hours, dry_run, resume):
     from src.storage.db import init_db
     from src.storage.cost_tracker import initialize as init_cost
-    from src.orchestrator.config_loader import load_run_settings
+    from src.utils.config_loader import load_run_settings
     from src.utils.logger import setup_logging
 
     setup_logging()
@@ -98,7 +98,7 @@ def main(max_exp, max_hours, dry_run, resume):
 async def _run(max_exp, max_hours, resume, settings):
     from src.storage.db import init_db
     from src.orchestrator.graph import build_graph
-    from src.orchestrator.config_loader import load_baseline_config
+    from src.utils.config_loader import load_baseline_config
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     from src.storage.cost_tracker import get_total
 

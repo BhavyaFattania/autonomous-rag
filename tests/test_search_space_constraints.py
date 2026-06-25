@@ -68,7 +68,7 @@ def test_validator_enforces_search_space():
         }
     }
 
-    with patch("src.orchestrator.config_loader.load_run_settings", return_value=mock_settings):
+    with patch("src.utils.config_loader.load_run_settings", return_value=mock_settings):
         res_valid = validator_node(state_valid)
         assert res_valid["status"] == "RUNNING"
 
@@ -101,7 +101,7 @@ def test_candidates_filtering():
         }
     }
 
-    with patch("src.orchestrator.config_loader.load_run_settings", return_value=mock_settings):
+    with patch("src.utils.config_loader.load_run_settings", return_value=mock_settings):
         candidates = get_structured_exploration_candidates(state)
         assert len(candidates) > 0
         for cand in candidates:
@@ -132,7 +132,7 @@ def test_brain_prompt_incorporates_constraints():
         "current_best_weighted_score": 0.5,
     }
 
-    with patch("src.orchestrator.config_loader.load_run_settings", return_value=mock_settings):
+    with patch("src.utils.config_loader.load_run_settings", return_value=mock_settings):
         prompt = _build_scientist_prompt(state, exploit=False)
         assert "CRITICAL DEVELOPER CONSTRAINTS" in prompt
         assert "- node_parser: must be one of ['sentence']" in prompt
