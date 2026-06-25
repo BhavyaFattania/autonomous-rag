@@ -248,6 +248,7 @@ def _build_query_fusion_llm(config: RAGConfig):
 
     import os
     from llama_index.llms.openai import OpenAI
+    from src.utils.openrouter import build_openrouter_headers
 
     return OpenAI(
         model=config.generator_model,
@@ -255,10 +256,7 @@ def _build_query_fusion_llm(config: RAGConfig):
         api_base="https://openrouter.ai/api/v1",
         temperature=0.1,
         max_tokens=256,
-        default_headers={
-            "HTTP-Referer": "https://github.com/autonomous-rag-optimizer",
-            "X-Title": "RAG Optimizer",
-        },
+        default_headers=build_openrouter_headers(),
     )
 
 

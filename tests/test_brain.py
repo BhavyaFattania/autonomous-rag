@@ -3,7 +3,7 @@
 
 from unittest.mock import patch
 
-from src.scientist.brain import _build_scientist_prompt, _truncate_history
+from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt, _truncate_history
 from src.scientist.reflection import _truncate_to_sentence
 
 

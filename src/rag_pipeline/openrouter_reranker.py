@@ -5,6 +5,7 @@ from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.schema import NodeWithScore, QueryBundle
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 from src.utils.logger import get_logger
+from src.utils.openrouter import build_openrouter_headers
 
 log = get_logger("openrouter_reranker")
 
@@ -35,12 +36,7 @@ class OpenRouterRerank(BaseNodePostprocessor):
             raise ValueError("OPENROUTER_API_KEY is not set.")
 
         url = "https://openrouter.ai/api/v1/rerank"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/autonomous-rag-optimizer",
-            "X-Title": "RAG Optimizer",
-        }
+        headers = build_openrouter_headers(api_key)
         payload = {
             "model": self.model,
             "query": query_bundle.query_str,
@@ -83,12 +79,7 @@ class OpenRouterRerank(BaseNodePostprocessor):
             raise ValueError("OPENROUTER_API_KEY is not set.")
 
         url = "https://openrouter.ai/api/v1/rerank"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/autonomous-rag-optimizer",
-            "X-Title": "RAG Optimizer",
-        }
+        headers = build_openrouter_headers(api_key)
         payload = {
             "model": self.model,
             "query": query_bundle.query_str,

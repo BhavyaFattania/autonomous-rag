@@ -1,12 +1,9 @@
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
+from src.utils.config_helpers import logical_config
 from src.utils.logger import get_logger
 from src.orchestrator.config_loader import load_run_settings
 
 log = get_logger("scorer")
-
-
-def _logical_config(config: dict) -> dict:
-    return {k: v for k, v in config.items() if not k.startswith("_")}
 
 
 def acceptance_node(state) -> dict:
@@ -100,7 +97,7 @@ def _accept_best_config(
     )
     return {
         "status": "ACCEPTED",
-        "current_best_config": _logical_config(state["validated_config"]),
+        "current_best_config": logical_config(state["validated_config"]),
         "current_best_weighted_score": proposed_score,
         "current_best_metrics": {
             "faithfulness": metrics.median_faithfulness,

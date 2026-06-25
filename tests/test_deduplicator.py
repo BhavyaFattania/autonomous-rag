@@ -1,5 +1,5 @@
-from src.scientist.deduplicator import _logical_config
-from src.scientist.brain import _select_unused_candidate
+from src.utils.config_helpers import logical_config as _logical_config
+from src.scientist.proposal import select_unused_candidate as _select_unused_candidate
 from src.storage import db
 from src.utils.hashing import get_config_hash
 import aiosqlite

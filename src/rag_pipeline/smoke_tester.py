@@ -1,5 +1,6 @@
 import asyncio
 
+from src.data.question_loader import load_eval_questions
 from src.utils.logger import get_logger
 
 log = get_logger("smoke_test")
@@ -16,7 +17,7 @@ async def smoke_test_node(state) -> dict:
 
     settings = load_run_settings()
     config = RAGConfig(**state["validated_config"])
-    questions, _ = _load_smoke_questions(
+    questions, _ = load_eval_questions(
         n=settings["evaluation"]["smoke_test_n_questions"]
     )
     collection_name = state["validated_config"].get("_collection_name")
@@ -47,14 +48,4 @@ async def smoke_test_node(state) -> dict:
     }
 
 
-def _load_smoke_questions(n: int = 5) -> tuple[list[str], list[str]]:
-    import json
-    from pathlib import Path
 
-    questions, answers = [], []
-    lines = Path("data/hotpotqa/questions.jsonl").read_text().strip().splitlines()
-    for line in lines[:n]:
-        item = json.loads(line)
-        questions.append(item["question"])
-        answers.append(item["answer"])
-    return questions, answers

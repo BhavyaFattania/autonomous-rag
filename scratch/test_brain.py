@@ -7,7 +7,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.scientist.brain import _build_scientist_prompt
+from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt
 from src.utils.openrouter import call_openrouter
 from src.orchestrator.config_loader import load_baseline_config
 from dotenv import load_dotenv

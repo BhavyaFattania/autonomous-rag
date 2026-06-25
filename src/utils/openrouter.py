@@ -35,6 +35,16 @@ class OpenRouterNonRetryableError(OpenRouterError):
     pass
 
 
+def build_openrouter_headers(api_key: str | None = None) -> dict:
+    api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/autonomous-rag-optimizer",
+        "X-Title": "RAG Optimizer",
+    }
+
+
 def compute_cost(model_id: str, prompt_tokens: int, completion_tokens: int) -> float:
     price_in, price_out = MODEL_PRICING.get(model_id, (0.0, 0.0))
     return (
@@ -100,12 +110,7 @@ async def _call_once(
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
             f"{OPENROUTER_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://github.com/autonomous-rag-optimizer",
-                "X-Title": "RAG Optimizer",
-            },
+            headers=build_openrouter_headers(api_key),
             json=payload,
         )
 
@@ -188,13 +193,7 @@ def _extract_reasoning_text(message: dict) -> str:
     return "\n".join(parts)
 
 
-try:
-    from langfuse.decorators import observe
-except ImportError:
-    def observe(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
+from src.utils.langfuse_compat import observe
 
 @observe(name="call_openrouter")
 async def call_openrouter(

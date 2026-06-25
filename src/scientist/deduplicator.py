@@ -1,16 +1,13 @@
 import aiosqlite
 import json
 import src.storage.db as storage_db
+from src.utils.config_helpers import logical_config
 from src.utils.logger import get_logger
 
 log = get_logger("deduplicator")
 
 # Stale proposed-hash TTL: rows older than this with no completed experiment are orphans.
 _STALE_HASH_TTL_DAYS = 7
-
-
-def _logical_config(config: dict) -> dict:
-    return {k: v for k, v in config.items() if not k.startswith("_")}
 
 
 async def _fetch_best_historical_record(db, config_hash: str) -> dict:
@@ -54,7 +51,7 @@ async def deduplicator_node(state) -> dict:
     from src.utils.hashing import get_config_hash
     from datetime import datetime, timezone, timedelta
 
-    config_hash = get_config_hash(_logical_config(state["validated_config"]))
+    config_hash = get_config_hash(logical_config(state["validated_config"]))
 
     async with aiosqlite.connect(storage_db.DB_PATH) as db:
         cursor = await db.execute(

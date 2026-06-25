@@ -3,14 +3,7 @@ import json
 import time
 from pathlib import Path
 
-try:
-    from langfuse.decorators import observe
-except ImportError:
-    def observe(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
-
+from src.utils.langfuse_compat import observe
 
 from src.models.rag_config import RAGConfig
 from src.rag_pipeline.retriever import build_retriever
@@ -241,6 +234,10 @@ def _contexts_to_results(contexts: list[list[str]]) -> list[list[dict]]:
 
 def _results_to_contexts(results: list[list[dict]]) -> list[list[str]]:
     return [[item.get("text", "") for item in items] for items in results]
+
+
+contexts_to_results = _contexts_to_results
+results_to_contexts = _results_to_contexts
 
 
 def _node_to_result(config: RAGConfig, node_with_score) -> dict:

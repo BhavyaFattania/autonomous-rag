@@ -1,7 +1,7 @@
 from unittest.mock import patch
 from src.orchestrator.validator import validator_node
 from src.scientist.candidates import get_structured_exploration_candidates
-from src.scientist.brain import _build_scientist_prompt
+from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt
 
 
 def test_validator_enforces_search_space():

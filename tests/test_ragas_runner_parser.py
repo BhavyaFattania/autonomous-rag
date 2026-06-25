@@ -3,8 +3,8 @@ from pydantic import BaseModel
 
 from ragas.prompt.pydantic_prompt import RagasOutputParser
 
-from src.evaluator.ragas_runner import (
-    _build_ragas_metrics,
+from src.evaluator.ragas_setup import (
+    build_ragas_metrics as _build_ragas_metrics,
     _build_openrouter_extra_body,
     _build_openrouter_model_kwargs,
 )

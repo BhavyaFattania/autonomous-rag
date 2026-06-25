@@ -1,11 +1,4 @@
-try:
-    from langfuse.decorators import observe
-except ImportError:
-    def observe(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
-
+from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
 from src.utils.openrouter import call_openrouter
 

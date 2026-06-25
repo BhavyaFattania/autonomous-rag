@@ -4,6 +4,7 @@ import aiosqlite
 from datetime import datetime, timezone
 import src.storage.db as storage_db
 from src.storage.cost_tracker import get_total
+from src.utils.config_helpers import logical_config
 from src.utils.hashing import get_config_hash
 
 PIPELINE_FAILURE_STATUSES = {
@@ -12,9 +13,6 @@ PIPELINE_FAILURE_STATUSES = {
     "FAILED_API_ERROR",
     "FAILED_VALIDATION",
 }
-
-def _logical_config(config: dict) -> dict:
-    return {k: v for k, v in config.items() if not k.startswith("_")}
 
 
 def _config_summary(config: dict) -> str:
@@ -33,7 +31,7 @@ def _config_summary(config: dict) -> str:
 async def recorder_node(state) -> dict:
     experiment_uuid = state.get("experiment_uuid") or str(uuid.uuid4())
     config_source = state.get("validated_config") or state.get("proposed_config", {})
-    config_dict = _logical_config(config_source)
+    config_dict = logical_config(config_source)
     config_hash = get_config_hash(config_dict) if config_dict else ""
 
     status = state.get("status", "FAILED_UNKNOWN")
