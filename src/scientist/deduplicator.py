@@ -1,73 +1,42 @@
-import aiosqlite
 import json
-import src.storage.db as storage_db
+from datetime import datetime, timezone, timedelta
+
+import aiosqlite
+
+from src.storage.database import Database
+from src.storage.repositories.experiment_repository import ExperimentRepository
+from src.storage.repositories.config_hash_repository import ConfigHashRepository
 from src.utils.config_helpers import logical_config
 from src.utils.logger import get_logger
 
 log = get_logger("deduplicator")
 
-# Stale proposed-hash TTL: rows older than this with no completed experiment are orphans.
 _STALE_HASH_TTL_DAYS = 7
 
 
 async def _fetch_best_historical_record(db, config_hash: str) -> dict:
-    """Fetch the best-scoring historical experiment for this config hash.
-
-    Returns a dict with keys: score, metrics, status, hypothesis.
-    All values default to None / empty if no record is found.
-    """
-    cursor = await db.execute(
-        """
-        SELECT proposed_score, metrics_json, status, hypothesis
-        FROM experiments
-        WHERE config_hash = ?
-          AND status NOT IN ('FAILED_VALIDATION')
-        ORDER BY proposed_score DESC NULLS LAST
-        LIMIT 1
-        """,
-        (config_hash,),
-    )
-    row = await cursor.fetchone()
-    if not row:
-        return {"score": None, "metrics": {}, "status": "unknown", "hypothesis": ""}
-
-    proposed_score, metrics_json, status, hypothesis = row
-    metrics = {}
-    if metrics_json:
-        try:
-            metrics = json.loads(metrics_json)
-        except (json.JSONDecodeError, TypeError):
-            metrics = {}
-
+    repo = ExperimentRepository(db)
+    record = await repo.find_best_historical(config_hash)
     return {
-        "score": proposed_score,
-        "metrics": metrics,
-        "status": status,
-        "hypothesis": hypothesis or "",
+        "score": record.score,
+        "metrics": record.metrics,
+        "status": record.status,
+        "hypothesis": record.hypothesis,
     }
 
 
 async def deduplicator_node(state) -> dict:
     from src.utils.hashing import get_config_hash
-    from datetime import datetime, timezone, timedelta
 
     config_hash = get_config_hash(logical_config(state["validated_config"]))
 
-    async with aiosqlite.connect(storage_db.DB_PATH) as db:
-        cursor = await db.execute(
-            """
-            SELECT experiment_id FROM experiments
-            WHERE config_hash=?
-              AND status NOT IN ('FAILED_VALIDATION')
-            LIMIT 1
-            """,
-            (config_hash,),
-        )
-        row = await cursor.fetchone()
+    async with Database().connect() as db:
+        exp_repo = ExperimentRepository(db)
+        ch_repo = ConfigHashRepository(db)
 
-        if row:
-            # Fetch the previous result so the scientist gets real performance context,
-            # not just "was already run". This lets it understand what that config achieved.
+        existing_id = await exp_repo.find_by_config_hash(config_hash)
+
+        if existing_id:
             historical = await _fetch_best_historical_record(db, config_hash)
             score_str = f"{historical['score']:.4f}" if historical["score"] is not None else "unknown"
             log.info(
@@ -90,17 +59,9 @@ async def deduplicator_node(state) -> dict:
             }
 
         try:
-            await db.execute(
-                """
-                INSERT INTO config_hashes (config_hash, first_seen, score)
-                VALUES (?, ?, NULL)
-                """,
-                (config_hash, datetime.now(timezone.utc).isoformat()),
-            )
+            await ch_repo.insert(config_hash)
             await db.commit()
         except aiosqlite.IntegrityError:
-            # Hash already in config_hashes (proposed but not yet completed).
-            # Still try to fetch historical data if a completed experiment exists.
             historical = await _fetch_best_historical_record(db, config_hash)
             score_str = f"{historical['score']:.4f}" if historical["score"] is not None else "unknown"
             return {
@@ -116,24 +77,9 @@ async def deduplicator_node(state) -> dict:
                 "duplicate_historical_hypothesis": historical["hypothesis"],
             }
 
-        # Clean up orphaned proposed-hash rows: older than TTL with no completed experiment.
-        # This prevents stale entries from crashed runs blocking future valid proposals.
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=_STALE_HASH_TTL_DAYS)).isoformat()
-        result = await db.execute(
-            """
-            DELETE FROM config_hashes
-            WHERE first_seen < ?
-              AND score IS NULL
-              AND config_hash NOT IN (
-                  SELECT config_hash FROM experiments
-                  WHERE status NOT IN ('FAILED_VALIDATION')
-              )
-            """,
-            (cutoff,),
-        )
-        if result.rowcount:
-            log.info("deduplicator_stale_hashes_cleaned", removed=result.rowcount, ttl_days=_STALE_HASH_TTL_DAYS)
+        removed = await ch_repo.delete_stale(ttl_days=_STALE_HASH_TTL_DAYS)
+        if removed:
+            log.info("deduplicator_stale_hashes_cleaned", removed=removed, ttl_days=_STALE_HASH_TTL_DAYS)
         await db.commit()
 
     return {"status": "RUNNING"}
-

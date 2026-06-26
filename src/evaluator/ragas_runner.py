@@ -1,7 +1,7 @@
 import asyncio
 import time
 from datasets import Dataset
-from ragas import evaluate
+from ragas import evaluate as ragas_evaluate
 from ragas.run_config import RunConfig
 from src.models.metrics import SingleRunMetrics
 from src.data.question_loader import load_eval_question_items
@@ -91,19 +91,24 @@ async def run_single_eval(
             max_wait=5,
             max_workers=worker_count,
         )
+
+        def _run_evaluate(loop_for_thread, cfg=run_config):
+            asyncio.set_event_loop(loop_for_thread)
+            return ragas_evaluate(
+                dataset=dataset,
+                metrics=ragas_metrics,
+                llm=ragas_llm,
+                embeddings=ragas_embeddings,
+                run_config=cfg,
+                raise_exceptions=False,
+                show_progress=False,
+                batch_size=8,
+            )
+
         try:
+            worker_loop = asyncio.new_event_loop()
             result = await loop.run_in_executor(
-                None,
-                lambda: evaluate(
-                    dataset=dataset,
-                    metrics=ragas_metrics,
-                    llm=ragas_llm,
-                    embeddings=ragas_embeddings,
-                    run_config=run_config,
-                    raise_exceptions=False,
-                    show_progress=False,
-                    batch_size=8,
-                ),
+                None, _run_evaluate, worker_loop,
             )
             break
         except TimeoutError:

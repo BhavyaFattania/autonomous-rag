@@ -1,77 +1,23 @@
 """
-SQLite schema. All tables are created on first run.
-WAL mode is MANDATORY for safe async access.
+Backward-compat re-exports from the database module.
+
+Existing code imports from db:
+    import src.storage.db as storage_db
+    storage_db.DB_PATH
+    await storage_db.init_db()
+
+These still work by delegating to Database.
 """
 
-import aiosqlite
+from src.storage.database import Database
 
+# Module-level singleton
 DB_PATH = "experiments.sqlite"
 
-CREATE_EXPERIMENTS_TABLE = """
-CREATE TABLE IF NOT EXISTS experiments (
-    experiment_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    experiment_uuid  TEXT NOT NULL UNIQUE,
-    run_id           TEXT NOT NULL,
-    config_hash      TEXT NOT NULL,
-    config_json      TEXT NOT NULL,
-    hypothesis       TEXT,
-    status           TEXT NOT NULL,
-    failure_reason   TEXT,
-    metrics_json     TEXT,
-    baseline_score   REAL,
-    proposed_score   REAL,
-    cost_usd         REAL DEFAULT 0.0,
-    started_at       TEXT NOT NULL,
-    finished_at      TEXT,
-    duration_sec     REAL
-)
-"""
 
-CREATE_CONFIG_HASHES_TABLE = """
-CREATE TABLE IF NOT EXISTS config_hashes (
-    config_hash  TEXT PRIMARY KEY,
-    first_seen   TEXT NOT NULL,
-    score        REAL
-)
-"""
+def _instance(path=None):
+    return Database(path or DB_PATH)
 
-CREATE_RUNS_TABLE = """
-CREATE TABLE IF NOT EXISTS runs (
-    run_id        TEXT PRIMARY KEY,
-    started_at    TEXT NOT NULL,
-    finished_at   TEXT,
-    total_cost    REAL DEFAULT 0.0,
-    n_experiments INTEGER DEFAULT 0,
-    n_accepted    INTEGER DEFAULT 0,
-    best_config   TEXT,
-    best_score    REAL,
-    status        TEXT
-)
-"""
 
-async def init_db():
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("PRAGMA journal_mode=WAL;")  # MANDATORY
-        await db.execute("PRAGMA synchronous=NORMAL;")
-        await db.execute("PRAGMA temp_store=MEMORY;")
-        await db.execute("PRAGMA foreign_keys=ON;")
-        await db.execute(CREATE_EXPERIMENTS_TABLE)
-        await db.execute(CREATE_CONFIG_HASHES_TABLE)
-        await db.execute(CREATE_RUNS_TABLE)
-        # Explicit index on config_hashes.config_hash for fast deduplicator lookups.
-        # config_hash IS the PRIMARY KEY (already implicitly indexed by SQLite), but
-        # this statement is idempotent and documents the performance expectation.
-        await db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_config_hashes_hash ON config_hashes (config_hash)"
-        )
-        # Ensure past proposed hashes are backfilled from completed experiments.
-        await db.execute(
-            """
-            INSERT OR IGNORE INTO config_hashes (config_hash, first_seen, score)
-            SELECT config_hash, MIN(started_at), MAX(proposed_score)
-            FROM experiments
-            WHERE config_hash IS NOT NULL AND config_hash != ''
-            GROUP BY config_hash
-            """
-        )
-        await db.commit()
+async def init_db(path=None):
+    return await _instance(path).init()

@@ -41,7 +41,8 @@ STATUS_STYLE = {
 
 def print_banner(max_exp: int, max_hours: float, settings: dict):
     console.print()
-    console.print(Panel.fit(
+    from rich.panel import Panel as RichPanel
+    console.print(RichPanel.fit(
         "[bold cyan]Autonomous RAG Optimizer[/]\n"
         f"[dim]Max experiments: [white]{max_exp}[/]  |  "
         f"Max hours: [white]{max_hours}h[/]  |  "
@@ -124,7 +125,7 @@ def log_event(event: dict, ctx: dict, run_start: datetime):
 
 
 def print_config_table(config: dict):
-    from rich.panel import Panel as RichPanel
+    
     table = Table(box=box.SIMPLE, show_header=True, header_style="bold dim",
                   padding=(0, 1), border_style="dim")
     table.add_column("Parameter", style="cyan")

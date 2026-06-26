@@ -1,8 +1,13 @@
 import json
 import uuid
-import aiosqlite
 from datetime import datetime, timezone
-import src.storage.db as storage_db
+
+import aiosqlite
+
+from src.storage.database import Database
+from src.storage.models import Experiment
+from src.storage.repositories.experiment_repository import ExperimentRepository
+from src.storage.repositories.config_hash_repository import ConfigHashRepository
 from src.storage.cost_tracker import get_total
 from src.utils.config_helpers import logical_config
 from src.utils.hashing import get_config_hash
@@ -47,52 +52,43 @@ async def recorder_node(state) -> dict:
     started_at = state.get("experiment_started_at", datetime.now(timezone.utc).isoformat())
     finished_at = datetime.now(timezone.utc).isoformat()
 
-    async with aiosqlite.connect(storage_db.DB_PATH) as db:
-        cursor = await db.execute("""
-            INSERT INTO experiments
-            (experiment_uuid, run_id, config_hash, config_json, hypothesis, status, failure_reason,
-             metrics_json, baseline_score, proposed_score, cost_usd, started_at, finished_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            experiment_uuid,
-            state["run_id"],
-            config_hash,
-            json.dumps(config_dict),
-            state.get("hypothesis", ""),
-            status,
-            failure_reason,
-            metrics_json,
-            baseline_score,
-            proposed_score,
-            cost,
-            started_at,
-            finished_at
-        ))
-        # Update the config_hashes row with the best score achieved
+    experiment = Experiment(
+        experiment_uuid=experiment_uuid,
+        run_id=state["run_id"],
+        config_hash=config_hash,
+        config_json=json.dumps(config_dict),
+        hypothesis=state.get("hypothesis", ""),
+        status=status,
+        failure_reason=failure_reason,
+        metrics_json=metrics_json,
+        baseline_score=baseline_score,
+        proposed_score=proposed_score,
+        cost_usd=cost,
+        started_at=started_at,
+        finished_at=finished_at,
+    )
+
+    async with Database().connect() as db:
+        exp_repo = ExperimentRepository(db)
+        ch_repo = ConfigHashRepository(db)
+
+        experiment_id = await exp_repo.insert(experiment)
+
         if config_hash and proposed_score is not None:
-            await db.execute("""
-                UPDATE config_hashes
-                SET score = MAX(COALESCE(score, 0.0), ?)
-                WHERE config_hash = ?
-            """, (proposed_score, config_hash))
+            await ch_repo.update_score(config_hash, proposed_score)
         await db.commit()
-        experiment_id = cursor.lastrowid
 
     completed = state.get("experiments_completed", 0) + 1
     accepted = state.get("experiments_accepted", 0)
     failures = state.get("consecutive_failures", 0)
     repeated = state.get("experiments_repeated", 0)
     experiments_competitive = state.get("experiments_competitive", 0)
-    
+
     if status == "ACCEPTED":
         accepted += 1
-        # Do NOT reset failures — never reinitialise counters to zero during a run.
     elif status == "REJECTED":
-        # Failed to meet improvement requirements — counts as a failure.
         failures += 1
     elif status == "COMPETITIVE":
-        # Near-best but not promoted. Increment both the dedicated competitive counter
-        # and the failure counter so a long COMPETITIVE streak triggers the stop limit.
         experiments_competitive += 1
         failures += 1
     elif status == "FAILED_DUPLICATE":
@@ -128,5 +124,5 @@ async def recorder_node(state) -> dict:
         "experiments_competitive": experiments_competitive,
         "total_cost_usd": get_total(),
         "successful_patterns": successful,
-        "failed_patterns": failed
+        "failed_patterns": failed,
     }

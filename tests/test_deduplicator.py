@@ -1,6 +1,6 @@
 from src.utils.config_helpers import logical_config as _logical_config
 from src.scientist.proposal import select_unused_candidate as _select_unused_candidate
-from src.storage import db
+from src.storage.database import Database
 from src.utils.hashing import get_config_hash
 import aiosqlite
 import os
@@ -34,23 +34,26 @@ def test_deduplicator_hash_ignores_internal_config_keys():
 
 
 async def test_scientist_candidate_selection_skips_reserved_hash(local_tmp_path):
-    old_path = db.DB_PATH
-    db.DB_PATH = str(local_tmp_path / "experiments.sqlite")
-    await db.init_db()
+    db_path = str(local_tmp_path / "experiments.sqlite")
 
-    first = _candidate(top_k=5)
-    second = _candidate(top_k=7)
-    async with aiosqlite.connect(db.DB_PATH) as conn:
-        await conn.execute(
-            "INSERT INTO config_hashes (config_hash, first_seen) VALUES (?, ?)",
-            (get_config_hash(first), "2026-01-01T00:00:00+00:00"),
-        )
-        await conn.commit()
-
+    old_default = Database.default_path
+    Database.default_path = db_path
     try:
+        db = Database()
+        await db.init()
+
+        first = _candidate(top_k=5)
+        second = _candidate(top_k=7)
+        async with aiosqlite.connect(db_path) as conn:
+            await conn.execute(
+                "INSERT INTO config_hashes (config_hash, first_seen) VALUES (?, ?)",
+                (get_config_hash(first), "2026-01-01T00:00:00+00:00"),
+            )
+            await conn.commit()
+
         selected = await _select_unused_candidate([first, second], {})
     finally:
-        db.DB_PATH = old_path
+        Database.default_path = old_default
         for suffix in ("", "-wal", "-shm"):
             path = str(local_tmp_path / f"experiments.sqlite{suffix}")
             if os.path.exists(path):

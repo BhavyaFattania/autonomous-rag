@@ -72,7 +72,7 @@ signal.signal(signal.SIGINT, _handle_signal)
 @click.option("--dry-run",   is_flag=True,             help="Validate environment, print config, exit")
 @click.option("--resume",    is_flag=True,             help="Resume from last checkpoint")
 def main(max_exp, max_hours, dry_run, resume):
-    from src.storage.db import init_db
+    from src.storage.database import Database
     from src.storage.cost_tracker import initialize as init_cost
     from src.utils.config_loader import load_run_settings
     from src.utils.logger import setup_logging
@@ -96,24 +96,21 @@ def main(max_exp, max_hours, dry_run, resume):
 # ─── Run loop ─────────────────────────────────────────────────────────────────
 
 async def _run(max_exp, max_hours, resume, settings):
-    from src.storage.db import init_db
+    from src.storage.database import Database
     from src.orchestrator.graph import build_graph
     from src.utils.config_loader import load_baseline_config
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     from src.storage.cost_tracker import get_total
+    from src.storage.repositories.run_repository import RunRepository
 
-    await init_db()
+    await Database().init()
 
     run_id = None
     if resume:
         try:
-            import aiosqlite
-            async with aiosqlite.connect("experiments.sqlite") as db:
-                cursor = await db.execute("SELECT run_id FROM runs ORDER BY started_at DESC LIMIT 1")
-                row = await cursor.fetchone()
-                if row:
-                    run_id = row[0]
-                    console.print(f"[bold yellow]Resuming previous run with ID: {run_id}[/]")
+            run_id = await RunRepository().find_last_run_id()
+            if run_id:
+                console.print(f"[bold yellow]Resuming previous run with ID: {run_id}[/]")
         except Exception as e:
             console.print(f"[bold red]Failed to fetch last run ID for resume: {e}[/]")
 
