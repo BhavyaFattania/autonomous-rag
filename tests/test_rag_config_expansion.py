@@ -3,6 +3,7 @@ import pytest
 from src.models.rag_config import RAGConfig
 from src.orchestrator.validator import validator_node
 from src.rag_pipeline.retriever import _build_query_fusion_llm
+from config.settings import Settings, EvalSettings
 
 
 def _base(**overrides):
@@ -64,42 +65,36 @@ def test_summary_embedding_remains_configurable_but_guarded_by_validator():
     assert config.retriever == "summary_embedding"
 
 
-def test_validator_blocks_disabled_summary_embedding(monkeypatch):
-    monkeypatch.setattr(
-        "src.orchestrator.config_loader.load_run_settings",
-        lambda: {
-            "evaluation": {
-                "allow_new_index_builds": True,
-                "allow_expensive_parser_builds": False,
-                "allow_summary_embedding_retriever": False,
-            }
-        },
+def _blocking_settings() -> Settings:
+    return Settings(evaluation=EvalSettings(
+        allow_new_index_builds=True,
+        allow_expensive_parser_builds=False,
+        allow_summary_embedding_retriever=False,
+    ))
+
+
+def test_validator_blocks_disabled_summary_embedding():
+    result = validator_node(
+        {"proposed_config": _base(retriever="summary_embedding")},
+        settings=_blocking_settings(),
     )
-    result = validator_node({"proposed_config": _base(retriever="summary_embedding")})
 
     assert result["status"] == "FAILED_VALIDATION"
     assert "summary_embedding is disabled" in result["failure_reason"]
 
 
 def test_validator_blocks_uncached_semantic_parser(monkeypatch):
-    monkeypatch.setattr(
-        "src.orchestrator.config_loader.load_run_settings",
-        lambda: {
-            "evaluation": {
-                "allow_new_index_builds": True,
-                "allow_expensive_parser_builds": False,
-                "allow_summary_embedding_retriever": False,
-            }
-        },
-    )
     monkeypatch.setattr("src.indexer.collection_manager.collection_is_cached", lambda _: False)
-    result = validator_node({
-        "proposed_config": _base(
-            node_parser="semantic",
-            semantic_threshold=95,
-            semantic_buffer_size=1,
-        )
-    })
+    result = validator_node(
+        {
+            "proposed_config": _base(
+                node_parser="semantic",
+                semantic_threshold=95,
+                semantic_buffer_size=1,
+            )
+        },
+        settings=_blocking_settings(),
+    )
 
     assert result["status"] == "FAILED_VALIDATION"
     assert "requires a prebuilt cache" in result["failure_reason"]

@@ -1,5 +1,5 @@
 try:
-    from langfuse.decorators import observe
+    from langfuse import observe
 except ImportError:
     def observe(*args, **kwargs):
         def decorator(func):

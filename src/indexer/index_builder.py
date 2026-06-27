@@ -27,13 +27,13 @@ EMBEDDING_DIMS = {
 CORPUS_PATH = Path("data/corpus/hotpotqa_paragraphs.jsonl")
 
 
-def build_bm25_cache_only(config: RAGConfig, collection_name: str):
+def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings=None, env=None):
     assert CORPUS_PATH.exists(), (
         f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
     )
-    embed_model = build_embed_model(config)
+    embed_model = build_embed_model(config, env)
     splitter = build_node_parser(config, embed_model=embed_model)
-    docs = load_corpus_as_documents(CORPUS_PATH, limit=effective_corpus_limit(config))
+    docs = load_corpus_as_documents(CORPUS_PATH, limit=effective_corpus_limit(config, settings))
     nodes = splitter.get_nodes_from_documents(docs, show_progress=False)
 
     cache_path = bm25_cache_path(collection_name)
@@ -50,7 +50,7 @@ def build_bm25_cache_only(config: RAGConfig, collection_name: str):
     log.info("bm25_state_cached", nodes=len(nodes), engine_path=str(engine_path))
 
 
-async def build_collection(config: RAGConfig, collection_name: str, chroma_client: chromadb.PersistentClient):
+async def build_collection(config: RAGConfig, collection_name: str, chroma_client: chromadb.PersistentClient, settings=None, env=None):
     assert CORPUS_PATH.exists(), (
         f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
     )
@@ -61,12 +61,12 @@ async def build_collection(config: RAGConfig, collection_name: str, chroma_clien
     from llama_index.core import Settings
     from llama_index.core.llms import MockLLM
 
-    embed_model = build_embed_model(config)
+    embed_model = build_embed_model(config, env)
     Settings.embed_model = embed_model
     Settings.llm = MockLLM()
 
     splitter = build_node_parser(config, embed_model=embed_model)
-    docs = load_corpus_as_documents(CORPUS_PATH, limit=effective_corpus_limit(config))
+    docs = load_corpus_as_documents(CORPUS_PATH, limit=effective_corpus_limit(config, settings))
     nodes = splitter.get_nodes_from_documents(docs, show_progress=True)
 
     log.info(

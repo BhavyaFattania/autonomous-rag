@@ -18,6 +18,7 @@ def is_openrouter_rate_limit_error(exception: Exception) -> bool:
 class OpenRouterRerank(BaseNodePostprocessor):
     model: str = Field(default="cohere/rerank-v3.5")
     top_n: int = Field(default=5)
+    api_key: str | None = Field(default=None)
 
     @classmethod
     def class_name(cls) -> str:
@@ -31,7 +32,7 @@ class OpenRouterRerank(BaseNodePostprocessor):
         if not nodes or query_bundle is None:
             return nodes
 
-        api_key = os.environ.get("OPENROUTER_API_KEY")
+        api_key = self.api_key or os.environ.get("OPENROUTER_API_KEY")
         if not api_key:
             raise ValueError("OPENROUTER_API_KEY is not set.")
 
@@ -74,7 +75,7 @@ class OpenRouterRerank(BaseNodePostprocessor):
         if not nodes or query_bundle is None:
             return nodes
 
-        api_key = os.environ.get("OPENROUTER_API_KEY")
+        api_key = self.api_key or os.environ.get("OPENROUTER_API_KEY")
         if not api_key:
             raise ValueError("OPENROUTER_API_KEY is not set.")
 

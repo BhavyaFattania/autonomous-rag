@@ -1,6 +1,7 @@
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
 from src.utils.openrouter import call_openrouter
+from config.settings import ReflectionSettings
 
 log = get_logger("reflection")
 
@@ -22,11 +23,8 @@ def _truncate_to_sentence(text: str, max_chars: int) -> str:
 
 
 @observe(name="reflection_node")
-async def reflection_node(state) -> dict:
-    from src.utils.config_loader import load_run_settings
-
-    settings = load_run_settings()
-    n = settings["reflection"]["update_every_n_experiments"]
+async def reflection_node(state, settings=None) -> dict:
+    n = ReflectionSettings().update_every_n_experiments
     completed = state.get("experiments_completed", 0)
 
     if completed == 0 or completed % n != 0:
@@ -44,6 +42,10 @@ async def reflection_node(state) -> dict:
         )
     except Exception as e:
         log.warning("reflection_failed", error=str(e))
+        return {}
+
+    if not isinstance(summary, str):
+        log.warning("reflection_unexpected_type", type=type(summary).__name__)
         return {}
 
     return {"reflection_summary": _truncate_to_sentence(summary.strip(), _MAX_REFLECTION_CHARS)}

@@ -1,5 +1,4 @@
 import os
-import yaml
 import asyncio
 from ragas.llms import LangchainLLMWrapper
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -14,63 +13,56 @@ from ragas.metrics import (
 from src.utils.logger import get_logger
 from src.utils.openrouter import build_openrouter_headers
 from src.utils.json_repair import install_ragas_output_parser_compat_patch
-
+from config.models import ModelRouting
 log = get_logger("evaluator")
+from dotenv import load_dotenv  
+load_dotenv()
 
-
-def build_ragas_llm() -> LangchainLLMWrapper:
+def build_ragas_llm(model_routing=ModelRouting, env=None) -> LangchainLLMWrapper:
     install_ragas_output_parser_compat_patch()
-    judge_config = _load_ragas_judge_config()
+    judge_config = model_routing.ragas_judge
     model_kwargs = _build_openrouter_model_kwargs(judge_config)
     extra_body = _build_openrouter_extra_body(judge_config)
-    model_id = judge_config.get("model_id", "qwen/qwen3.5-flash-02-23")
+    model_id = judge_config.model_id
     log.info(
         "ragas_judge_configured",
         model=model_id,
-        response_format=judge_config.get("response_format"),
-        exclude_reasoning=judge_config.get("exclude_reasoning"),
+        response_format=judge_config.response_format,
+        exclude_reasoning=judge_config.exclude_reasoning,
     )
     llm = ChatOpenAI(
         model=model_id,
         base_url="https://openrouter.ai/api/v1",
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        temperature=judge_config.get("temperature", 0.0),
-        max_tokens=judge_config.get("max_tokens", 4096),
+        api_key=env["OPENROUTER_API_KEY"] if env else os.environ["OPENROUTER_API_KEY"],
+        temperature=judge_config.temperature,
+        max_completion_tokens=judge_config.max_tokens,
         model_kwargs=model_kwargs,
         extra_body=extra_body,
         default_headers=build_openrouter_headers(),
     )
+
     return LangchainLLMWrapper(llm, is_finished_parser=_ragas_generation_finished)
 
 
-def build_ragas_embeddings(model_name: str) -> OpenAIEmbeddings:
+def build_ragas_embeddings(model_name: str, env=None) -> OpenAIEmbeddings:
     return OpenAIEmbeddings(
         model=model_name,
         base_url="https://openrouter.ai/api/v1",
-        api_key=os.environ["OPENROUTER_API_KEY"],
+        api_key=env["OPENROUTER_API_KEY"] if env else os.environ["OPENROUTER_API_KEY"],
     )
 
 
-def _build_openrouter_model_kwargs(judge_config: dict) -> dict:
-    if judge_config.get("response_format") == "json_object":
+def _build_openrouter_model_kwargs(judge_config) -> dict:
+    if judge_config.response_format == "json_object":
         return {"response_format": {"type": "json_object"}}
     return {}
 
 
-def _build_openrouter_extra_body(judge_config: dict) -> dict:
+def _build_openrouter_extra_body(judge_config) -> dict:
     extra_body = {}
-    if judge_config.get("exclude_reasoning", True):
+    if judge_config.exclude_reasoning:
         extra_body["reasoning"] = {"effort": "none", "exclude": True}
     return extra_body
-
-
-def _load_ragas_judge_config() -> dict:
-    try:
-        with open("config/model_routing.yaml") as f:
-            routing = yaml.safe_load(f) or {}
-    except FileNotFoundError:
-        return {}
-    return routing.get("models", {}).get("ragas_judge", {})
 
 
 def build_ragas_metrics(metric_names: list[str]):

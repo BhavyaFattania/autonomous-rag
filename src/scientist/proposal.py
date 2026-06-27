@@ -9,9 +9,9 @@ from src.utils.logger import get_logger
 log = get_logger("scientist")
 
 
-async def fallback_proposal(state, reason: str) -> dict:
+async def fallback_proposal(state, reason: str, settings=None) -> dict:
     from src.scientist.candidates import get_fallback_candidates
-    candidates = get_fallback_candidates(state)
+    candidates = get_fallback_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
 
     hypothesis = "Fallback local proposal after scientist LLM returned no usable config."
@@ -25,9 +25,9 @@ async def fallback_proposal(state, reason: str) -> dict:
     }
 
 
-async def reranker_probe_proposal(state) -> dict:
+async def reranker_probe_proposal(state, settings=None) -> dict:
     from src.scientist.candidates import get_reranker_probe_candidates
-    candidates = get_reranker_probe_candidates(state)
+    candidates = get_reranker_probe_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
 
     hypothesis = "Periodic reranker probe tests whether Cohere preserves recall evidence."
@@ -41,9 +41,9 @@ async def reranker_probe_proposal(state) -> dict:
     }
 
 
-async def structured_exploration_proposal(state) -> dict:
+async def structured_exploration_proposal(state, settings=None) -> dict:
     from src.scientist.candidates import get_structured_exploration_candidates
-    candidates = get_structured_exploration_candidates(state)
+    candidates = get_structured_exploration_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
 
     hypothesis = "Structured exploration covers chunking and retrieval modes before exploitation."

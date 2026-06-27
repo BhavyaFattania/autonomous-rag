@@ -1,10 +1,10 @@
 # src/scientist/candidates.py
 
 import json
+from config.settings import SearchSpaceSettings,EvalSettings
 
-
-def get_structured_exploration_candidates(state) -> list[dict]:
-    index_configs = _available_index_configs(state)
+def get_structured_exploration_candidates(state, settings=None) -> list[dict]:
+    index_configs = _available_index_configs(state, settings)
     variants = [
         {"retriever": "dense", "top_k": 3, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
         {"retriever": "dense", "top_k": 5, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
@@ -19,11 +19,11 @@ def get_structured_exploration_candidates(state) -> list[dict]:
         {"retriever": "recursive", "top_k": 5, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
         {"retriever": "dense", "top_k": 5, "hybrid_alpha": 1.0, "reranker": "CohereRerank", "reranker_top_n": 5},
     ]
-    return _combine_candidates(index_configs, variants, variants_first=True)
+    return _combine_candidates(index_configs, variants, variants_first=True, settings=settings)
 
 
-def get_reranker_probe_candidates(state) -> list[dict]:
-    index_configs = _available_index_configs(state)
+def get_reranker_probe_candidates(state, settings=None) -> list[dict]:
+    index_configs = _available_index_configs(state, settings)
     current_best = state.get("current_best_config", {})
     preferred_chunk = {
         "embedding_model": current_best.get("embedding_model"),
@@ -39,11 +39,11 @@ def get_reranker_probe_candidates(state) -> list[dict]:
         {"retriever": "weighted_hybrid_rrf", "top_k": 10, "hybrid_alpha": 0.7, "reranker": "CohereRerank", "reranker_top_n": 10},
         {"retriever": "query_fusion_rrf", "top_k": 10, "hybrid_alpha": 0.7, "fusion_num_queries": 1, "reranker": "CohereRerank", "reranker_top_n": 10},
     ]
-    return _combine_candidates(ordered_index_configs, variants, variants_first=False)
+    return _combine_candidates(ordered_index_configs, variants, variants_first=False, settings=settings)
 
 
-def get_fallback_candidates(state) -> list[dict]:
-    indexed_configs = _available_index_configs(state)
+def get_fallback_candidates(state, settings=None) -> list[dict]:
+    indexed_configs = _available_index_configs(state, settings)
 
     retrieval_variants = [
         {"retriever": "dense", "top_k": 10, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
@@ -53,17 +53,15 @@ def get_fallback_candidates(state) -> list[dict]:
         {"retriever": "dense", "top_k": 10, "hybrid_alpha": 1.0, "reranker": "CohereRerank", "reranker_top_n": 10},
     ]
 
-    return _combine_candidates(indexed_configs, retrieval_variants, variants_first=False)
+    return _combine_candidates(indexed_configs, retrieval_variants, variants_first=False, settings=settings)
 
 
-def _combine_candidates(index_configs: list[dict], variants: list[dict], variants_first: bool) -> list[dict]:
-    from src.utils.config_loader import load_run_settings
-    settings = load_run_settings()
-    search_space = settings.get("search_space") or {}
-    
-    allowed_retrievers = search_space.get("allowed_retrievers")
-    allowed_rerankers = search_space.get("allowed_rerankers")
-    allowed_generator_models = search_space.get("allowed_generator_models")
+def _combine_candidates(index_configs, variants, variants_first, settings=None) -> list[dict]:
+    search_space = SearchSpaceSettings()
+
+    allowed_retrievers = search_space.allowed_retrievers
+    allowed_rerankers = search_space.allowed_rerankers
+    allowed_generator_models = search_space.allowed_generator_models
 
     # Filter variants first
     filtered_variants = []
@@ -106,19 +104,16 @@ def _combine_candidates(index_configs: list[dict], variants: list[dict], variant
     return candidates
 
 
-def _available_index_configs(state) -> list[dict]:
-    from src.utils.config_loader import load_run_settings
-
-    settings = load_run_settings()
-    search_space = settings.get("search_space") or {}
-    allowed_node_parsers = search_space.get("allowed_node_parsers")
-    allowed_chunk_sizes = search_space.get("allowed_chunk_sizes")
-    allowed_chunk_overlaps = search_space.get("allowed_chunk_overlaps")
+def _available_index_configs(state, settings=None) -> list[dict]:
+    search_space = SearchSpaceSettings()
+    allowed_node_parsers = search_space.allowed_node_parsers
+    allowed_chunk_sizes = search_space.allowed_chunk_sizes
+    allowed_chunk_overlaps = search_space.allowed_chunk_overlaps
 
     indexed_configs = []
     from src.indexer.collection_manager import collection_is_cached, list_available_index_configs
 
-    if not settings["evaluation"].get("allow_new_index_builds", True):
+    if not EvalSettings().allow_new_index_builds:
         indexed_configs = list_available_index_configs()
     if indexed_configs:
         # Filter available index configs according to search space constraints
@@ -146,7 +141,7 @@ def _available_index_configs(state) -> list[dict]:
         {"embedding_model": embedding_model, "node_parser": "semantic", "chunk_size": 768, "chunk_overlap": 128, "semantic_threshold": 95, "semantic_buffer_size": 1},
         {"embedding_model": embedding_model, "node_parser": "semantic_double", "chunk_size": 768, "chunk_overlap": 128, "semantic_threshold": 90, "semantic_buffer_size": 1},
     ]
-    if settings["evaluation"].get("allow_expensive_parser_builds", False):
+    if EvalSettings().allow_expensive_parser_builds:
         candidates.extend(semantic_candidates)
     else:
         from src.models.rag_config import RAGConfig

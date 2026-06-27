@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt
 from src.utils.openrouter import call_openrouter
-from src.orchestrator.config_loader import load_baseline_config
+from config.loader import load_baseline_config
 from dotenv import load_dotenv
 
 async def test_brain():

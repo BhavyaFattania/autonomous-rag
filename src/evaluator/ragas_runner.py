@@ -10,6 +10,7 @@ from src.evaluator.ragas_setup import build_ragas_llm, build_ragas_embeddings, b
 from src.rag_pipeline.pipeline import contexts_to_results
 from src.utils.logger import get_logger
 
+from config.loader import load_model_routing, load_env
 log = get_logger("evaluator")
 
 
@@ -71,9 +72,9 @@ async def run_single_eval(
     ragas_metrics = build_ragas_metrics(metric_names)
     if not ragas_metrics:
         return fast_metrics
-    ragas_llm = build_ragas_llm()
+    ragas_llm = build_ragas_llm(model_routing=load_model_routing(), env=load_env())
     ragas_embeddings = (
-        build_ragas_embeddings("openai/text-embedding-3-small")
+        build_ragas_embeddings("openai/text-embedding-3-small", env=load_env())
         if "answer_relevancy" in metric_names
         else None
     )
@@ -129,6 +130,7 @@ async def run_single_eval(
 
     log.info("ragas_eval_complete", elapsed_sec=round(time.perf_counter() - started, 2))
 
+    assert result is not None, "result should be set if we reach here"
     df = result.to_pandas()
     metric_values = {
         name: _safe_mean(df, name)
@@ -147,25 +149,24 @@ async def run_single_eval(
     )
 
 
-async def evaluator_node(state) -> dict:
-    from src.utils.config_loader import load_run_settings
+async def evaluator_node(state, settings=None, env=None, model_routing=None) -> dict:
     from src.models.rag_config import RAGConfig
     from src.models.metrics import AggregatedMetrics
     from src.rag_pipeline.pipeline import retrieve_results, contexts_to_results
+    from config.settings import EvalSettings
     import asyncio
 
-    settings = load_run_settings()
     config = RAGConfig(**state["validated_config"])
     collection_name = state["validated_config"].get("_collection_name")
 
     completed = state.get("experiments_completed", 0)
     experiment_number = completed + 1
-    full_every = settings["evaluation"].get("full_eval_every_n_experiments", 5)
+    full_every = EvalSettings().full_eval_every_n_experiments
     use_full_suite = full_every > 0 and experiment_number % full_every == 0
     n_questions = (
-        settings["evaluation"].get("full_eval_n_questions", settings["evaluation"]["n_questions"])
+        EvalSettings().full_eval_n_questions
         if use_full_suite
-        else settings["evaluation"]["n_questions"]
+        else EvalSettings().n_questions
     )
     question_items = load_eval_question_items(n=n_questions)
     question_ids = [item["id"] for item in question_items]
@@ -182,22 +183,22 @@ async def evaluator_node(state) -> dict:
         experiment_number=experiment_number,
         questions=n_questions,
         full_suite=use_full_suite,
-        metrics=settings["evaluation"].get("ragas_metrics", ["context_recall"]),
+        metrics=EvalSettings().ragas_metrics,
     )
 
     runs: list[SingleRunMetrics] = []
     cost_this_node = 0.0
 
-    n_runs = settings["evaluation"].get("n_eval_runs", 3)
-    ragas_timeout = settings["evaluation"].get("max_runtime_sec_per_ragas", 120)
-    ragas_timeout_backoff_factor = settings["evaluation"].get("ragas_timeout_backoff_factor", 2.0)
-    ragas_max_timeout = settings["evaluation"].get("ragas_max_timeout_sec", 240)
-    ragas_timeout_retries = settings["evaluation"].get("ragas_timeout_retries", 1)
-    ragas_every = settings["evaluation"].get("ragas_audit_every_n_experiments", 5)
+    n_runs = EvalSettings().n_eval_runs
+    ragas_timeout = EvalSettings().max_runtime_sec_per_ragas
+    ragas_timeout_backoff_factor = EvalSettings().ragas_timeout_backoff_factor
+    ragas_max_timeout = EvalSettings().ragas_max_timeout_sec
+    ragas_timeout_retries = EvalSettings().ragas_timeout_retries
+    ragas_every = EvalSettings().ragas_audit_every_n_experiments
     run_ragas = ragas_every > 0 and experiment_number % ragas_every == 0
     ragas_min_fast_score = None
-    if settings["evaluation"].get("ragas_audit_policy") == "competitive":
-        tolerance = settings["evaluation"].get("ragas_audit_score_tolerance", 0.02)
+    if EvalSettings().ragas_audit_policy == "competitive":
+        tolerance = EvalSettings().ragas_audit_score_tolerance
         ragas_min_fast_score = state.get("current_best_weighted_score", 0.0) - tolerance
     if use_full_suite and config.reranker == "CohereRerank":
         log.warning("ragas_audit_skipped_for_cohere_full_suite", experiment_number=experiment_number)
@@ -207,8 +208,8 @@ async def evaluator_node(state) -> dict:
         log.info("eval_run_starting", run=run_num, experiment_id=state["experiment_id"])
         try:
             results, run_cost = await asyncio.wait_for(
-                retrieve_results(config, questions, collection_name=collection_name),
-                timeout=settings["evaluation"]["max_runtime_sec_per_eval"],
+                retrieve_results(config, questions, collection_name=collection_name, env=env),
+                timeout=EvalSettings().max_runtime_sec_per_eval,
             )
             contexts = [[item.get("text", "") for item in items] for items in results]
             cost_this_node += run_cost
@@ -219,7 +220,7 @@ async def evaluator_node(state) -> dict:
                 run_ragas=run_ragas, ragas_min_fast_score=ragas_min_fast_score,
                 timeout_sec=ragas_timeout, timeout_backoff_factor=ragas_timeout_backoff_factor,
                 max_timeout_sec=ragas_max_timeout, timeout_retries=ragas_timeout_retries,
-                metrics=settings["evaluation"].get("ragas_metrics"),
+                metrics=EvalSettings().ragas_metrics,
             )
             runs.append(metrics)
             log.info("eval_run_complete", run=run_num, weighted_score=metrics.weighted_score)
@@ -227,7 +228,7 @@ async def evaluator_node(state) -> dict:
             log.error("eval_run_timeout", run=run_num)
             return {
                 "status": "FAILED_TIMEOUT",
-                "failure_reason": f"Eval run {run_num} timed out after {settings['evaluation']['max_runtime_sec_per_eval']}s",
+                "failure_reason": f"Eval run {run_num} timed out after {EvalSettings.max_runtime_sec_per_eval}s",
                 "experiment_cost_usd": cost_this_node,
             }
         except Exception as e:

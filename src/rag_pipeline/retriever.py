@@ -23,7 +23,7 @@ from llama_index.core.retrievers import (
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.vector_stores.chroma import ChromaVectorStore
-
+from config.settings import EvalSettings
 from src.indexer.collection_names import collection_name as _idx_collection_name, CHROMA_PATH
 from src.indexer.collection_cache import load_bm25_nodes, load_bm25_engine
 from src.models.rag_config import RAGConfig
@@ -91,7 +91,7 @@ class RerankingRetriever(BaseRetriever):
         return self.reranker.postprocess_nodes(nodes, query_bundle=query_bundle)
 
 
-async def build_retriever(config: RAGConfig, collection_name: str | None = None):
+async def build_retriever(config: RAGConfig, collection_name: str | None = None, settings=None, env=None):
     collection_name = collection_name or _idx_collection_name(config)
 
     dense_retriever, bm25_retriever, nodes, storage_context = _build_components(
@@ -101,15 +101,15 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None)
 
     if config.retriever == "dense":
         log.info("retriever_mode", mode="dense", collection=collection_name)
-        return _maybe_apply_reranker(dense_retriever, config)
+        return _maybe_apply_reranker(dense_retriever, config, env)
 
     if config.retriever == "sentence_window_dense":
         log.info("retriever_mode", mode="sentence_window_dense", collection=collection_name)
-        return _maybe_apply_reranker(dense_retriever, config)
+        return _maybe_apply_reranker(dense_retriever, config, env)
 
     if config.retriever == "bm25":
         log.info("retriever_mode", mode="bm25", collection=collection_name)
-        return _maybe_apply_reranker(bm25_retriever, config)
+        return _maybe_apply_reranker(bm25_retriever, config, env)
 
     if config.retriever == "query_fusion_simple":
         retriever = _build_query_fusion(
@@ -117,9 +117,10 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None)
             dense_retriever,
             bm25_retriever,
             FUSION_MODES.SIMPLE,
+            env,
         )
         log.info("retriever_mode", mode="query_fusion_simple", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config)
+        return _maybe_apply_reranker(retriever, config, env)
 
     if config.retriever == "query_fusion_rrf":
         retriever = _build_query_fusion(
@@ -127,9 +128,10 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None)
             dense_retriever,
             bm25_retriever,
             FUSION_MODES.RECIPROCAL_RANK,
+            env,
         )
         log.info("retriever_mode", mode="query_fusion_rrf", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config)
+        return _maybe_apply_reranker(retriever, config, env)
 
     if config.retriever == "auto_merging":
         retriever = AutoMergingRetriever(
@@ -138,7 +140,7 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None)
             simple_ratio_thresh=0.5,
         )
         log.info("retriever_mode", mode="auto_merging", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config)
+        return _maybe_apply_reranker(retriever, config, env)
 
     if config.retriever == "recursive":
         retriever = RecursiveRetriever(
@@ -147,13 +149,10 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None)
             node_dict={node.node_id: node for node in nodes},
         )
         log.info("retriever_mode", mode="recursive", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config)
+        return _maybe_apply_reranker(retriever, config, env)
 
     if config.retriever == "summary_embedding":
-        from src.utils.config_loader import load_run_settings
-
-        settings = load_run_settings()
-        if not settings["evaluation"].get("allow_summary_embedding_retriever", False):
+        if not EvalSettings().allow_summary_embedding_retriever:
             raise ValueError(
                 "summary_embedding is disabled for live search because it builds "
                 "a SummaryIndex over all nodes at retrieval time."
@@ -164,17 +163,17 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None)
             similarity_top_k=config.top_k,
         )
         log.info("retriever_mode", mode="summary_embedding", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config)
+        return _maybe_apply_reranker(retriever, config, env)
 
     if config.retriever != "weighted_hybrid_rrf":
         raise ValueError(f"Unknown retriever: {config.retriever}")
 
     if config.hybrid_alpha == 1.0:
         log.info("retriever_mode", mode="dense_via_weighted_hybrid", collection=collection_name)
-        return _maybe_apply_reranker(dense_retriever, config)
+        return _maybe_apply_reranker(dense_retriever, config, env)
     if config.hybrid_alpha == 0.0:
         log.info("retriever_mode", mode="bm25_via_weighted_hybrid", collection=collection_name)
-        return _maybe_apply_reranker(bm25_retriever, config)
+        return _maybe_apply_reranker(bm25_retriever, config, env)
 
     log.info(
         "retriever_mode",
@@ -189,7 +188,7 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None)
         alpha=config.hybrid_alpha,
         top_k=config.top_k,
     )
-    return _maybe_apply_reranker(retriever, config)
+    return _maybe_apply_reranker(retriever, config, env)
 
 
 def _build_components(config: RAGConfig, collection_name: str):
@@ -224,10 +223,10 @@ def _build_components(config: RAGConfig, collection_name: str):
     return dense_retriever, bm25_retriever, nodes, storage_context
 
 
-def _build_query_fusion(config, dense_retriever, bm25_retriever, mode):
+def _build_query_fusion(config, dense_retriever, bm25_retriever, mode, env=None):
     return QueryFusionRetriever(
         [dense_retriever, bm25_retriever],
-        llm=_build_query_fusion_llm(config),
+        llm=_build_query_fusion_llm(config, env),
         mode=mode,
         similarity_top_k=config.top_k,
         num_queries=config.fusion_num_queries or 1,
@@ -236,23 +235,24 @@ def _build_query_fusion(config, dense_retriever, bm25_retriever, mode):
     )
 
 
-def _build_query_fusion_llm(config: RAGConfig):
+def _build_query_fusion_llm(config: RAGConfig, env=None):
     if (config.fusion_num_queries or 1) <= 1:
         from llama_index.core.llms import MockLLM
 
         return MockLLM()
 
-    import os
     from llama_index.llms.openai import OpenAI
     from src.utils.openrouter import build_openrouter_headers
 
+    api_key = (env or {}).get("OPENROUTER_API_KEY")
+
     return OpenAI(
         model=config.generator_model,
-        api_key=os.environ["OPENROUTER_API_KEY"],
+        api_key=api_key,
         api_base="https://openrouter.ai/api/v1",
         temperature=0.1,
         max_tokens=256,
-        default_headers=build_openrouter_headers(),
+        default_headers=build_openrouter_headers(api_key),
     )
 
 
@@ -262,14 +262,15 @@ except ImportError:
     OpenRouterRerank = None
 
 
-def _maybe_apply_reranker(retriever, config: RAGConfig):
+def _maybe_apply_reranker(retriever, config: RAGConfig, env=None):
     if config.reranker != "CohereRerank":
         return retriever
 
     if OpenRouterRerank is None:
         raise ValueError("OpenRouterRerank dependencies are not installed.")
 
-    reranker = OpenRouterRerank(model="cohere/rerank-v3.5", top_n=config.reranker_top_n)
+    api_key = (env or {}).get("OPENROUTER_API_KEY")
+    reranker = OpenRouterRerank(model="cohere/rerank-v3.5", top_n=config.reranker_top_n, api_key=api_key)
     log.info(
         "retriever_reranker_enabled_openrouter",
         model="cohere/rerank-v3.5",

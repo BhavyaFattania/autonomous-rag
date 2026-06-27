@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-
+from config.settings import Settings,EvalSettings,ReflectionSettings
 log = None
 
 
@@ -10,19 +10,17 @@ def build_scientist_prompt(
     *,
     recent_history: list[str] | None = None,
     history_summary: str = "",
+    settings=None,
 ) -> str:
-    from src.utils.config_loader import load_run_settings
-
-    settings = load_run_settings()
     system_prompt = Path("prompts/scientist_v1.txt").read_text()
 
-    search_space = settings.get("search_space") or {}
-    allowed_node_parsers = search_space.get("allowed_node_parsers")
-    allowed_chunk_sizes = search_space.get("allowed_chunk_sizes")
-    allowed_chunk_overlaps = search_space.get("allowed_chunk_overlaps")
+    search_space = Settings.search_space
+    allowed_node_parsers = search_space.allowed_node_parsers
+    allowed_chunk_sizes = search_space.allowed_chunk_sizes
+    allowed_chunk_overlaps = search_space.allowed_chunk_overlaps
 
     indexed_configs_text = "Any valid chunk_size/chunk_overlap pair."
-    if not settings["evaluation"].get("allow_new_index_builds", True):
+    if not EvalSettings.allow_new_index_builds:
         from src.indexer.collection_manager import list_available_index_configs
         indexed_configs = list_available_index_configs()
 
@@ -50,13 +48,13 @@ def build_scientist_prompt(
         history_lines = _build_history_lines(state)
         history_text = _truncate_history(
             history_lines,
-            max_chars=settings["reflection"]["max_history_tokens"] * 4,
+            max_chars=ReflectionSettings().max_history_tokens * 4,
         )
 
     mode = "EXPLOIT (refine near current best)" if exploit else "EXPLORE (try something new)"
 
     constraints_lines = []
-    for key, label in [
+    for attr, label in [
         ("allowed_node_parsers", "node_parser"),
         ("allowed_retrievers", "retriever"),
         ("allowed_chunk_sizes", "chunk_size"),
@@ -64,7 +62,7 @@ def build_scientist_prompt(
         ("allowed_generator_models", "generator_model"),
         ("allowed_rerankers", "reranker"),
     ]:
-        allowed = search_space.get(key)
+        allowed = getattr(search_space, attr)
         if allowed is not None:
             constraints_lines.append(f"- {label}: must be one of {allowed}")
 

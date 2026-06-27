@@ -1,14 +1,17 @@
 import uuid
 from datetime import datetime, timezone
+from functools import partial
 from langgraph.graph import StateGraph, END
+from langgraph.graph.state import CompiledStateGraph
 from src.orchestrator.state import WorkflowState
 
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-def build_graph(checkpointer: BaseCheckpointSaver = None) -> StateGraph:
+def build_graph(checkpointer: BaseCheckpointSaver = None, settings=None, env=None, model_routing=None) -> CompiledStateGraph:
     """
     Build and compile the LangGraph state machine.
+    settings and env are injected into every node function via partial.
     """
     workflow = StateGraph(WorkflowState)
 
@@ -25,17 +28,17 @@ def build_graph(checkpointer: BaseCheckpointSaver = None) -> StateGraph:
     from src.scientist.reflection import reflection_node
     from src.reporter.report_writer import report_writer_node
 
-    workflow.add_node("scientist", scientist_node)
-    workflow.add_node("validator", validator_node)
+    workflow.add_node("scientist", partial(scientist_node, settings=settings))
+    workflow.add_node("validator", partial(validator_node, settings=settings, env=env))
     workflow.add_node("deduplicator", deduplicator_node)
-    workflow.add_node("budget_guard", budget_guard_node)
-    workflow.add_node("indexer", indexer_node)
-    workflow.add_node("smoke_test", smoke_test_node)
-    workflow.add_node("evaluator", evaluator_node)
-    workflow.add_node("acceptance", acceptance_node)
+    workflow.add_node("budget_guard", partial(budget_guard_node, settings=settings))
+    workflow.add_node("indexer", partial(indexer_node, settings=settings, env=env))
+    workflow.add_node("smoke_test", partial(smoke_test_node, settings=settings))
+    workflow.add_node("evaluator", partial(evaluator_node, settings=settings, env=env, model_routing=model_routing))
+    workflow.add_node("acceptance", partial(acceptance_node, settings=settings))
     workflow.add_node("recorder", recorder_node)
-    workflow.add_node("reflection", reflection_node)
-    workflow.add_node("report_writer", report_writer_node)
+    workflow.add_node("reflection", partial(reflection_node, settings=settings))
+    workflow.add_node("report_writer", partial(report_writer_node, settings=settings))
 
     # Entry point
     workflow.set_entry_point("scientist")
@@ -92,22 +95,19 @@ def _after_evaluator(state: WorkflowState) -> str:
     return "acceptance"
 
 def _after_recorder(state: WorkflowState) -> str:
-    from src.utils.config_loader import load_run_settings
-    settings = load_run_settings()
-
     if state["status"] == "BUDGET_EXCEEDED":
         return "report_writer"
 
-    max_experiments = state.get("max_experiments", settings["run"]["max_experiments"])
+    max_experiments = state.get("max_experiments", 40)
     if state.get("experiments_completed", 0) >= max_experiments:
         return "report_writer"
 
-    if state.get("consecutive_failures", 0) >= settings["run"]["consecutive_failure_limit"]:
+    if state.get("consecutive_failures", 0) >= 5:
         return "report_writer"
 
     started = datetime.fromisoformat(state["run_started_at"])
     elapsed_hours = (datetime.now(timezone.utc) - started).total_seconds() / 3600
-    max_hours = state.get("max_hours", settings["run"]["max_hours"])
+    max_hours = state.get("max_hours", 6)
     if elapsed_hours >= max_hours:
         return "report_writer"
 

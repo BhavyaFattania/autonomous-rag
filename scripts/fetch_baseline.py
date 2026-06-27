@@ -1,6 +1,6 @@
 import asyncio
 import json
-from src.utils.config_loader import load_baseline_config
+from config.loader import load_baseline_config
 from src.models.rag_config import RAGConfig
 from src.rag_pipeline.pipeline import run_pipeline
 from src.evaluator.ragas_runner import run_single_eval
@@ -16,7 +16,9 @@ async def main():
     config_dict = load_baseline_config()
     config = RAGConfig(**config_dict)
 
-    questions, ground_truths = load_eval_question_items(n=5) # use 5 for baseline quick test
+    items = load_eval_question_items(n=5)
+    questions = [item["question"] for item in items]
+    ground_truths = [item["answer"] for item in items]
 
     print(f"Running baseline config: {config_dict}")
     runs = []

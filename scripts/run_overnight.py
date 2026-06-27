@@ -74,35 +74,37 @@ signal.signal(signal.SIGINT, _handle_signal)
 def main(max_exp, max_hours, dry_run, resume):
     from src.storage.database import Database
     from src.storage.cost_tracker import initialize as init_cost
-    from src.utils.config_loader import load_run_settings
+    from config.loader import load_all
     from src.utils.logger import setup_logging
-
+    from config.settings import RunSettings
+    settings, model_routing, baseline, env = load_all()
     setup_logging()
 
     if dry_run:
         _validate_environment()
         return
 
-    settings = load_run_settings()
     init_cost(
-        hard_ceiling=settings["run"]["cost_hard_ceiling_usd"],
-        warning_threshold=settings["run"]["cost_warning_threshold_usd"],
+        hard_ceiling=RunSettings().cost_hard_ceiling_usd,
+        warning_threshold=RunSettings().cost_warning_threshold_usd,
     )
 
     print_banner(max_exp, max_hours, settings)
-    asyncio.run(_run(max_exp, max_hours, resume, settings))
+    asyncio.run(_run(max_exp, max_hours, resume, settings, env))
 
 
 # ─── Run loop ─────────────────────────────────────────────────────────────────
 
-async def _run(max_exp, max_hours, resume, settings):
+async def _run(max_exp, max_hours, resume, settings, env):
     from src.storage.database import Database
     from src.orchestrator.graph import build_graph
-    from src.utils.config_loader import load_baseline_config
+    from config.models import ModelRouting
+    from config.loader import load_baseline_config
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     from src.storage.cost_tracker import get_total
+    
     from src.storage.repositories.run_repository import RunRepository
-
+    from config.settings import EvalSettings,RunSettings
     await Database().init()
 
     run_id = None
@@ -119,14 +121,14 @@ async def _run(max_exp, max_hours, resume, settings):
 
     baseline = load_baseline_config()
     run_start = datetime.now(timezone.utc)
-    baseline_override = settings["evaluation"].get("baseline_score_override")
+    baseline_override = EvalSettings().baseline_score_override
     if baseline_override is not None:
-        baseline_score = float(baseline_override)
+        baseline_score = baseline_override
         baseline_metrics = empty_metrics()
         console.print(Rule("[bold cyan]Phase 0 baseline override[/]"))
         console.print(f"[bold yellow]Starting baseline score overridden to {baseline_score:.4f}[/]")
     else:
-        baseline_score, baseline_metrics = await evaluate_baseline(baseline, settings)
+        baseline_score, baseline_metrics = await evaluate_baseline(baseline, settings, env)
 
     initial_state = {
         "run_id":                    run_id,
@@ -161,15 +163,12 @@ async def _run(max_exp, max_hours, resume, settings):
         "max_hours":                 max_hours,
     }
 
-    settings["run"]["max_experiments"] = max_exp
-    settings["run"]["max_hours"] = max_hours
-
     # Track per-experiment state across events
     _ctx = {"exp_num": 0, "node_times": {}}
     latest_state = dict(initial_state)
 
     async with AsyncSqliteSaver.from_conn_string("experiments.sqlite") as memory:
-        graph = build_graph(checkpointer=memory)
+        graph = build_graph(checkpointer=memory, settings=settings, env=env, model_routing=ModelRouting)
 
         try:
             from langfuse.langchain import CallbackHandler
@@ -194,8 +193,8 @@ async def _run(max_exp, max_hours, resume, settings):
                     previous_cost = state_val.values.get("total_cost_usd", 0.0)
                     from src.storage.cost_tracker import initialize as init_cost
                     init_cost(
-                        hard_ceiling=settings["run"]["cost_hard_ceiling_usd"],
-                        warning_threshold=settings["run"]["cost_warning_threshold_usd"],
+                        hard_ceiling=RunSettings().cost_hard_ceiling_usd,
+                        warning_threshold=RunSettings().cost_warning_threshold_usd,
                         start_cost=previous_cost
                     )
                     await graph.aupdate_state(
@@ -215,8 +214,8 @@ async def _run(max_exp, max_hours, resume, settings):
                     latest_state.update(output)
             log_event(event, _ctx, run_start)
 
-    if settings["evaluation"].get("run_final_best_eval", False) and not _stop_requested:
-        await evaluate_final_best(latest_state, settings)
+    if EvalSettings().run_final_best_eval and not _stop_requested:
+        await evaluate_final_best(latest_state, settings, env)
 
 
 

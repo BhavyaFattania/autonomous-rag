@@ -39,14 +39,15 @@ STATUS_STYLE = {
 }
 
 
-def print_banner(max_exp: int, max_hours: float, settings: dict):
+def print_banner(max_exp: int, max_hours: float, settings):
     console.print()
     from rich.panel import Panel as RichPanel
+    from config.settings import RunSettings
     console.print(RichPanel.fit(
         "[bold cyan]Autonomous RAG Optimizer[/]\n"
         f"[dim]Max experiments: [white]{max_exp}[/]  |  "
         f"Max hours: [white]{max_hours}h[/]  |  "
-        f"Budget ceiling: [white]${settings['run']['cost_hard_ceiling_usd']:.2f}[/][/]",
+        f"Budget ceiling: [white]${RunSettings().cost_hard_ceiling_usd:.2f}[/][/]",
         border_style="cyan",
         padding=(0, 2),
     ))

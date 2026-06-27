@@ -2,23 +2,30 @@ from unittest.mock import patch
 from src.orchestrator.validator import validator_node
 from src.scientist.candidates import get_structured_exploration_candidates
 from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt
+from config.settings import Settings, SearchSpaceSettings, EvalSettings, ReflectionSettings, ExploreExploitSettings
+
+
+def _make_test_settings(search_space: dict | None = None, eval_overrides: dict | None = None, reflection_overrides: dict | None = None) -> Settings:
+    return Settings(
+        evaluation=EvalSettings(
+            allow_new_index_builds=True,
+            **(eval_overrides or {}),
+        ),
+        reflection=ReflectionSettings(**(reflection_overrides or {})),
+        explore_exploit=ExploreExploitSettings(),
+        search_space=SearchSpaceSettings(**(search_space or {})),
+    )
 
 
 def test_validator_enforces_search_space():
-    mock_settings = {
-        "evaluation": {
-            "allow_expensive_parser_builds": False,
-            "allow_new_index_builds": True,
-        },
-        "search_space": {
-            "allowed_node_parsers": ["sentence"],
-            "allowed_retrievers": ["dense"],
-            "allowed_chunk_sizes": [512],
-            "allowed_chunk_overlaps": [128],
-            "allowed_generator_models": ["deepseek/deepseek-v4-flash"],
-            "allowed_rerankers": [None],
-        }
-    }
+    settings = _make_test_settings(search_space={
+        "allowed_node_parsers": ["sentence"],
+        "allowed_retrievers": ["dense"],
+        "allowed_chunk_sizes": [512],
+        "allowed_chunk_overlaps": [128],
+        "allowed_generator_models": ["deepseek/deepseek-v4-flash"],
+        "allowed_rerankers": [None],
+    })
 
     # Valid config
     state_valid = {
@@ -68,32 +75,25 @@ def test_validator_enforces_search_space():
         }
     }
 
-    with patch("src.utils.config_loader.load_run_settings", return_value=mock_settings):
-        res_valid = validator_node(state_valid)
-        assert res_valid["status"] == "RUNNING"
+    res_valid = validator_node(state_valid, settings=settings)
+    assert res_valid["status"] == "RUNNING"
 
-        res_invalid_parser = validator_node(state_invalid_parser)
-        assert res_invalid_parser["status"] == "FAILED_VALIDATION"
-        assert "node_parser='token' is not in developer allowed list" in res_invalid_parser["failure_reason"]
+    res_invalid_parser = validator_node(state_invalid_parser, settings=settings)
+    assert res_invalid_parser["status"] == "FAILED_VALIDATION"
+    assert "node_parser='token' is not in developer allowed list" in res_invalid_parser["failure_reason"]
 
-        res_invalid_retriever = validator_node(state_invalid_retriever)
-        assert res_invalid_retriever["status"] == "FAILED_VALIDATION"
-        assert "retriever='bm25' is not in developer allowed list" in res_invalid_retriever["failure_reason"]
+    res_invalid_retriever = validator_node(state_invalid_retriever, settings=settings)
+    assert res_invalid_retriever["status"] == "FAILED_VALIDATION"
+    assert "retriever='bm25' is not in developer allowed list" in res_invalid_retriever["failure_reason"]
 
 
 def test_candidates_filtering():
-    mock_settings = {
-        "evaluation": {
-            "allow_expensive_parser_builds": False,
-            "allow_new_index_builds": True,
-        },
-        "search_space": {
-            "allowed_node_parsers": ["sentence"],
-            "allowed_retrievers": ["dense"],
-            "allowed_chunk_sizes": [512],
-            "allowed_chunk_overlaps": [128],
-        }
-    }
+    settings = _make_test_settings(search_space={
+        "allowed_node_parsers": ["sentence"],
+        "allowed_retrievers": ["dense"],
+        "allowed_chunk_sizes": [512],
+        "allowed_chunk_overlaps": [128],
+    })
 
     state = {
         "baseline_config": {
@@ -101,29 +101,23 @@ def test_candidates_filtering():
         }
     }
 
-    with patch("src.utils.config_loader.load_run_settings", return_value=mock_settings):
-        candidates = get_structured_exploration_candidates(state)
-        assert len(candidates) > 0
-        for cand in candidates:
-            assert cand["node_parser"] == "sentence"
-            assert cand["retriever"] == "dense"
-            assert cand["chunk_size"] == 512
-            assert cand["chunk_overlap"] == 128
+    candidates = get_structured_exploration_candidates(state, settings=settings)
+    assert len(candidates) > 0
+    for cand in candidates:
+        assert cand["node_parser"] == "sentence"
+        assert cand["retriever"] == "dense"
+        assert cand["chunk_size"] == 512
+        assert cand["chunk_overlap"] == 128
 
 
 def test_brain_prompt_incorporates_constraints():
-    mock_settings = {
-        "reflection": {
-            "max_history_tokens": 1000,
-        },
-        "evaluation": {
-            "allow_new_index_builds": True,
-        },
-        "search_space": {
+    settings = _make_test_settings(
+        search_space={
             "allowed_node_parsers": ["sentence"],
             "allowed_retrievers": ["dense", "weighted_hybrid_rrf"],
-        }
-    }
+        },
+        reflection_overrides={"max_history_tokens": 1000},
+    )
 
     state = {
         "current_best_config": {
@@ -132,8 +126,7 @@ def test_brain_prompt_incorporates_constraints():
         "current_best_weighted_score": 0.5,
     }
 
-    with patch("src.utils.config_loader.load_run_settings", return_value=mock_settings):
-        prompt = _build_scientist_prompt(state, exploit=False)
-        assert "CRITICAL DEVELOPER CONSTRAINTS" in prompt
-        assert "- node_parser: must be one of ['sentence']" in prompt
-        assert "- retriever: must be one of ['dense', 'weighted_hybrid_rrf']" in prompt
+    prompt = _build_scientist_prompt(state, exploit=False, settings=settings)
+    assert "CRITICAL DEVELOPER CONSTRAINTS" in prompt
+    assert "- node_parser: must be one of ['sentence']" in prompt
+    assert "- retriever: must be one of ['dense', 'weighted_hybrid_rrf']" in prompt

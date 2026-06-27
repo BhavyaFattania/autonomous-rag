@@ -27,26 +27,17 @@ def cache_is_complete(collection_name: str, vector_count: int) -> bool:
     return vector_count == node_count
 
 
-def new_index_builds_allowed() -> bool:
-    from src.utils.config_loader import load_run_settings
-
-    settings = load_run_settings()
-    return settings["evaluation"].get("allow_new_index_builds", True)
+def new_index_builds_allowed(settings=None) -> bool:
+    return settings.evaluation.allow_new_index_builds
 
 
-def expensive_parser_builds_allowed() -> bool:
-    from src.utils.config_loader import load_run_settings
-
-    settings = load_run_settings()
-    return settings["evaluation"].get("allow_expensive_parser_builds", False)
+def expensive_parser_builds_allowed(settings=None) -> bool:
+    return settings.evaluation.allow_expensive_parser_builds
 
 
-def effective_corpus_limit(config: RAGConfig) -> int:
-    from src.utils.config_loader import load_run_settings
-
-    settings = load_run_settings()
+def effective_corpus_limit(config: RAGConfig, settings=None) -> int:
     if config.node_parser in {"semantic", "semantic_double"}:
-        return settings["evaluation"].get("max_docs_for_expensive_parsers", 1000)
+        return settings.evaluation.max_docs_for_expensive_parsers
     return MAX_CORPUS_DOCS
 
 
@@ -61,13 +52,12 @@ def load_corpus_as_documents(corpus_path: Path, limit: int = MAX_CORPUS_DOCS):
     return docs
 
 
-def build_embed_model(config: RAGConfig):
-    import os
+def build_embed_model(config: RAGConfig, env=None):
     from src.utils.openrouter_embedding import OpenRouterEmbedding
 
     return OpenRouterEmbedding(
         model_name=config.embedding_model,
-        api_key=os.environ.get("OPENROUTER_API_KEY"),
+        api_key=env.get("OPENROUTER_API_KEY") if env else None,
     )
 
 

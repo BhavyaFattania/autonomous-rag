@@ -35,7 +35,7 @@ async def test_ragas_parser_unwraps_text_wrapped_json():
     result = await parser.parse_output_string(
         output_string='{"text": "{\\"reason\\": \\"not useful\\", \\"verdict\\": 0}"}',
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,
+        llm=None,       # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -52,7 +52,7 @@ async def test_ragas_parser_wraps_bare_recall_classification_list():
             '[{"statement": "A", "reason": "supported", "attributed": 1}]'
         ),
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,
+        llm=None,       # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -73,7 +73,7 @@ async def test_ragas_parser_uses_conservative_fallback_for_malformed_verdict():
     result = await parser.parse_output_string(
         output_string='reason: not useful verdict: "0"',
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,
+        llm=None,       # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -88,7 +88,7 @@ async def test_ragas_parser_repairs_bang_corrupted_verdict_json():
     result = await parser.parse_output_string(
         output_string='!{! "reason": "supported!", "verdict": !!1! }',
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,
+        llm=None,       # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -106,7 +106,7 @@ async def test_ragas_parser_repairs_bang_corrupted_recall_keys():
             '"reason!": "supported", "attributed!!!": !1! }!]}'
         ),
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,
+        llm=None,       # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -115,10 +115,12 @@ async def test_ragas_parser_repairs_bang_corrupted_recall_keys():
 
 
 def test_ragas_judge_openrouter_kwargs_force_json_without_reasoning():
-    judge_config = {
-        "response_format": "json_object",
-        "exclude_reasoning": True,
-    }
+    from config.models import ModelConfig
+    judge_config = ModelConfig(
+        model_id="openrouter/test-model",
+        response_format="json_object",
+        exclude_reasoning=True,
+    )
 
     assert _build_openrouter_model_kwargs(judge_config) == {
         "response_format": {"type": "json_object"}

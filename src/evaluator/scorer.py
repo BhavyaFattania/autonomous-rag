@@ -1,25 +1,23 @@
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
 from src.utils.config_helpers import logical_config
 from src.utils.logger import get_logger
-from src.utils.config_loader import load_run_settings
-
+from config.settings import AcceptanceSettings
 log = get_logger("scorer")
 
 
-def acceptance_node(state) -> dict:
+def acceptance_node(state, settings=None) -> dict:
     """
     Determines if the proposed config should be accepted as the new best.
     Uses median across runs and guards against variance/recall regressions.
     """
-    settings = load_run_settings()
-    thresholds = settings["acceptance"]
+    thresholds = AcceptanceSettings()
 
     metrics = AggregatedMetrics(**state["aggregated_metrics"])
     baseline_score = state["current_best_weighted_score"]
     proposed_score = metrics.median_weighted_score
     relative_improvement = (proposed_score - baseline_score) / max(baseline_score, 1e-6)
 
-    if proposed_score > baseline_score and thresholds.get("accept_any_score_gain", False):
+    if proposed_score > baseline_score and thresholds.accept_any_score_gain:
         return _accept_best_config(
             state,
             metrics,
@@ -28,27 +26,27 @@ def acceptance_node(state) -> dict:
             relative_improvement,
         )
 
-    if relative_improvement < thresholds["min_weighted_score_improvement"]:
-        if proposed_score >= baseline_score - thresholds.get("competitive_score_tolerance", 0.001):
+    if relative_improvement < thresholds.min_weighted_score_improvement:
+        if proposed_score >= baseline_score - thresholds.competitive_score_tolerance:
             reason = (
                 f"Competitive result: {relative_improvement:.4f} < "
-                f"{thresholds['min_weighted_score_improvement']} required. "
+                f"{thresholds.min_weighted_score_improvement} required. "
                 f"Proposed={proposed_score:.4f}, Baseline={baseline_score:.4f}"
             )
             log.info("experiment_competitive", reason=reason)
             return {"status": "COMPETITIVE", "failure_reason": reason}
         reason = (
             f"Insufficient improvement: {relative_improvement:.4f} < "
-            f"{thresholds['min_weighted_score_improvement']} required. "
+            f"{thresholds.min_weighted_score_improvement} required. "
             f"Proposed={proposed_score:.4f}, Baseline={baseline_score:.4f}"
         )
         log.info("experiment_rejected", reason=reason)
         return {"status": "REJECTED", "failure_reason": reason}
 
-    if metrics.std_dev_weighted_score > thresholds["max_variance_between_runs"]:
+    if metrics.std_dev_weighted_score > thresholds.max_variance_between_runs:
         reason = (
             f"High variance: std_dev={metrics.std_dev_weighted_score:.4f} > "
-            f"{thresholds['max_variance_between_runs']} threshold"
+            f"{thresholds.max_variance_between_runs} threshold"
         )
         log.info("experiment_rejected", reason=reason)
         return {"status": "REJECTED", "failure_reason": reason}
@@ -56,7 +54,7 @@ def acceptance_node(state) -> dict:
     best_metrics_dict = state.get("current_best_metrics", {})
     if best_metrics_dict:
         current_best_metrics = SingleRunMetrics(**best_metrics_dict)
-        max_regression = thresholds["max_metric_regression"]
+        max_regression = thresholds.max_metric_regression
 
         # Guard all three primary IR metrics — not just recall
         metric_regressions = {

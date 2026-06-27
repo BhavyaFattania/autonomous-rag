@@ -11,7 +11,7 @@ from src.rag_pipeline.generator import generate_answer
 from src.indexer.collection_manager import get_or_build_collection
 from src.utils.hashing import get_config_hash
 from src.utils.logger import get_logger
-
+from config.settings import EvalSettings
 log = get_logger("pipeline")
 
 RETRIEVAL_CACHE_PATH = Path("data/retrieval_cache")
@@ -22,15 +22,15 @@ async def run_pipeline(
     config: RAGConfig,
     questions: list[str],
     collection_name: str | None = None,
+    settings=None,
+    env=None,
 ) -> tuple[list[str], list[list[str]], float]:
     """
     Run RAG pipeline for a list of questions.
     Returns (answers, contexts, cost_usd)
     """
-    from src.utils.config_loader import load_run_settings
-    collection_name = collection_name or await get_or_build_collection(config)
-    settings = load_run_settings()
-    max_concurrency = settings["evaluation"].get("max_concurrent_questions", 4)
+    collection_name = collection_name or await get_or_build_collection(config, env=env)
+    max_concurrency = EvalSettings().max_concurrent_questions
 
     cost = 0.0 # Handled globally by openrouter.py, but we could return 0.0 or track delta
 
@@ -43,6 +43,8 @@ async def run_pipeline(
         questions=questions,
         collection_name=collection_name,
         max_concurrency=max_concurrency,
+        settings=settings,
+        env=env,
     )
     log.info(
         "pipeline_contexts_ready",
@@ -81,8 +83,9 @@ async def retrieve_contexts(
     config: RAGConfig,
     questions: list[str],
     collection_name: str | None = None,
+    env=None,
 ) -> tuple[list[list[str]], float]:
-    results, cost = await retrieve_results(config, questions, collection_name=collection_name)
+    results, cost = await retrieve_results(config, questions, collection_name=collection_name, env=env)
     return _results_to_contexts(results), cost
 
 
@@ -90,13 +93,13 @@ async def retrieve_results(
     config: RAGConfig,
     questions: list[str],
     collection_name: str | None = None,
+    settings=None,
+    env=None,
 ) -> tuple[list[list[dict]], float]:
-    from src.utils.config_loader import load_run_settings
     from src.storage.cost_tracker import get_total
 
-    collection_name = collection_name or await get_or_build_collection(config)
-    settings = load_run_settings()
-    max_concurrency = settings["evaluation"].get("max_concurrent_questions", 4)
+    collection_name = collection_name or await get_or_build_collection(config, env=env)
+    max_concurrency = EvalSettings().max_concurrent_questions
     start_cost = get_total()
     started = time.perf_counter()
     results = await _get_or_build_results(
@@ -104,6 +107,8 @@ async def retrieve_results(
         questions=questions,
         collection_name=collection_name,
         max_concurrency=max_concurrency,
+        settings=settings,
+        env=env,
     )
     log.info(
         "pipeline_contexts_ready",
@@ -119,12 +124,16 @@ async def _get_or_build_contexts(
     questions: list[str],
     collection_name: str,
     max_concurrency: int,
+    settings=None,
+    env=None,
 ) -> list[list[str]]:
     results = await _get_or_build_results(
         config=config,
         questions=questions,
         collection_name=collection_name,
         max_concurrency=max_concurrency,
+        settings=settings,
+        env=env,
     )
     return _results_to_contexts(results)
 
@@ -134,6 +143,8 @@ async def _get_or_build_results(
     questions: list[str],
     collection_name: str,
     max_concurrency: int,
+    settings=None,
+    env=None,
 ) -> list[list[dict]]:
     cache_path = _retrieval_cache_path(config, questions, collection_name)
     if cache_path.exists():
@@ -151,7 +162,7 @@ async def _get_or_build_results(
             log.warning("retrieval_cache_unreadable", path=str(cache_path))
 
     started = time.perf_counter()
-    retriever = await build_retriever(config, collection_name=collection_name)
+    retriever = await build_retriever(config, collection_name=collection_name, settings=settings, env=env)
     semaphore = asyncio.Semaphore(max_concurrency)
 
     async def retrieve_one(question: str) -> list[dict]:

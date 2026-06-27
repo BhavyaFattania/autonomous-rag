@@ -4,14 +4,11 @@ from pathlib import Path
 from src.utils.openrouter import call_openrouter
 
 
-async def report_writer_node(state) -> dict:
-    from src.utils.config_loader import load_run_settings
-
+async def report_writer_node(state, settings=None) -> dict:
     report_path = Path("reports/overnight_run_report.md")
     report_path.parent.mkdir(exist_ok=True)
-    settings = load_run_settings()
 
-    if not settings.get("report", {}).get("use_llm_report", False):
+    if not settings.report.use_llm_report:
         report_path.write_text(_fallback_report(state, ""), encoding="utf-8")
         return {}
 

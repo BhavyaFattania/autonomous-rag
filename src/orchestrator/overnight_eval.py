@@ -11,7 +11,7 @@ from src.evaluator.ragas_runner import run_single_eval
 from src.rag_pipeline.pipeline import retrieve_results
 from src.utils.hashing import get_config_hash
 from src.orchestrator.overnight_display import console, print_metrics
-
+from config.settings import EvalSettings
 CACHE_DIR = Path("data/eval_cache")
 
 
@@ -29,11 +29,11 @@ def empty_metrics() -> dict:
     }
 
 
-async def evaluate_baseline(baseline: dict, settings: dict) -> tuple[float, dict]:
+async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, dict]:
     console.print(Rule("[bold cyan]Phase 0 baseline evaluation[/]"))
     config = RAGConfig(**baseline)
-    n_questions = settings["evaluation"]["n_questions"]
-    n_runs = settings["evaluation"].get("n_eval_runs", 3)
+    n_questions = EvalSettings().n_questions
+    n_runs = EvalSettings().n_eval_runs
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_key = get_config_hash({
         "phase": "baseline",
@@ -41,8 +41,8 @@ async def evaluate_baseline(baseline: dict, settings: dict) -> tuple[float, dict
         "config": baseline,
         "n_questions": n_questions,
         "n_runs": n_runs,
-        "ragas_metrics": settings["evaluation"].get("ragas_metrics", ["context_recall"]),
-        "ragas_audit_every_n_experiments": settings["evaluation"].get("ragas_audit_every_n_experiments", 5),
+        "ragas_metrics": EvalSettings().ragas_metrics,
+        "ragas_audit_every_n_experiments": EvalSettings().ragas_audit_every_n_experiments,
     })
     cache_path = CACHE_DIR / f"{cache_key}.json"
     if cache_path.exists():
@@ -64,16 +64,16 @@ async def evaluate_baseline(baseline: dict, settings: dict) -> tuple[float, dict
 
     for run_num in range(1, n_runs + 1):
         results, _ = await asyncio.wait_for(
-            retrieve_results(config, questions),
-            timeout=settings["evaluation"]["max_runtime_sec_per_eval"],
+            retrieve_results(config, questions, settings=settings, env=env),
+            timeout=EvalSettings.max_runtime_sec_per_eval,
         )
         contexts = [[item.get("text", "") for item in items] for items in results]
         metrics = await run_single_eval(
             questions, None, contexts, ground_truths,
             retrieval_results=results, question_ids=question_ids,
             supporting_titles=supporting_titles, run_ragas=False,
-            timeout_sec=settings["evaluation"].get("max_runtime_sec_per_ragas", 120),
-            metrics=settings["evaluation"].get("ragas_metrics"),
+            timeout_sec=EvalSettings.max_runtime_sec_per_ragas,
+            metrics=EvalSettings.ragas_metrics,
         )
         runs.append(metrics)
         console.print(f"  Baseline run {run_num}: weighted={metrics.weighted_score:.4f}")
@@ -98,7 +98,7 @@ async def evaluate_baseline(baseline: dict, settings: dict) -> tuple[float, dict
     return aggregated.median_weighted_score, best_metrics
 
 
-async def evaluate_final_best(state: dict, settings: dict) -> None:
+async def evaluate_final_best(state: dict, settings, env=None) -> None:
     best_config = state.get("current_best_config") or state.get("baseline_config")
     if not best_config:
         console.print("[bold yellow]No best config available for final evaluation.[/]")
@@ -106,11 +106,8 @@ async def evaluate_final_best(state: dict, settings: dict) -> None:
 
     console.print(Rule("[bold cyan]Final best-config evaluation[/]"))
     config = RAGConfig(**best_config)
-    n_questions = settings["evaluation"].get(
-        "final_best_eval_n_questions",
-        settings["evaluation"].get("full_eval_n_questions", settings["evaluation"]["n_questions"]),
-    )
-    n_runs = settings["evaluation"].get("final_best_eval_runs", settings["evaluation"].get("n_eval_runs", 1))
+    n_questions = EvalSettings.final_best_eval_n_questions
+    n_runs = EvalSettings.n_eval_runs
     question_items = load_eval_question_items(n=n_questions)
     question_ids = [item["id"] for item in question_items]
     questions = [item["question"] for item in question_items]
@@ -120,19 +117,19 @@ async def evaluate_final_best(state: dict, settings: dict) -> None:
     runs = []
     for run_num in range(1, n_runs + 1):
         results, _ = await asyncio.wait_for(
-            retrieve_results(config, questions),
-            timeout=settings["evaluation"]["max_runtime_sec_per_eval"],
+            retrieve_results(config, questions, settings=settings, env=env),
+            timeout=EvalSettings.max_runtime_sec_per_eval,
         )
         contexts = [[item.get("text", "") for item in items] for items in results]
         metrics = await run_single_eval(
             questions, None, contexts, ground_truths,
             retrieval_results=results, question_ids=question_ids,
             supporting_titles=supporting_titles, run_ragas=True,
-            timeout_sec=settings["evaluation"].get("max_runtime_sec_per_ragas", 120),
-            timeout_backoff_factor=settings["evaluation"].get("ragas_timeout_backoff_factor", 2.0),
-            max_timeout_sec=settings["evaluation"].get("ragas_max_timeout_sec", 240),
-            timeout_retries=settings["evaluation"].get("ragas_timeout_retries", 1),
-            metrics=settings["evaluation"].get("ragas_metrics"),
+            timeout_sec=EvalSettings().max_runtime_sec_per_ragas,
+            timeout_backoff_factor=EvalSettings().ragas_timeout_backoff_factor,
+            max_timeout_sec=EvalSettings().ragas_max_timeout_sec,
+            timeout_retries=EvalSettings().ragas_timeout_retries,
+            metrics=EvalSettings().ragas_metrics,
         )
         runs.append(metrics)
         console.print(f"  Final eval run {run_num}: weighted={metrics.weighted_score:.4f}")

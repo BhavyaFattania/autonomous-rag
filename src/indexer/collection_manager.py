@@ -88,7 +88,7 @@ def collection_is_cached(config: RAGConfig) -> bool:
         return False
 
 
-async def get_or_build_collection(config: RAGConfig) -> str:
+async def get_or_build_collection(config: RAGConfig, settings=None, env=None) -> str:
     name = _collection_name(config)
     chroma_client = get_chroma_client()
     bm25_cache = bm25_cache_path(name)
@@ -102,13 +102,13 @@ async def get_or_build_collection(config: RAGConfig) -> str:
                      vectors=count, bm25_cached=True)
             return name
         if count > 0 and (not bm25_cache.exists() or not engine_cache.exists()):
-            if not new_index_builds_allowed():
+            if not new_index_builds_allowed(settings):
                 raise RuntimeError(
                     f"Collection {name} has Chroma vectors but no complete BM25 cache "
                     "and allow_new_index_builds=false"
                 )
             log.warning("chroma_exists_but_bm25_missing", collection=name)
-            build_bm25_cache_only(config, name)
+            build_bm25_cache_only(config, name, settings, env)
             return name
         if count == 0:
             log.warning("collection_exists_but_empty", collection=name)
@@ -118,7 +118,7 @@ async def get_or_build_collection(config: RAGConfig) -> str:
                 "collection_cache_incomplete",
                 collection=name, vectors=count, expected_nodes=expected,
             )
-        if not new_index_builds_allowed():
+        if not new_index_builds_allowed(settings):
             raise RuntimeError(
                 f"Collection {name} is incomplete "
                 f"(vectors={count}, bm25_nodes={bm25_node_count(name)}) "
@@ -130,25 +130,25 @@ async def get_or_build_collection(config: RAGConfig) -> str:
     except Exception:
         pass
 
-    if not new_index_builds_allowed():
+    if not new_index_builds_allowed(settings):
         raise RuntimeError(
             f"Collection {name} is not cached and allow_new_index_builds=false"
         )
-    if config.node_parser in {"semantic", "semantic_double"} and not expensive_parser_builds_allowed():
+    if config.node_parser in {"semantic", "semantic_double"} and not expensive_parser_builds_allowed(settings):
         raise RuntimeError(
             f"Collection {name} requires expensive parser '{config.node_parser}' "
             "and is not cached. Prebuild it or set allow_expensive_parser_builds=true."
         )
 
     log.info("building_collection", collection=name)
-    await build_collection(config, name, chroma_client)
+    await build_collection(config, name, chroma_client, settings, env)
     return name
 
 
-async def indexer_node(state) -> dict:
+async def indexer_node(state, settings=None, env=None) -> dict:
     config = RAGConfig(**state["validated_config"])
     try:
-        collection_name = await get_or_build_collection(config)
+        collection_name = await get_or_build_collection(config, settings, env)
     except Exception as e:
         import traceback
         traceback.print_exc()

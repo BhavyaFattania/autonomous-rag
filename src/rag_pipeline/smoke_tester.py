@@ -6,19 +6,17 @@ from src.utils.logger import get_logger
 log = get_logger("smoke_test")
 
 
-async def smoke_test_node(state) -> dict:
+async def smoke_test_node(state, settings=None) -> dict:
     """
     Verify retrieval runs without crashing and returns non-empty contexts.
     This is not a quality gate and intentionally avoids LLM generation.
     """
     from src.models.rag_config import RAGConfig
-    from src.utils.config_loader import load_run_settings
     from src.rag_pipeline.pipeline import retrieve_contexts
 
-    settings = load_run_settings()
     config = RAGConfig(**state["validated_config"])
     questions, _ = load_eval_questions(
-        n=settings["evaluation"]["smoke_test_n_questions"]
+        n=settings.evaluation.smoke_test_n_questions
     )
     collection_name = state["validated_config"].get("_collection_name")
 
