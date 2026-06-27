@@ -9,9 +9,13 @@ the hardcoded OpenAIEmbeddingModelType enum validation.
 import os
 from typing import List
 
+import nest_asyncio
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.bridge.pydantic import Field
 from openai import AsyncOpenAI
+
+# Allow re-entrant event loops so sync callers inside async contexts don't crash
+nest_asyncio.apply()
 
 
 class OpenRouterEmbedding(BaseEmbedding):

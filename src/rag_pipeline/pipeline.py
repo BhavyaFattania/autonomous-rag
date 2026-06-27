@@ -24,7 +24,7 @@ async def run_pipeline(
     collection_name: str | None = None,
     env=None,
 ) -> tuple[list[str], list[list[str]], float]:
-    collection_name = collection_name or await get_or_build_collection(config, env=env)
+    collection_name = collection_name or await get_or_build_collection(config,settings, env=env)
     max_concurrency = settings.evaluation.max_concurrent_questions
 
     cost = 0.0 # Handled globally by openrouter.py, but we could return 0.0 or track delta
@@ -94,7 +94,7 @@ async def retrieve_results(
 ) -> tuple[list[list[dict]], float]:
     from src.storage.cost_tracker import get_total
 
-    collection_name = collection_name or await get_or_build_collection(config, env=env)
+    collection_name = collection_name or await get_or_build_collection(config, settings,env=env)
     max_concurrency = settings.evaluation.max_concurrent_questions
     start_cost = get_total()
     started = time.perf_counter()

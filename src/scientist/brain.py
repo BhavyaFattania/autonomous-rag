@@ -44,11 +44,15 @@ async def scientist_node(state, settings) -> dict:
 
     if _should_run_structured_exploration(state, settings):
         result = await structured_exploration_proposal(state, settings)
-        return {**result, "history_summary": new_history_summary}
+        if result is not None:
+            return {**result, "history_summary": new_history_summary}
+        log.info("structured_exploration_exhausted_falling_through_to_llm")
 
     if _should_force_reranker_probe(state, settings):
         result = await reranker_probe_proposal(state, settings)
-        return {**result, "history_summary": new_history_summary}
+        if result is not None:
+            return {**result, "history_summary": new_history_summary}
+        log.info("reranker_probe_exhausted_falling_through_to_llm")
 
     exploit = random.random() < settings.explore_exploit.exploit_probability
     prompt = build_scientist_prompt(

@@ -1,5 +1,6 @@
 import random
 import uuid
+from typing import Optional
 
 from src.storage.database import Database
 from src.storage.repositories.experiment_repository import ExperimentRepository
@@ -12,10 +13,13 @@ log = get_logger("scientist")
 
 
 @trace_call
-async def fallback_proposal(state, reason: str, settings) -> dict:
+async def fallback_proposal(state, reason: str, settings) -> Optional[dict]:
     from src.scientist.candidates import get_fallback_candidates
     candidates = get_fallback_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
+    if selected is None:
+        log.warning("fallback_candidates_exhausted", reason=reason)
+        return None
 
     hypothesis = "Fallback local proposal after scientist LLM returned no usable config."
     log.warning("scientist_fallback_proposed", reason=reason, config=selected)
@@ -29,10 +33,13 @@ async def fallback_proposal(state, reason: str, settings) -> dict:
 
 
 @trace_call
-async def reranker_probe_proposal(state, settings) -> dict:
+async def reranker_probe_proposal(state, settings) -> Optional[dict]:
     from src.scientist.candidates import get_reranker_probe_candidates
     candidates = get_reranker_probe_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
+    if selected is None:
+        log.info("reranker_probe_candidates_exhausted")
+        return None
 
     hypothesis = "Periodic reranker probe tests whether Cohere preserves recall evidence."
     log.info("scientist_forced_reranker_probe", config=selected)
@@ -46,10 +53,13 @@ async def reranker_probe_proposal(state, settings) -> dict:
 
 
 @trace_call
-async def structured_exploration_proposal(state, settings) -> dict:
+async def structured_exploration_proposal(state, settings) -> Optional[dict]:
     from src.scientist.candidates import get_structured_exploration_candidates
     candidates = get_structured_exploration_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
+    if selected is None:
+        log.info("structured_exploration_exhausted", total_candidates=len(candidates))
+        return None
 
     hypothesis = "Structured exploration covers chunking and retrieval modes before exploitation."
     log.info("scientist_structured_exploration", config=selected)
@@ -63,7 +73,7 @@ async def structured_exploration_proposal(state, settings) -> dict:
 
 
 @trace_call
-async def select_unused_candidate(candidates: list[dict], state) -> dict:
+async def select_unused_candidate(candidates: list[dict], state) -> Optional[dict]:
     used_hashes: set[str] = set()
     try:
         async with Database().connect() as db:
@@ -76,22 +86,13 @@ async def select_unused_candidate(candidates: list[dict], state) -> dict:
     shuffled = list(candidates)
     random.shuffle(shuffled)
 
-    selected = None
     for candidate in shuffled:
         try:
             config = RAGConfig(**candidate).model_dump()
         except ValueError:
             continue
         if get_config_hash(config) not in used_hashes:
-            selected = config
-            break
-    if selected is None:
-        for candidate in candidates:
-            try:
-                selected = RAGConfig(**candidate).model_dump()
-                break
-            except ValueError:
-                continue
-    if selected is None:
-        raise ValueError("No valid candidate configs available for scientist proposal")
-    return selected
+            return config
+
+    # All candidates already tried — signal exhaustion
+    return None
