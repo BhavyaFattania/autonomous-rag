@@ -1,32 +1,53 @@
 import os
 import yaml
 from functools import lru_cache
+from pathlib import Path
 
-from config.settings import Settings, SearchSpaceSettings
+from config.settings import Settings
 from config.models import ModelRouting
+
+_HERE = Path(__file__).resolve().parent
 
 
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
-    with open("config/run_settings.yaml") as f:
+    path = _HERE / "run_settings.yaml"
+    with open(path) as f:
         raw = yaml.safe_load(f)
+
     search_space_raw = raw.pop("search_space", None) or {}
+
+    valid_search_keys = {
+        "allowed_node_parsers",
+        "allowed_retrievers",
+        "allowed_chunk_sizes",
+        "allowed_chunk_overlaps",
+        "allowed_generator_models",
+        "allowed_rerankers",
+    }
+    extra = set(search_space_raw) - valid_search_keys
+    if extra:
+        raise ValueError(f"Unknown search_space keys: {extra}")
+
     settings = Settings(**raw)
     if search_space_raw:
+        from config.settings import SearchSpaceSettings
         settings.search_space = SearchSpaceSettings(**search_space_raw)
     return settings
 
 
 @lru_cache(maxsize=1)
 def load_model_routing() -> ModelRouting:
-    with open("config/model_routing.yaml") as f:
+    path = _HERE / "model_routing.yaml"
+    with open(path) as f:
         raw = yaml.safe_load(f)
     return ModelRouting(**raw["models"])
 
 
 @lru_cache(maxsize=1)
 def load_baseline_config() -> dict:
-    with open("config/baseline_config.yaml") as f:
+    path = _HERE / "baseline_config.yaml"
+    with open(path) as f:
         return yaml.safe_load(f)
 
 

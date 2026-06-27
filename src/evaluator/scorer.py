@@ -1,16 +1,18 @@
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
 from src.utils.config_helpers import logical_config
 from src.utils.logger import get_logger
-from config.settings import AcceptanceSettings
+from src.utils.function_trace import trace_call
+
 log = get_logger("scorer")
 
 
-def acceptance_node(state, settings=None) -> dict:
+@trace_call
+def acceptance_node(state, settings) -> dict:
     """
     Determines if the proposed config should be accepted as the new best.
     Uses median across runs and guards against variance/recall regressions.
     """
-    thresholds = AcceptanceSettings()
+    thresholds = settings.acceptance
 
     metrics = AggregatedMetrics(**state["aggregated_metrics"])
     baseline_score = state["current_best_weighted_score"]

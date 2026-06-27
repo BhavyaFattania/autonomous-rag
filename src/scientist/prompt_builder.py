@@ -1,26 +1,29 @@
 import json
 from pathlib import Path
-from config.settings import Settings,EvalSettings,ReflectionSettings
+from src.utils.function_trace import trace_call
+
 log = None
 
 
+@trace_call(log_return=False)
 def build_scientist_prompt(
     state,
     exploit: bool,
     *,
     recent_history: list[str] | None = None,
     history_summary: str = "",
-    settings=None,
+    settings,
 ) -> str:
+    
     system_prompt = Path("prompts/scientist_v1.txt").read_text()
 
-    search_space = Settings.search_space
+    search_space = settings.search_space
     allowed_node_parsers = search_space.allowed_node_parsers
     allowed_chunk_sizes = search_space.allowed_chunk_sizes
     allowed_chunk_overlaps = search_space.allowed_chunk_overlaps
 
     indexed_configs_text = "Any valid chunk_size/chunk_overlap pair."
-    if not EvalSettings.allow_new_index_builds:
+    if not settings.evaluation.allow_new_index_builds:
         from src.indexer.collection_manager import list_available_index_configs
         indexed_configs = list_available_index_configs()
 
@@ -48,7 +51,7 @@ def build_scientist_prompt(
         history_lines = _build_history_lines(state)
         history_text = _truncate_history(
             history_lines,
-            max_chars=ReflectionSettings().max_history_tokens * 4,
+            max_chars=settings.reflection.max_history_tokens * 4,
         )
 
     mode = "EXPLOIT (refine near current best)" if exploit else "EXPLORE (try something new)"

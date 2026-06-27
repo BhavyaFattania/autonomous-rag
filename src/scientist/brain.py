@@ -6,6 +6,7 @@ import uuid
 from src.utils.langfuse_compat import observe
 from src.utils.openrouter import call_openrouter
 from src.utils.logger import get_logger
+from src.utils.function_trace import trace_call
 from src.scientist.prompt_builder import build_scientist_prompt, _build_history_lines
 from src.scientist.proposal import (
     fallback_proposal, reranker_probe_proposal,
@@ -15,11 +16,13 @@ from src.scientist.proposal import (
 log = get_logger("scientist")
 
 
+@trace_call
 def _should_run_structured_exploration(state, settings) -> bool:
     limit = settings.explore_exploit.structured_exploration_experiments
     return state.get("experiments_completed", 0) < limit
 
 
+@trace_call
 def _should_force_reranker_probe(state, settings) -> bool:
     every_n = settings.explore_exploit.reranker_probe_every_n_experiments
     experiment_number = state.get("experiments_completed", 0) + 1
@@ -27,7 +30,8 @@ def _should_force_reranker_probe(state, settings) -> bool:
 
 
 @observe(name="scientist_node")
-async def scientist_node(state, settings=None) -> dict:
+@trace_call(log_return=False)
+async def scientist_node(state, settings) -> dict:
     from src.utils.conversation_summary import sliding_window_compress
 
     history_lines = _build_history_lines(state)

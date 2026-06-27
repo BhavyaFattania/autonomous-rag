@@ -27,7 +27,7 @@ EMBEDDING_DIMS = {
 CORPUS_PATH = Path("data/corpus/hotpotqa_paragraphs.jsonl")
 
 
-def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings=None, env=None):
+def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings, env=None):
     assert CORPUS_PATH.exists(), (
         f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
     )
@@ -50,7 +50,7 @@ def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings=None
     log.info("bm25_state_cached", nodes=len(nodes), engine_path=str(engine_path))
 
 
-async def build_collection(config: RAGConfig, collection_name: str, chroma_client: chromadb.PersistentClient, settings=None, env=None):
+async def build_collection(config: RAGConfig, collection_name: str, chroma_client: chromadb.PersistentClient, settings, env=None):
     assert CORPUS_PATH.exists(), (
         f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
     )

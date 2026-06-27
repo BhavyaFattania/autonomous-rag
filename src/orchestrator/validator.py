@@ -1,11 +1,11 @@
 from src.models.rag_config import RAGConfig
-from config.settings import SearchSpaceSettings,EvalSettings
 
-def validator_node(state, settings=None, env=None) -> dict:
+
+def validator_node(state, settings, env=None) -> dict:
     try:
         config = RAGConfig(**state["proposed_config"])
 
-        search_space = SearchSpaceSettings()
+        search_space = settings.search_space
         allowed_node_parsers = search_space.allowed_node_parsers
         if allowed_node_parsers is not None and config.node_parser not in allowed_node_parsers:
             raise ValueError(f"node_parser='{config.node_parser}' is not in developer allowed list: {allowed_node_parsers}")
@@ -32,18 +32,18 @@ def validator_node(state, settings=None, env=None) -> dict:
 
         from src.indexer.collection_manager import collection_is_cached
         if config.node_parser in {"semantic", "semantic_double"} and not collection_is_cached(config):
-            if not EvalSettings().allow_expensive_parser_builds:
+            if not settings.evaluation.allow_expensive_parser_builds:
                 raise ValueError(
                     f"node_parser={config.node_parser} requires a prebuilt cache "
                     "or allow_expensive_parser_builds=true"
                 )
         if config.retriever == "summary_embedding":
-            if not EvalSettings().allow_summary_embedding_retriever:
+            if not settings.evaluation.allow_summary_embedding_retriever:
                 raise ValueError(
                     "retriever=summary_embedding is disabled for live search; "
                     "prebuild a summary index and enable allow_summary_embedding_retriever"
                 )
-        if not EvalSettings().allow_new_index_builds:
+        if not settings.evaluation.allow_new_index_builds:
             if not collection_is_cached(config):
                 raise ValueError(
                     "Config requires a new index build, but allow_new_index_builds=false"

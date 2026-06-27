@@ -76,35 +76,42 @@ def main(max_exp, max_hours, dry_run, resume):
     from src.storage.cost_tracker import initialize as init_cost
     from config.loader import load_all
     from src.utils.logger import setup_logging
-    from config.settings import RunSettings
+    from src.utils.function_trace import init_trace, close_trace
     settings, model_routing, baseline, env = load_all()
     setup_logging()
 
+    run_id = str(uuid.uuid4())
+    init_trace(run_id)
+
     if dry_run:
         _validate_environment()
+        close_trace()
         return
 
     init_cost(
-        hard_ceiling=RunSettings().cost_hard_ceiling_usd,
-        warning_threshold=RunSettings().cost_warning_threshold_usd,
+        hard_ceiling=settings.run.cost_hard_ceiling_usd,
+        warning_threshold=settings.run.cost_warning_threshold_usd,
     )
 
     print_banner(max_exp, max_hours, settings)
-    asyncio.run(_run(max_exp, max_hours, resume, settings, env))
+    try:
+        asyncio.run(_run(max_exp, max_hours, resume, settings, env, trace_run_id=run_id))
+    finally:
+        close_trace()
 
 
 # ─── Run loop ─────────────────────────────────────────────────────────────────
 
-async def _run(max_exp, max_hours, resume, settings, env):
+async def _run(max_exp, max_hours, resume, settings, env, trace_run_id=None):
     from src.storage.database import Database
     from src.orchestrator.graph import build_graph
     from config.models import ModelRouting
     from config.loader import load_baseline_config
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     from src.storage.cost_tracker import get_total
-    
+
     from src.storage.repositories.run_repository import RunRepository
-    from config.settings import EvalSettings,RunSettings
+    from src.utils.function_trace import init_trace
     await Database().init()
 
     run_id = None
@@ -117,11 +124,14 @@ async def _run(max_exp, max_hours, resume, settings, env):
             console.print(f"[bold red]Failed to fetch last run ID for resume: {e}[/]")
 
     if not run_id:
-        run_id = str(uuid.uuid4())
+        run_id = trace_run_id or str(uuid.uuid4())
+
+    # (Re)init trace with the final run_id so filename matches
+    init_trace(run_id)
 
     baseline = load_baseline_config()
     run_start = datetime.now(timezone.utc)
-    baseline_override = EvalSettings().baseline_score_override
+    baseline_override = settings.evaluation.baseline_score_override
     if baseline_override is not None:
         baseline_score = baseline_override
         baseline_metrics = empty_metrics()
@@ -193,8 +203,8 @@ async def _run(max_exp, max_hours, resume, settings, env):
                     previous_cost = state_val.values.get("total_cost_usd", 0.0)
                     from src.storage.cost_tracker import initialize as init_cost
                     init_cost(
-                        hard_ceiling=RunSettings().cost_hard_ceiling_usd,
-                        warning_threshold=RunSettings().cost_warning_threshold_usd,
+                        hard_ceiling=settings.run.cost_hard_ceiling_usd,
+                        warning_threshold=settings.run.cost_warning_threshold_usd,
                         start_cost=previous_cost
                     )
                     await graph.aupdate_state(
@@ -214,7 +224,7 @@ async def _run(max_exp, max_hours, resume, settings, env):
                     latest_state.update(output)
             log_event(event, _ctx, run_start)
 
-    if EvalSettings().run_final_best_eval and not _stop_requested:
+    if settings.evaluation.run_final_best_eval and not _stop_requested:
         await evaluate_final_best(latest_state, settings, env)
 
 

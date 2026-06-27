@@ -6,7 +6,7 @@ from src.utils.logger import get_logger
 log = get_logger("smoke_test")
 
 
-async def smoke_test_node(state, settings=None) -> dict:
+async def smoke_test_node(state, settings) -> dict:
     """
     Verify retrieval runs without crashing and returns non-empty contexts.
     This is not a quality gate and intentionally avoids LLM generation.
@@ -22,7 +22,7 @@ async def smoke_test_node(state, settings=None) -> dict:
 
     try:
         contexts, cost = await asyncio.wait_for(
-            retrieve_contexts(config, questions, collection_name=collection_name),
+            retrieve_contexts(config, questions, settings, collection_name=collection_name),
             timeout=180.0,
         )
     except asyncio.TimeoutError:

@@ -1,7 +1,7 @@
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
 from src.utils.openrouter import call_openrouter
-from config.settings import ReflectionSettings
+from src.utils.function_trace import trace_call
 
 log = get_logger("reflection")
 
@@ -23,8 +23,9 @@ def _truncate_to_sentence(text: str, max_chars: int) -> str:
 
 
 @observe(name="reflection_node")
-async def reflection_node(state, settings=None) -> dict:
-    n = ReflectionSettings().update_every_n_experiments
+@trace_call(log_return=False)
+async def reflection_node(state, settings) -> dict:
+    n = settings.reflection.update_every_n_experiments
     completed = state.get("experiments_completed", 0)
 
     if completed == 0 or completed % n != 0:

@@ -11,7 +11,6 @@ from src.rag_pipeline.generator import generate_answer
 from src.indexer.collection_manager import get_or_build_collection
 from src.utils.hashing import get_config_hash
 from src.utils.logger import get_logger
-from config.settings import EvalSettings
 log = get_logger("pipeline")
 
 RETRIEVAL_CACHE_PATH = Path("data/retrieval_cache")
@@ -21,16 +20,12 @@ RETRIEVAL_CACHE_PATH.mkdir(parents=True, exist_ok=True)
 async def run_pipeline(
     config: RAGConfig,
     questions: list[str],
+    settings,
     collection_name: str | None = None,
-    settings=None,
     env=None,
 ) -> tuple[list[str], list[list[str]], float]:
-    """
-    Run RAG pipeline for a list of questions.
-    Returns (answers, contexts, cost_usd)
-    """
     collection_name = collection_name or await get_or_build_collection(config, env=env)
-    max_concurrency = EvalSettings().max_concurrent_questions
+    max_concurrency = settings.evaluation.max_concurrent_questions
 
     cost = 0.0 # Handled globally by openrouter.py, but we could return 0.0 or track delta
 
@@ -82,24 +77,25 @@ async def run_pipeline(
 async def retrieve_contexts(
     config: RAGConfig,
     questions: list[str],
+    settings,
     collection_name: str | None = None,
     env=None,
 ) -> tuple[list[list[str]], float]:
-    results, cost = await retrieve_results(config, questions, collection_name=collection_name, env=env)
+    results, cost = await retrieve_results(config, questions, settings, collection_name=collection_name, env=env)
     return _results_to_contexts(results), cost
 
 
 async def retrieve_results(
     config: RAGConfig,
     questions: list[str],
+    settings,
     collection_name: str | None = None,
-    settings=None,
     env=None,
 ) -> tuple[list[list[dict]], float]:
     from src.storage.cost_tracker import get_total
 
     collection_name = collection_name or await get_or_build_collection(config, env=env)
-    max_concurrency = EvalSettings().max_concurrent_questions
+    max_concurrency = settings.evaluation.max_concurrent_questions
     start_cost = get_total()
     started = time.perf_counter()
     results = await _get_or_build_results(
@@ -122,9 +118,9 @@ async def retrieve_results(
 async def _get_or_build_contexts(
     config: RAGConfig,
     questions: list[str],
+    settings,
     collection_name: str,
     max_concurrency: int,
-    settings=None,
     env=None,
 ) -> list[list[str]]:
     results = await _get_or_build_results(
@@ -141,9 +137,9 @@ async def _get_or_build_contexts(
 async def _get_or_build_results(
     config: RAGConfig,
     questions: list[str],
+    settings,
     collection_name: str,
     max_concurrency: int,
-    settings=None,
     env=None,
 ) -> list[list[dict]]:
     cache_path = _retrieval_cache_path(config, questions, collection_name)

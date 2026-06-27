@@ -11,7 +11,6 @@ from src.evaluator.ragas_runner import run_single_eval
 from src.rag_pipeline.pipeline import retrieve_results
 from src.utils.hashing import get_config_hash
 from src.orchestrator.overnight_display import console, print_metrics
-from config.settings import EvalSettings
 CACHE_DIR = Path("data/eval_cache")
 
 
@@ -31,9 +30,10 @@ def empty_metrics() -> dict:
 
 async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, dict]:
     console.print(Rule("[bold cyan]Phase 0 baseline evaluation[/]"))
+    eval_settings = settings.evaluation
     config = RAGConfig(**baseline)
-    n_questions = EvalSettings().n_questions
-    n_runs = EvalSettings().n_eval_runs
+    n_questions = eval_settings.n_questions
+    n_runs = eval_settings.n_eval_runs
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_key = get_config_hash({
         "phase": "baseline",
@@ -41,8 +41,8 @@ async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, 
         "config": baseline,
         "n_questions": n_questions,
         "n_runs": n_runs,
-        "ragas_metrics": EvalSettings().ragas_metrics,
-        "ragas_audit_every_n_experiments": EvalSettings().ragas_audit_every_n_experiments,
+        "ragas_metrics": eval_settings.ragas_metrics,
+        "ragas_audit_every_n_experiments": eval_settings.ragas_audit_every_n_experiments,
     })
     cache_path = CACHE_DIR / f"{cache_key}.json"
     if cache_path.exists():
@@ -65,15 +65,15 @@ async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, 
     for run_num in range(1, n_runs + 1):
         results, _ = await asyncio.wait_for(
             retrieve_results(config, questions, settings=settings, env=env),
-            timeout=EvalSettings.max_runtime_sec_per_eval,
+            timeout=eval_settings.max_runtime_sec_per_eval,
         )
         contexts = [[item.get("text", "") for item in items] for items in results]
         metrics = await run_single_eval(
             questions, None, contexts, ground_truths,
             retrieval_results=results, question_ids=question_ids,
             supporting_titles=supporting_titles, run_ragas=False,
-            timeout_sec=EvalSettings.max_runtime_sec_per_ragas,
-            metrics=EvalSettings.ragas_metrics,
+            timeout_sec=eval_settings.max_runtime_sec_per_ragas,
+            metrics=eval_settings.ragas_metrics,
         )
         runs.append(metrics)
         console.print(f"  Baseline run {run_num}: weighted={metrics.weighted_score:.4f}")
@@ -105,9 +105,10 @@ async def evaluate_final_best(state: dict, settings, env=None) -> None:
         return
 
     console.print(Rule("[bold cyan]Final best-config evaluation[/]"))
+    eval_settings = settings.evaluation
     config = RAGConfig(**best_config)
-    n_questions = EvalSettings.final_best_eval_n_questions
-    n_runs = EvalSettings.n_eval_runs
+    n_questions = eval_settings.final_best_eval_n_questions
+    n_runs = eval_settings.n_eval_runs
     question_items = load_eval_question_items(n=n_questions)
     question_ids = [item["id"] for item in question_items]
     questions = [item["question"] for item in question_items]
@@ -118,18 +119,18 @@ async def evaluate_final_best(state: dict, settings, env=None) -> None:
     for run_num in range(1, n_runs + 1):
         results, _ = await asyncio.wait_for(
             retrieve_results(config, questions, settings=settings, env=env),
-            timeout=EvalSettings.max_runtime_sec_per_eval,
+            timeout=eval_settings.max_runtime_sec_per_eval,
         )
         contexts = [[item.get("text", "") for item in items] for items in results]
         metrics = await run_single_eval(
             questions, None, contexts, ground_truths,
             retrieval_results=results, question_ids=question_ids,
             supporting_titles=supporting_titles, run_ragas=True,
-            timeout_sec=EvalSettings().max_runtime_sec_per_ragas,
-            timeout_backoff_factor=EvalSettings().ragas_timeout_backoff_factor,
-            max_timeout_sec=EvalSettings().ragas_max_timeout_sec,
-            timeout_retries=EvalSettings().ragas_timeout_retries,
-            metrics=EvalSettings().ragas_metrics,
+            timeout_sec=eval_settings.max_runtime_sec_per_ragas,
+            timeout_backoff_factor=eval_settings.ragas_timeout_backoff_factor,
+            max_timeout_sec=eval_settings.ragas_max_timeout_sec,
+            timeout_retries=eval_settings.ragas_timeout_retries,
+            metrics=eval_settings.ragas_metrics,
         )
         runs.append(metrics)
         console.print(f"  Final eval run {run_num}: weighted={metrics.weighted_score:.4f}")

@@ -1,3 +1,4 @@
+import random
 import uuid
 
 from src.storage.database import Database
@@ -5,11 +6,13 @@ from src.storage.repositories.experiment_repository import ExperimentRepository
 from src.models.rag_config import RAGConfig
 from src.utils.hashing import get_config_hash
 from src.utils.logger import get_logger
+from src.utils.function_trace import trace_call
 
 log = get_logger("scientist")
 
 
-async def fallback_proposal(state, reason: str, settings=None) -> dict:
+@trace_call
+async def fallback_proposal(state, reason: str, settings) -> dict:
     from src.scientist.candidates import get_fallback_candidates
     candidates = get_fallback_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
@@ -25,7 +28,8 @@ async def fallback_proposal(state, reason: str, settings=None) -> dict:
     }
 
 
-async def reranker_probe_proposal(state, settings=None) -> dict:
+@trace_call
+async def reranker_probe_proposal(state, settings) -> dict:
     from src.scientist.candidates import get_reranker_probe_candidates
     candidates = get_reranker_probe_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
@@ -41,7 +45,8 @@ async def reranker_probe_proposal(state, settings=None) -> dict:
     }
 
 
-async def structured_exploration_proposal(state, settings=None) -> dict:
+@trace_call
+async def structured_exploration_proposal(state, settings) -> dict:
     from src.scientist.candidates import get_structured_exploration_candidates
     candidates = get_structured_exploration_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
@@ -57,6 +62,7 @@ async def structured_exploration_proposal(state, settings=None) -> dict:
     }
 
 
+@trace_call
 async def select_unused_candidate(candidates: list[dict], state) -> dict:
     used_hashes: set[str] = set()
     try:
@@ -66,8 +72,12 @@ async def select_unused_candidate(candidates: list[dict], state) -> dict:
     except Exception as e:
         log.warning("scientist_fallback_dedup_unavailable", error=str(e))
 
+    # Shuffle to avoid always picking the same candidate[0] across runs
+    shuffled = list(candidates)
+    random.shuffle(shuffled)
+
     selected = None
-    for candidate in candidates:
+    for candidate in shuffled:
         try:
             config = RAGConfig(**candidate).model_dump()
         except ValueError:

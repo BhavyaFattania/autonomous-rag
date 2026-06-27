@@ -45,6 +45,16 @@ models:
     temperature: 0.1
     max_tokens: 256
 
+  reflection:
+    model_id: "deepseek/deepseek-v4-pro"
+    reasoning_effort: "high"
+    max_tokens: 4096
+
+  conversation_summary:
+    model_id: "deepseek/deepseek-v4-pro"
+    reasoning_effort: "high"
+    max_tokens: 4096
+
   report_writer:
     model_id: "deepseek/deepseek-v4-pro"
     reasoning_effort: "high"

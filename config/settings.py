@@ -12,7 +12,7 @@ class RunSettings(BaseModel):
 
 
 class EvalSettings(BaseModel):
-    baseline_score_override: float = 0.4
+    baseline_score_override: Optional[float] = None
     n_eval_runs: int = 1
     n_questions: int = 10
     full_eval_n_questions: int = 50

@@ -23,7 +23,7 @@ from llama_index.core.retrievers import (
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from config.settings import EvalSettings
+
 from src.indexer.collection_names import collection_name as _idx_collection_name, CHROMA_PATH
 from src.indexer.collection_cache import load_bm25_nodes, load_bm25_engine
 from src.models.rag_config import RAGConfig
@@ -91,7 +91,7 @@ class RerankingRetriever(BaseRetriever):
         return self.reranker.postprocess_nodes(nodes, query_bundle=query_bundle)
 
 
-async def build_retriever(config: RAGConfig, collection_name: str | None = None, settings=None, env=None):
+async def build_retriever(config: RAGConfig, settings, collection_name: str | None = None, env=None):
     collection_name = collection_name or _idx_collection_name(config)
 
     dense_retriever, bm25_retriever, nodes, storage_context = _build_components(
@@ -152,7 +152,7 @@ async def build_retriever(config: RAGConfig, collection_name: str | None = None,
         return _maybe_apply_reranker(retriever, config, env)
 
     if config.retriever == "summary_embedding":
-        if not EvalSettings().allow_summary_embedding_retriever:
+        if not settings.evaluation.allow_summary_embedding_retriever:
             raise ValueError(
                 "summary_embedding is disabled for live search because it builds "
                 "a SummaryIndex over all nodes at retrieval time."

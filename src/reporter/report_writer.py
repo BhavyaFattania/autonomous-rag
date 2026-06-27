@@ -4,7 +4,7 @@ from pathlib import Path
 from src.utils.openrouter import call_openrouter
 
 
-async def report_writer_node(state, settings=None) -> dict:
+async def report_writer_node(state, settings) -> dict:
     report_path = Path("reports/overnight_run_report.md")
     report_path.parent.mkdir(exist_ok=True)
 

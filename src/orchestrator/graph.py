@@ -8,7 +8,7 @@ from src.orchestrator.state import WorkflowState
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-def build_graph(checkpointer: BaseCheckpointSaver = None, settings=None, env=None, model_routing=None) -> CompiledStateGraph:
+def build_graph(settings, checkpointer: BaseCheckpointSaver = None, env=None, model_routing=None) -> CompiledStateGraph:
     """
     Build and compile the LangGraph state machine.
     settings and env are injected into every node function via partial.

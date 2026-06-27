@@ -13,10 +13,12 @@ from src.indexer.collection_cache import (
 from src.indexer.index_builder import build_collection, build_bm25_cache_only
 from src.models.rag_config import RAGConfig
 from src.utils.logger import get_logger
+from src.utils.function_trace import trace_call
 
 log = get_logger("indexer")
 
 
+@trace_call
 def list_available_index_configs() -> list[dict]:
     configs = []
     prefix = "rag_openai_text_embedding_3_small_"
@@ -43,6 +45,7 @@ def list_available_index_configs() -> list[dict]:
     )
 
 
+@trace_call
 def _config_from_collection_stem(stem: str, prefix: str) -> dict | None:
     parts = stem.removeprefix(prefix).split("_")
     if len(parts) == 2:
@@ -88,7 +91,7 @@ def collection_is_cached(config: RAGConfig) -> bool:
         return False
 
 
-async def get_or_build_collection(config: RAGConfig, settings=None, env=None) -> str:
+async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
     name = _collection_name(config)
     chroma_client = get_chroma_client()
     bm25_cache = bm25_cache_path(name)
@@ -145,7 +148,7 @@ async def get_or_build_collection(config: RAGConfig, settings=None, env=None) ->
     return name
 
 
-async def indexer_node(state, settings=None, env=None) -> dict:
+async def indexer_node(state, settings, env=None) -> dict:
     config = RAGConfig(**state["validated_config"])
     try:
         collection_name = await get_or_build_collection(config, settings, env)

@@ -8,12 +8,14 @@ from src.storage.repositories.experiment_repository import ExperimentRepository
 from src.storage.repositories.config_hash_repository import ConfigHashRepository
 from src.utils.config_helpers import logical_config
 from src.utils.logger import get_logger
+from src.utils.function_trace import trace_call
 
 log = get_logger("deduplicator")
 
 _STALE_HASH_TTL_DAYS = 7
 
 
+@trace_call
 async def _fetch_best_historical_record(db, config_hash: str) -> dict:
     repo = ExperimentRepository(db)
     record = await repo.find_best_historical(config_hash)
@@ -25,6 +27,7 @@ async def _fetch_best_historical_record(db, config_hash: str) -> dict:
     }
 
 
+@trace_call
 async def deduplicator_node(state) -> dict:
     from src.utils.hashing import get_config_hash
 

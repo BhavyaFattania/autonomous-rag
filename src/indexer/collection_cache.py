@@ -27,15 +27,15 @@ def cache_is_complete(collection_name: str, vector_count: int) -> bool:
     return vector_count == node_count
 
 
-def new_index_builds_allowed(settings=None) -> bool:
+def new_index_builds_allowed(settings) -> bool:
     return settings.evaluation.allow_new_index_builds
 
 
-def expensive_parser_builds_allowed(settings=None) -> bool:
+def expensive_parser_builds_allowed(settings) -> bool:
     return settings.evaluation.allow_expensive_parser_builds
 
 
-def effective_corpus_limit(config: RAGConfig, settings=None) -> int:
+def effective_corpus_limit(config: RAGConfig, settings) -> int:
     if config.node_parser in {"semantic", "semantic_double"}:
         return settings.evaluation.max_docs_for_expensive_parsers
     return MAX_CORPUS_DOCS

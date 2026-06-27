@@ -5,6 +5,7 @@ import aiosqlite
 
 from src.storage.database import Database
 from src.storage.models import Experiment, HistoricalRecord
+from src.utils.function_trace import trace_call
 
 
 class ExperimentRepository:
@@ -90,6 +91,7 @@ class ExperimentRepository:
                 hypothesis=hypothesis or "",
             )
 
+    @trace_call(log_return=False)
     async def find_used_hashes(
         self, exclude_statuses: Optional[tuple[str, ...]] = None
     ) -> set[str]:
