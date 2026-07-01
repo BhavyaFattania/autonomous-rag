@@ -2,9 +2,10 @@ import json
 from pathlib import Path
 
 from src.utils.openrouter import call_openrouter
+from src.core.provider import Provider
 
 
-async def report_writer_node(state, settings) -> dict:
+async def report_writer_node(state, settings, provider: Provider | None = None) -> dict:
     report_path = Path("reports/overnight_run_report.md")
     report_path.parent.mkdir(exist_ok=True)
 
@@ -14,14 +15,27 @@ async def report_writer_node(state, settings) -> dict:
 
     prompt = _build_report_prompt(state)
     try:
-        report = await call_openrouter(
-            model_id="deepseek/deepseek-v4-pro",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=8192,
-            task="report_writer",
-            reasoning_effort="high",
-            temperature=None,
-        )
+        llm = provider.llm_client if provider else None
+        if llm:
+            report = await llm.call(
+                model_id="deepseek/deepseek-v4-pro",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=8192,
+                task="report_writer",
+                reasoning_effort="high",
+                temperature=None,
+            )
+            if isinstance(report, dict):
+                report = report.get("content", "")
+        else:
+            report = await call_openrouter(
+                model_id="deepseek/deepseek-v4-pro",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=8192,
+                task="report_writer",
+                reasoning_effort="high",
+                temperature=None,
+            )
     except Exception as e:
         report = _fallback_report(state, str(e))
 

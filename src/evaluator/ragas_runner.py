@@ -38,6 +38,7 @@ async def run_single_eval(
     max_timeout_sec: int = 240,
     timeout_retries: int = 1,
     metrics: list[str] | None = None,
+    env: dict | None = None,
 ) -> SingleRunMetrics:
     if answers is None:
         answers = ground_truths
@@ -72,9 +73,9 @@ async def run_single_eval(
     ragas_metrics = build_ragas_metrics(metric_names)
     if not ragas_metrics:
         return fast_metrics
-    ragas_llm = build_ragas_llm(model_routing=load_model_routing(), env=load_env())
+    ragas_llm = build_ragas_llm(model_routing=load_model_routing(), env=env or load_env())
     ragas_embeddings = (
-        build_ragas_embeddings("openai/text-embedding-3-small", env=load_env())
+        build_ragas_embeddings("openai/text-embedding-3-small", env=env or load_env())
         if "answer_relevancy" in metric_names
         else None
     )
@@ -221,6 +222,7 @@ async def evaluator_node(state, settings, env=None, model_routing=None) -> dict:
                 timeout_sec=ragas_timeout, timeout_backoff_factor=ragas_timeout_backoff_factor,
                 max_timeout_sec=ragas_max_timeout, timeout_retries=ragas_timeout_retries,
                 metrics=eval_settings.ragas_metrics,
+                env=env,
             )
             runs.append(metrics)
             log.info("eval_run_complete", run=run_num, weighted_score=metrics.weighted_score)

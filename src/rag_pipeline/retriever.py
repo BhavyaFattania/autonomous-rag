@@ -28,6 +28,7 @@ from src.indexer.collection_names import collection_name as _idx_collection_name
 from src.indexer.collection_cache import load_bm25_nodes, load_bm25_engine
 from src.models.rag_config import RAGConfig
 from src.utils.logger import get_logger
+from src.core.provider import Provider
 
 log = get_logger("retriever")
 

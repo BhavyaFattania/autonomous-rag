@@ -7,15 +7,11 @@ from src.orchestrator.state import WorkflowState
 
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from src.core.provider import Provider
 
-def build_graph(settings, checkpointer: BaseCheckpointSaver = None, env=None, model_routing=None) -> CompiledStateGraph:
-    """
-    Build and compile the LangGraph state machine.
-    settings and env are injected into every node function via partial.
-    """
+def build_graph(settings, checkpointer: BaseCheckpointSaver = None, env=None, model_routing=None, provider: Provider | None = None) -> CompiledStateGraph:
     workflow = StateGraph(WorkflowState)
 
-    # Add nodes (imports deferred to avoid circular imports at module load)
     from src.scientist.brain import scientist_node
     from src.orchestrator.validator import validator_node
     from src.scientist.deduplicator import deduplicator_node
@@ -28,27 +24,24 @@ def build_graph(settings, checkpointer: BaseCheckpointSaver = None, env=None, mo
     from src.scientist.reflection import reflection_node
     from src.reporter.report_writer import report_writer_node
 
-    workflow.add_node("scientist", partial(scientist_node, settings=settings))
+    workflow.add_node("scientist", partial(scientist_node, settings=settings, provider=provider))
     workflow.add_node("validator", partial(validator_node, settings=settings, env=env))
     workflow.add_node("deduplicator", deduplicator_node)
     workflow.add_node("budget_guard", partial(budget_guard_node, settings=settings))
-    workflow.add_node("indexer", partial(indexer_node, settings=settings, env=env))
+    workflow.add_node("indexer", partial(indexer_node, settings=settings, env=env, provider=provider))
     workflow.add_node("smoke_test", partial(smoke_test_node, settings=settings))
     workflow.add_node("evaluator", partial(evaluator_node, settings=settings, env=env, model_routing=model_routing))
     workflow.add_node("acceptance", partial(acceptance_node, settings=settings))
     workflow.add_node("recorder", recorder_node)
-    workflow.add_node("reflection", partial(reflection_node, settings=settings))
-    workflow.add_node("report_writer", partial(report_writer_node, settings=settings))
+    workflow.add_node("reflection", partial(reflection_node, settings=settings, provider=provider))
+    workflow.add_node("report_writer", partial(report_writer_node, settings=settings, provider=provider))
 
-    # Entry point
     workflow.set_entry_point("scientist")
 
-    # Linear edges
     workflow.add_edge("scientist", "validator")
     workflow.add_edge("acceptance", "recorder")
     workflow.add_edge("reflection", "scientist")
 
-    # Conditional edges
     workflow.add_conditional_edges("validator",    _after_validator)
     workflow.add_conditional_edges("deduplicator", _after_deduplicator)
     workflow.add_conditional_edges("budget_guard", _after_budget_guard)
@@ -58,11 +51,8 @@ def build_graph(settings, checkpointer: BaseCheckpointSaver = None, env=None, mo
     workflow.add_conditional_edges("recorder",     _after_recorder)
     workflow.add_conditional_edges("report_writer", lambda _: END)
 
-    # Compile with checkpointer
     return workflow.compile(checkpointer=checkpointer)
 
-
-# ─── Routing functions ────────────────────────────────────────────────────────
 
 def _after_validator(state: WorkflowState) -> str:
     if state["status"] == "FAILED_VALIDATION":

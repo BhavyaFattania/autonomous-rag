@@ -3,7 +3,7 @@ from pathlib import Path
 from src.indexer.collection_names import (
     collection_name as _collection_name,
     bm25_cache_path, bm25_engine_path,
-    get_chroma_client,
+    get_chroma_client as _get_chroma_client,
 )
 from src.indexer.collection_cache import (
     cache_is_complete, bm25_node_count,
@@ -14,6 +14,7 @@ from src.indexer.index_builder import build_collection, build_bm25_cache_only
 from src.models.rag_config import RAGConfig
 from src.utils.logger import get_logger
 from src.utils.function_trace import trace_call
+from src.core.provider import Provider
 
 log = get_logger("indexer")
 
@@ -85,7 +86,7 @@ def _config_from_collection_stem(stem: str, prefix: str) -> dict | None:
 def collection_is_cached(config: RAGConfig) -> bool:
     name = _collection_name(config)
     try:
-        collection = get_chroma_client().get_collection(name)
+        collection = _get_chroma_client().get_collection(name)
         return cache_is_complete(name, collection.count())
     except Exception:
         return False
@@ -93,7 +94,7 @@ def collection_is_cached(config: RAGConfig) -> bool:
 
 async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
     name = _collection_name(config)
-    chroma_client = get_chroma_client()
+    chroma_client = _get_chroma_client()
     bm25_cache = bm25_cache_path(name)
     engine_cache = bm25_engine_path(name)
 
@@ -148,7 +149,7 @@ async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
     return name
 
 
-async def indexer_node(state, settings, env=None) -> dict:
+async def indexer_node(state, settings, env=None, provider: Provider | None = None) -> dict:
     config = RAGConfig(**state["validated_config"])
     try:
         collection_name = await get_or_build_collection(config, settings, env)

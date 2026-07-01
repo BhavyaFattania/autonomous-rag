@@ -24,7 +24,6 @@ def _ensure_venv():
         else:
             venv_python = project_root / "venv" / "bin" / "python"
         if venv_python.exists():
-            # Re-execute this script using the venv python interpreter
             args = [str(venv_python)] + sys.argv
             sys.exit(subprocess.call(args))
 
@@ -35,7 +34,6 @@ import signal
 import uuid
 from datetime import datetime, timezone
 
-# Ensure project root is in path so 'src' module can be imported
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import click
@@ -64,8 +62,6 @@ signal.signal(signal.SIGTERM, _handle_signal)
 signal.signal(signal.SIGINT, _handle_signal)
 
 
-# ─── CLI ─────────────────────────────────────────────────────────────────────
-
 @click.command()
 @click.option("--max-exp",   default=20,  type=int,   help="Max experiments to run")
 @click.option("--max-hours", default=6.0, type=float, help="Max runtime in hours")
@@ -74,11 +70,24 @@ signal.signal(signal.SIGINT, _handle_signal)
 def main(max_exp, max_hours, dry_run, resume):
     from src.storage.database import Database
     from src.storage.cost_tracker import initialize as init_cost
+    from src.storage.cost_tracker import CostTracker
+    from src.utils.openrouter import OpenRouterClient
     from config.loader import load_all
     from src.utils.logger import setup_logging
     from src.utils.function_trace import init_trace, close_trace
+    from src.core.provider import Provider
     settings, model_routing, baseline, env = load_all()
     setup_logging()
+
+    provider = Provider(
+        cost_tracker=CostTracker(
+            hard_ceiling=settings.run.cost_hard_ceiling_usd,
+            warning_threshold=settings.run.cost_warning_threshold_usd,
+        ),
+        llm_client=OpenRouterClient(api_key=env.get("OPENROUTER_API_KEY") if env else None),
+        env=env,
+        settings=settings,
+    )
 
     run_id = str(uuid.uuid4())
     init_trace(run_id)
@@ -88,21 +97,19 @@ def main(max_exp, max_hours, dry_run, resume):
         close_trace()
         return
 
-    init_cost(
+    provider.cost_tracker.initialize(
         hard_ceiling=settings.run.cost_hard_ceiling_usd,
         warning_threshold=settings.run.cost_warning_threshold_usd,
     )
 
     print_banner(max_exp, max_hours, settings)
     try:
-        asyncio.run(_run(max_exp, max_hours, resume, settings, env, trace_run_id=run_id))
+        asyncio.run(_run(max_exp, max_hours, resume, settings, env, provider, trace_run_id=run_id))
     finally:
         close_trace()
 
 
-# ─── Run loop ─────────────────────────────────────────────────────────────────
-
-async def _run(max_exp, max_hours, resume, settings, env, trace_run_id=None):
+async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id=None):
     from src.storage.database import Database
     from src.orchestrator.graph import build_graph
     from config.models import ModelRouting
@@ -126,7 +133,6 @@ async def _run(max_exp, max_hours, resume, settings, env, trace_run_id=None):
     if not run_id:
         run_id = trace_run_id or str(uuid.uuid4())
 
-    # (Re)init trace with the final run_id so filename matches
     init_trace(run_id)
 
     baseline = load_baseline_config()
@@ -173,12 +179,11 @@ async def _run(max_exp, max_hours, resume, settings, env, trace_run_id=None):
         "max_hours":                 max_hours,
     }
 
-    # Track per-experiment state across events
     _ctx = {"exp_num": 0, "node_times": {}}
     latest_state = dict(initial_state)
 
     async with AsyncSqliteSaver.from_conn_string("experiments.sqlite") as memory:
-        graph = build_graph(checkpointer=memory, settings=settings, env=env, model_routing=ModelRouting)
+        graph = build_graph(checkpointer=memory, settings=settings, env=env, model_routing=ModelRouting, provider=provider)
 
         try:
             from langfuse.langchain import CallbackHandler
@@ -201,8 +206,7 @@ async def _run(max_exp, max_hours, resume, settings, env, trace_run_id=None):
                     state_exists = True
                     console.print(f"[bold green]Found active checkpoint for run {run_id}. Resuming...[/]")
                     previous_cost = state_val.values.get("total_cost_usd", 0.0)
-                    from src.storage.cost_tracker import initialize as init_cost
-                    init_cost(
+                    provider.cost_tracker.initialize(
                         hard_ceiling=settings.run.cost_hard_ceiling_usd,
                         warning_threshold=settings.run.cost_warning_threshold_usd,
                         start_cost=previous_cost
@@ -228,10 +232,6 @@ async def _run(max_exp, max_hours, resume, settings, env, trace_run_id=None):
         await evaluate_final_best(latest_state, settings, env)
 
 
-
-
-# ─── Dry-run validation ───────────────────────────────────────────────────────
-
 def _validate_environment():
     import os
     required = ["OPENROUTER_API_KEY"]
@@ -242,7 +242,7 @@ def _validate_environment():
     console.print("[bold green]+[/] Environment variables present.")
     data_path = Path("data/hotpotqa/questions.jsonl")
     if not data_path.exists():
-        console.print(f"[bold red]x {data_path} not found. Run: python data/hotpotqa/setup_hotpotqa.py[/]")
+        console.print(f"[bold red]x {data_path} not found. Run: data/hotpotqa/setup_hotpotqa.py[/]")
         sys.exit(1)
     console.print("[bold green]+[/] HotpotQA data present.")
     console.print("[bold green]+[/] Dry run passed. Safe to run overnight.")

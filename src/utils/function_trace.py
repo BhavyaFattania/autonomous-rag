@@ -30,6 +30,7 @@ Usage:
     close_trace()
 """
 
+from typing import TextIO
 import functools
 import inspect
 import json

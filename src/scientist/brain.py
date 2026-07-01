@@ -12,6 +12,7 @@ from src.scientist.proposal import (
     fallback_proposal, reranker_probe_proposal,
     structured_exploration_proposal, select_unused_candidate,
 )
+from src.core.provider import Provider
 
 log = get_logger("scientist")
 
@@ -31,7 +32,7 @@ def _should_force_reranker_probe(state, settings) -> bool:
 
 @observe(name="scientist_node")
 @trace_call(log_return=False)
-async def scientist_node(state, settings) -> dict:
+async def scientist_node(state, settings, provider: Provider | None = None) -> dict:
     from src.utils.conversation_summary import sliding_window_compress
 
     history_lines = _build_history_lines(state)
@@ -66,16 +67,28 @@ async def scientist_node(state, settings) -> dict:
     try:
         started = time.perf_counter()
         log.info("scientist_llm_start", exploit=exploit)
-        raw_response = await call_openrouter(
-            model_id="deepseek/deepseek-v4-pro",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=8192,
-            task="scientist",
-            reasoning_effort="high",
-            temperature=None,
-            return_reasoning=True,
-            fallback_model_id=None,
-        )
+        llm = provider.llm_client if provider else None
+        if llm:
+            raw_response = await llm.call(
+                model_id="deepseek/deepseek-v4-pro",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=8192,
+                task="scientist",
+                reasoning_effort="high",
+                temperature=None,
+                return_reasoning=True,
+            )
+        else:
+            raw_response = await call_openrouter(
+                model_id="deepseek/deepseek-v4-pro",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=8192,
+                task="scientist",
+                reasoning_effort="high",
+                temperature=None,
+                return_reasoning=True,
+                fallback_model_id=None,
+            )
         log.info("scientist_llm_complete", elapsed_sec=round(time.perf_counter() - started, 2))
     except Exception as e:
         log.error("scientist_llm_failed", error=str(e))

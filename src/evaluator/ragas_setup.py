@@ -1,5 +1,4 @@
 import os
-import asyncio
 from ragas.llms import LangchainLLMWrapper
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.outputs import LLMResult
@@ -15,15 +14,15 @@ from src.utils.openrouter import build_openrouter_headers
 from src.utils.json_repair import install_ragas_output_parser_compat_patch
 from config.models import ModelRouting
 log = get_logger("evaluator")
-from dotenv import load_dotenv  
-load_dotenv()
 
-def build_ragas_llm(model_routing=ModelRouting, env=None) -> LangchainLLMWrapper:
+
+def build_ragas_llm(model_routing=ModelRouting, env=None, api_key: str | None = None) -> LangchainLLMWrapper:
     install_ragas_output_parser_compat_patch()
     judge_config = model_routing.ragas_judge
     model_kwargs = _build_openrouter_model_kwargs(judge_config)
     extra_body = _build_openrouter_extra_body(judge_config)
     model_id = judge_config.model_id
+    resolved_key = api_key or (env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"])
     log.info(
         "ragas_judge_configured",
         model=model_id,
@@ -33,7 +32,7 @@ def build_ragas_llm(model_routing=ModelRouting, env=None) -> LangchainLLMWrapper
     llm = ChatOpenAI(
         model=model_id,
         base_url="https://openrouter.ai/api/v1",
-        api_key=env["OPENROUTER_API_KEY"] if env else os.environ["OPENROUTER_API_KEY"],
+        api_key=resolved_key,
         temperature=judge_config.temperature,
         max_completion_tokens=judge_config.max_tokens,
         model_kwargs=model_kwargs,
@@ -44,11 +43,12 @@ def build_ragas_llm(model_routing=ModelRouting, env=None) -> LangchainLLMWrapper
     return LangchainLLMWrapper(llm, is_finished_parser=_ragas_generation_finished)
 
 
-def build_ragas_embeddings(model_name: str, env=None) -> OpenAIEmbeddings:
+def build_ragas_embeddings(model_name: str, env=None, api_key: str | None = None) -> OpenAIEmbeddings:
+    resolved_key = api_key or (env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"])
     return OpenAIEmbeddings(
         model=model_name,
         base_url="https://openrouter.ai/api/v1",
-        api_key=env["OPENROUTER_API_KEY"] if env else os.environ["OPENROUTER_API_KEY"],
+        api_key=resolved_key,
     )
 
 

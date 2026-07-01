@@ -2,30 +2,17 @@
 SQLite connection manager and schema initialisation.
 WAL mode is MANDATORY for safe async access.
 
-Usage:
-    db = Database()
-    await db.init()
-
-    # Shared connection for transactional consistency:
-    async with db.connect() as conn:
-        repo = ExperimentRepository(conn)
-        await repo.insert(experiment)
-        await conn.commit()
-
-    # Or let repositories create their own connections (uses Database.default_path):
-    repo = ExperimentRepository()
-    await repo.find_last_run_id()
-
-    # Override default path (e.g. in tests):
-    Database.default_path = "/tmp/test.sqlite"
+Refactored for DI: Database implements IDatabase protocol.
 """
 
 import aiosqlite
 from contextlib import asynccontextmanager
 
+DEFAULT_DB_PATH = "experiments.sqlite"
+
 
 class Database:
-    default_path: str = "experiments.sqlite"
+    default_path: str = DEFAULT_DB_PATH
 
     def __init__(self, path: str | None = None):
         self.path = path if path is not None else Database.default_path

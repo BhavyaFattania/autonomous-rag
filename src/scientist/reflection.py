@@ -2,6 +2,7 @@ from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
 from src.utils.openrouter import call_openrouter
 from src.utils.function_trace import trace_call
+from src.core.provider import Provider
 
 log = get_logger("reflection")
 
@@ -9,22 +10,19 @@ _MAX_REFLECTION_CHARS = 4000
 
 
 def _truncate_to_sentence(text: str, max_chars: int) -> str:
-    """Truncate text at a sentence boundary to avoid cut-off bullet points."""
     if len(text) <= max_chars:
         return text
-    # Walk backwards from the limit to find the last sentence-ending punctuation.
     window = text[:max_chars]
     for sep in ("\n", ".", "!", "?"):
         idx = window.rfind(sep)
-        if idx > max_chars // 2:  # Ensure we keep at least half the content
+        if idx > max_chars // 2:
             return window[: idx + 1].rstrip()
-    # No clean boundary found — fall back to the raw limit.
     return window.rstrip()
 
 
 @observe(name="reflection_node")
 @trace_call(log_return=False)
-async def reflection_node(state, settings) -> dict:
+async def reflection_node(state, settings, provider: Provider | None = None) -> dict:
     n = settings.reflection.update_every_n_experiments
     completed = state.get("experiments_completed", 0)
 
@@ -33,14 +31,25 @@ async def reflection_node(state, settings) -> dict:
 
     prompt = _build_reflection_prompt(state)
     try:
-        summary = await call_openrouter(
-            model_id="deepseek/deepseek-v4-pro",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=2048,
-            task="reflection",
-            reasoning_effort="high",
-            temperature=None,
-        )
+        llm = provider.llm_client if provider else None
+        if llm:
+            summary = await llm.call(
+                model_id="deepseek/deepseek-v4-pro",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=2048,
+                task="reflection",
+                reasoning_effort="high",
+                temperature=None,
+            )
+        else:
+            summary = await call_openrouter(
+                model_id="deepseek/deepseek-v4-pro",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=2048,
+                task="reflection",
+                reasoning_effort="high",
+                temperature=None,
+            )
     except Exception as e:
         log.warning("reflection_failed", error=str(e))
         return {}

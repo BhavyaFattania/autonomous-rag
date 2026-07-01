@@ -55,9 +55,10 @@ def load_corpus_as_documents(corpus_path: Path, limit: int = MAX_CORPUS_DOCS):
 def build_embed_model(config: RAGConfig, env=None):
     from src.utils.openrouter_embedding import OpenRouterEmbedding
 
+    api_key = env.get("OPENROUTER_API_KEY") if env else None
     return OpenRouterEmbedding(
         model_name=config.embedding_model,
-        api_key=env.get("OPENROUTER_API_KEY") if env else None,
+        api_key=api_key,
     )
 
 

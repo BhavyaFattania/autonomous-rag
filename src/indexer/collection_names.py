@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import chromadb
 from src.indexer.parser_registry import parser_slug
@@ -26,5 +27,6 @@ def bm25_engine_path(name: str) -> Path:
     return BM25_PATH / f"{name}_engine.pkl"
 
 
-def get_chroma_client() -> chromadb.PersistentClient:
-    return chromadb.PersistentClient(path=str(CHROMA_PATH))
+def get_chroma_client(path: str | Path | None = None) -> chromadb.PersistentClient:
+    resolved = str(path) if path else str(CHROMA_PATH)
+    return chromadb.PersistentClient(path=resolved)
