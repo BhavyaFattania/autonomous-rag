@@ -3,8 +3,7 @@ from datetime import datetime, timezone, timedelta
 
 import aiosqlite
 
-from src.storage.database import Database
-from src.storage.repositories.experiment_repository import _db_or_connect
+from src.storage.repositories._shared import db_or_connect
 
 
 class ConfigHashRepository:
@@ -13,7 +12,7 @@ class ConfigHashRepository:
 
     async def insert(self, config_hash: str, first_seen: Optional[str] = None):
         first_seen = first_seen or datetime.now(timezone.utc).isoformat()
-        async with _db_or_connect(self._db) as db:
+        async with db_or_connect(self._db) as db:
             await db.execute(
                 """
                 INSERT INTO config_hashes (config_hash, first_seen, score)
@@ -23,7 +22,7 @@ class ConfigHashRepository:
             )
 
     async def update_score(self, config_hash: str, score: float):
-        async with _db_or_connect(self._db) as db:
+        async with db_or_connect(self._db) as db:
             await db.execute(
                 """
                 UPDATE config_hashes
@@ -34,7 +33,7 @@ class ConfigHashRepository:
             )
 
     async def find_all_used(self) -> set[str]:
-        async with _db_or_connect(self._db) as db:
+        async with db_or_connect(self._db) as db:
             cursor = await db.execute("SELECT config_hash FROM config_hashes")
             return {row[0] for row in await cursor.fetchall()}
 
@@ -44,7 +43,7 @@ class ConfigHashRepository:
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
         cutoff = (datetime.now(timezone.utc) - timedelta(days=ttl_days)).isoformat()
-        async with _db_or_connect(self._db) as db:
+        async with db_or_connect(self._db) as db:
             result = await db.execute(
                 f"""
                 DELETE FROM config_hashes

@@ -7,7 +7,7 @@ from src.utils.langfuse_compat import observe
 from src.utils.openrouter import call_openrouter
 from src.utils.logger import get_logger
 from src.utils.function_trace import trace_call
-from src.scientist.prompt_builder import build_scientist_prompt, _build_history_lines
+from src.scientist.prompt_builder import build_scientist_prompt, build_history_lines
 from src.scientist.proposal import (
     fallback_proposal, reranker_probe_proposal,
     structured_exploration_proposal, select_unused_candidate,
@@ -35,7 +35,7 @@ def _should_force_reranker_probe(state, settings) -> bool:
 async def scientist_node(state, settings, provider: Provider | None = None) -> dict:
     from src.utils.conversation_summary import sliding_window_compress
 
-    history_lines = _build_history_lines(state)
+    history_lines = build_history_lines(state)
     existing_summary = state.get("history_summary", "")
     recent_history, new_history_summary = await sliding_window_compress(
         history_lines,

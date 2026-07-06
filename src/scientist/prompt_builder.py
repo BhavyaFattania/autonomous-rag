@@ -48,7 +48,7 @@ def build_scientist_prompt(
             parts.append("[Recent experiments (verbatim)]\n" + "\n".join(recent_history))
         history_text = "\n\n".join(parts) if parts else ""
     else:
-        history_lines = _build_history_lines(state)
+        history_lines = build_history_lines(state)
         history_text = _truncate_history(
             history_lines,
             max_chars=settings.reflection.max_history_tokens * 4,
@@ -107,7 +107,7 @@ Respond with ONLY the JSON object.
     return user_message.strip()
 
 
-def _build_history_lines(state) -> list[str]:
+def build_history_lines(state) -> list[str]:
     lines = []
     for i, pattern in enumerate(state.get("successful_patterns", [])):
         lines.append(f"ACCEPTED[{i+1}]: {pattern}")

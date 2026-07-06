@@ -3,8 +3,8 @@ from typing import Optional
 
 import aiosqlite
 
-from src.storage.database import Database
 from src.storage.models import Experiment, HistoricalRecord
+from src.storage.repositories._shared import db_or_connect
 from src.utils.function_trace import trace_call
 
 
@@ -13,7 +13,7 @@ class ExperimentRepository:
         self._db = db
 
     async def insert(self, experiment: Experiment) -> int:
-        async with _db_or_connect(self._db) as db:
+        async with db_or_connect(self._db) as db:
             cursor = await db.execute(
                 """
                 INSERT INTO experiments
@@ -44,7 +44,7 @@ class ExperimentRepository:
     ) -> Optional[int]:
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
-        async with _db_or_connect(self._db) as db:
+        async with db_or_connect(self._db) as db:
             cursor = await db.execute(
                 f"""
                 SELECT experiment_id FROM experiments
@@ -62,7 +62,7 @@ class ExperimentRepository:
     ) -> HistoricalRecord:
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
-        async with _db_or_connect(self._db) as db:
+        async with db_or_connect(self._db) as db:
             cursor = await db.execute(
                 f"""
                 SELECT proposed_score, metrics_json, status, hypothesis
@@ -97,7 +97,7 @@ class ExperimentRepository:
     ) -> set[str]:
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
-        async with _db_or_connect(self._db) as db:
+        async with db_or_connect(self._db) as db:
             cursor = await db.execute(
                 f"""
                 SELECT config_hash FROM experiments
@@ -109,33 +109,3 @@ class ExperimentRepository:
                 exclude,
             )
             return {row[0] for row in await cursor.fetchall()}
-
-
-def _db_or_connect(db: Optional[aiosqlite.Connection]):
-    """Return a context manager over *db* if given, or a fresh connection.
-
-    When a fresh connection is created, it auto-commits on success
-    (no exception).  Caller-provided connections are never committed
-    here — the caller manages the transaction."""
-    if db is not None:
-        return _NoopContext(db)
-    return _AutoCommitContext()
-
-
-class _NoopContext:
-    def __init__(self, db: aiosqlite.Connection):
-        self._db = db
-    async def __aenter__(self):
-        return self._db
-    async def __aexit__(self, *exc):
-        pass
-
-
-class _AutoCommitContext:
-    async def __aenter__(self):
-        self._db = await aiosqlite.connect(Database.default_path)
-        return self._db
-    async def __aexit__(self, typ, val, tb):
-        if typ is None:
-            await self._db.commit()
-        await self._db.close()
