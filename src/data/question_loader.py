@@ -1,6 +1,5 @@
-from pathlib import Path
 import json
-
+from pathlib import Path
 
 QUESTIONS_PATH = Path("data/hotpotqa/questions.jsonl")
 
@@ -10,12 +9,14 @@ def load_eval_question_items(n: int) -> list[dict]:
     lines = QUESTIONS_PATH.read_text().strip().splitlines()
     for line in lines[:n]:
         item = json.loads(line)
-        items.append({
-            "id": item["id"],
-            "question": item["question"],
-            "answer": item["answer"],
-            "supporting_titles": item.get("supporting_titles", []),
-        })
+        items.append(
+            {
+                "id": item["id"],
+                "question": item["question"],
+                "answer": item["answer"],
+                "supporting_titles": item.get("supporting_titles", []),
+            }
+        )
     assert len(items) == n, f"Expected {n} questions, got {len(items)}"
     return items
 
