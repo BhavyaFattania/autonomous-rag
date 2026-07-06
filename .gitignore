@@ -21,7 +21,7 @@ env/
 ENV/
 
 # Runtime data, indexes, caches, and reports
-data/
+/data/
 reports/
 *.sqlite
 *.sqlite-shm
