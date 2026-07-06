@@ -30,15 +30,14 @@ Usage:
     close_trace()
 """
 
-from typing import TextIO
 import functools
 import inspect
 import json
-import os
-import time
 import threading
-from datetime import datetime, timezone
+import time
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import TextIO
 
 _TRACE_DIR = Path("data/traces")
 _trace_file: "TextIO | None" = None
@@ -57,11 +56,13 @@ def init_trace(run_id: str):
             except Exception:
                 pass
         _trace_file = open(path, "w", encoding="utf-8")
-        _write_entry({
-            "event": "trace_start",
-            "run_id": run_id,
-            "path": str(path),
-        })
+        _write_entry(
+            {
+                "event": "trace_start",
+                "run_id": run_id,
+                "path": str(path),
+            }
+        )
 
 
 def close_trace():
@@ -134,8 +135,14 @@ def _format_call_args(func, args, kwargs, max_len: int) -> dict:
     return result
 
 
-def trace_call(func=None, *, log_args: bool = True, log_return: bool = True,
-               max_len: int = 300, label: str | None = None):
+def trace_call(
+    func=None,
+    *,
+    log_args: bool = True,
+    log_return: bool = True,
+    max_len: int = 300,
+    label: str | None = None,
+):
     """
     Decorator that traces function entry/exit to the trace JSONL file.
 
@@ -161,8 +168,11 @@ def trace_call(func=None, *, log_args: bool = True, log_return: bool = True,
     """
     if func is None:
         return lambda f: trace_call(
-            f, log_args=log_args, log_return=log_return,
-            max_len=max_len, label=label,
+            f,
+            log_args=log_args,
+            log_return=log_return,
+            max_len=max_len,
+            label=label,
         )
 
     _func_name = label or func.__name__
@@ -171,15 +181,27 @@ def trace_call(func=None, *, log_args: bool = True, log_return: bool = True,
     @functools.wraps(func)
     async def async_wrapper(*args, **kwargs):
         return await _trace_impl(
-            func, args, kwargs, _func_name, _mod_name,
-            log_args, log_return, max_len,
+            func,
+            args,
+            kwargs,
+            _func_name,
+            _mod_name,
+            log_args,
+            log_return,
+            max_len,
         )
 
     @functools.wraps(func)
     def sync_wrapper(*args, **kwargs):
         return _trace_impl_sync(
-            func, args, kwargs, _func_name, _mod_name,
-            log_args, log_return, max_len,
+            func,
+            args,
+            kwargs,
+            _func_name,
+            _mod_name,
+            log_args,
+            log_return,
+            max_len,
         )
 
     if inspect.iscoroutinefunction(func):
@@ -187,8 +209,7 @@ def trace_call(func=None, *, log_args: bool = True, log_return: bool = True,
     return sync_wrapper
 
 
-async def _trace_impl(func, args, kwargs, func_name, mod_name,
-                      log_args, log_return, max_len):
+async def _trace_impl(func, args, kwargs, func_name, mod_name, log_args, log_return, max_len):
     """Async trace implementation."""
     if _trace_file is None:
         return await func(*args, **kwargs)
@@ -205,16 +226,19 @@ async def _trace_impl(func, args, kwargs, func_name, mod_name,
         raise
     finally:
         _emit_trace_entry(
-            func_name, mod_name, call_args,
+            func_name,
+            mod_name,
+            call_args,
             result if not exc else None,
             _safe_repr(exc) if exc else None,
-            time.monotonic() - start, log_return, max_len,
+            time.monotonic() - start,
+            log_return,
+            max_len,
         )
     return result
 
 
-def _trace_impl_sync(func, args, kwargs, func_name, mod_name,
-                     log_args, log_return, max_len):
+def _trace_impl_sync(func, args, kwargs, func_name, mod_name, log_args, log_return, max_len):
     """Sync trace implementation."""
     if _trace_file is None:
         return func(*args, **kwargs)
@@ -231,20 +255,25 @@ def _trace_impl_sync(func, args, kwargs, func_name, mod_name,
         raise
     finally:
         _emit_trace_entry(
-            func_name, mod_name, call_args,
+            func_name,
+            mod_name,
+            call_args,
             result if not exc else None,
             _safe_repr(exc) if exc else None,
-            time.monotonic() - start, log_return, max_len,
+            time.monotonic() - start,
+            log_return,
+            max_len,
         )
     return result
 
 
-def _emit_trace_entry(func_name, mod_name, call_args,
-                      result, exc_str, duration, log_return, max_len):
+def _emit_trace_entry(
+    func_name, mod_name, call_args, result, exc_str, duration, log_return, max_len
+):
     """Write a single trace line."""
     entry = {
         "event": "call_exception" if exc_str else "call_return",
-        "timestamp": datetime.now(timezone.utc).isoformat(timespec="microseconds"),
+        "timestamp": datetime.now(UTC).isoformat(timespec="microseconds"),
         "function": func_name,
         "module": mod_name,
         "thread": threading.current_thread().name,

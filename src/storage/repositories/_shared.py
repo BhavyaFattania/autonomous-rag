@@ -1,11 +1,9 @@
-from typing import Optional
-
 import aiosqlite
 
 from src.storage.database import Database
 
 
-def db_or_connect(db: Optional[aiosqlite.Connection]):
+def db_or_connect(db: aiosqlite.Connection | None):
     """Return a context manager over *db* if given, or a fresh connection.
 
     When a fresh connection is created, it auto-commits on success
@@ -19,8 +17,10 @@ def db_or_connect(db: Optional[aiosqlite.Connection]):
 class _NoopContext:
     def __init__(self, db: aiosqlite.Connection):
         self._db = db
+
     async def __aenter__(self):
         return self._db
+
     async def __aexit__(self, *exc):
         pass
 
@@ -29,6 +29,7 @@ class _AutoCommitContext:
     async def __aenter__(self):
         self._db = await aiosqlite.connect(Database.default_path)
         return self._db
+
     async def __aexit__(self, typ, val, tb):
         if typ is None:
             await self._db.commit()

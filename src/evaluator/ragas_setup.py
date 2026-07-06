@@ -1,7 +1,9 @@
 import os
-from ragas.llms import LangchainLLMWrapper
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+from config.models import ModelRouting
 from langchain_core.outputs import LLMResult
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
     ContextUtilization,
     answer_relevancy,
@@ -9,20 +11,25 @@ from ragas.metrics import (
     context_recall,
     faithfulness,
 )
+
+from src.utils.json_repair import install_ragas_output_parser_compat_patch
 from src.utils.logger import get_logger
 from src.utils.openrouter import build_openrouter_headers
-from src.utils.json_repair import install_ragas_output_parser_compat_patch
-from config.models import ModelRouting
+
 log = get_logger("evaluator")
 
 
-def build_ragas_llm(model_routing=ModelRouting, env=None, api_key: str | None = None) -> LangchainLLMWrapper:
+def build_ragas_llm(
+    model_routing=ModelRouting, env=None, api_key: str | None = None
+) -> LangchainLLMWrapper:
     install_ragas_output_parser_compat_patch()
     judge_config = model_routing.ragas_judge
     model_kwargs = _build_openrouter_model_kwargs(judge_config)
     extra_body = _build_openrouter_extra_body(judge_config)
     model_id = judge_config.model_id
-    resolved_key = api_key or (env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"])
+    resolved_key = api_key or (
+        env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"]
+    )
     log.info(
         "ragas_judge_configured",
         model=model_id,
@@ -43,8 +50,12 @@ def build_ragas_llm(model_routing=ModelRouting, env=None, api_key: str | None = 
     return LangchainLLMWrapper(llm, is_finished_parser=_ragas_generation_finished)
 
 
-def build_ragas_embeddings(model_name: str, env=None, api_key: str | None = None) -> OpenAIEmbeddings:
-    resolved_key = api_key or (env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"])
+def build_ragas_embeddings(
+    model_name: str, env=None, api_key: str | None = None
+) -> OpenAIEmbeddings:
+    resolved_key = api_key or (
+        env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"]
+    )
     return OpenAIEmbeddings(
         model=model_name,
         base_url="https://openrouter.ai/api/v1",
@@ -73,11 +84,7 @@ def build_ragas_metrics(metric_names: list[str]):
         "context_recall": context_recall,
         "context_utilization": ContextUtilization(),
     }
-    return [
-        available_metrics[name]
-        for name in metric_names
-        if name in available_metrics
-    ]
+    return [available_metrics[name] for name in metric_names if name in available_metrics]
 
 
 def _ragas_generation_finished(response: LLMResult) -> bool:

@@ -1,14 +1,11 @@
-import json
-from datetime import datetime, timezone, timedelta
-
 import aiosqlite
 
 from src.storage.database import Database
-from src.storage.repositories.experiment_repository import ExperimentRepository
 from src.storage.repositories.config_hash_repository import ConfigHashRepository
+from src.storage.repositories.experiment_repository import ExperimentRepository
 from src.utils.config_helpers import logical_config
-from src.utils.logger import get_logger
 from src.utils.function_trace import trace_call
+from src.utils.logger import get_logger
 
 log = get_logger("deduplicator")
 
@@ -41,7 +38,9 @@ async def deduplicator_node(state) -> dict:
 
         if existing_id:
             historical = await _fetch_best_historical_record(db, config_hash)
-            score_str = f"{historical['score']:.4f}" if historical["score"] is not None else "unknown"
+            score_str = (
+                f"{historical['score']:.4f}" if historical["score"] is not None else "unknown"
+            )
             log.info(
                 "deduplicator_duplicate_found",
                 config_hash=config_hash,
@@ -55,9 +54,9 @@ async def deduplicator_node(state) -> dict:
                     f"Previous result: status={historical['status']}, "
                     f"score={score_str}"
                 ),
-                "duplicate_historical_score":   historical["score"],
+                "duplicate_historical_score": historical["score"],
                 "duplicate_historical_metrics": historical["metrics"],
-                "duplicate_historical_status":  historical["status"],
+                "duplicate_historical_status": historical["status"],
                 "duplicate_historical_hypothesis": historical["hypothesis"],
             }
 
@@ -66,7 +65,9 @@ async def deduplicator_node(state) -> dict:
             await db.commit()
         except aiosqlite.IntegrityError:
             historical = await _fetch_best_historical_record(db, config_hash)
-            score_str = f"{historical['score']:.4f}" if historical["score"] is not None else "unknown"
+            score_str = (
+                f"{historical['score']:.4f}" if historical["score"] is not None else "unknown"
+            )
             return {
                 "status": "FAILED_DUPLICATE",
                 "failure_reason": (
@@ -74,15 +75,17 @@ async def deduplicator_node(state) -> dict:
                     f"Previous result: status={historical['status']}, "
                     f"score={score_str}"
                 ),
-                "duplicate_historical_score":   historical["score"],
+                "duplicate_historical_score": historical["score"],
                 "duplicate_historical_metrics": historical["metrics"],
-                "duplicate_historical_status":  historical["status"],
+                "duplicate_historical_status": historical["status"],
                 "duplicate_historical_hypothesis": historical["hypothesis"],
             }
 
         removed = await ch_repo.delete_stale(ttl_days=_STALE_HASH_TTL_DAYS)
         if removed:
-            log.info("deduplicator_stale_hashes_cleaned", removed=removed, ttl_days=_STALE_HASH_TTL_DAYS)
+            log.info(
+                "deduplicator_stale_hashes_cleaned", removed=removed, ttl_days=_STALE_HASH_TTL_DAYS
+            )
         await db.commit()
 
     return {"status": "RUNNING"}

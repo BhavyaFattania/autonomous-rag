@@ -1,10 +1,9 @@
-import pytest
-import aiosqlite
-import os
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
+import aiosqlite
+import pytest
 from src.storage.database import Database
 
 
@@ -56,11 +55,21 @@ async def test_insert_and_read_experiment(temp_db):
             (experiment_uuid, run_id, config_hash, config_json, hypothesis, status, started_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            ("uuid-123", "run-456", "hash789", '{"chunk_size": 512}', "test hyp", "PENDING", datetime.now(timezone.utc).isoformat())
+            (
+                "uuid-123",
+                "run-456",
+                "hash789",
+                '{"chunk_size": 512}',
+                "test hyp",
+                "PENDING",
+                datetime.now(UTC).isoformat(),
+            ),
         )
         await conn.commit()
 
-        cursor = await conn.execute("SELECT experiment_uuid, config_json FROM experiments WHERE experiment_uuid='uuid-123'")
+        cursor = await conn.execute(
+            "SELECT experiment_uuid, config_json FROM experiments WHERE experiment_uuid='uuid-123'"
+        )
         row = await cursor.fetchone()
 
         assert row is not None

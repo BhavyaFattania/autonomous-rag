@@ -1,20 +1,20 @@
 import random
 import uuid
-from typing import Optional
 
+from src.models.rag_config import RAGConfig
 from src.storage.database import Database
 from src.storage.repositories.experiment_repository import ExperimentRepository
-from src.models.rag_config import RAGConfig
+from src.utils.function_trace import trace_call
 from src.utils.hashing import get_config_hash
 from src.utils.logger import get_logger
-from src.utils.function_trace import trace_call
 
 log = get_logger("scientist")
 
 
 @trace_call
-async def fallback_proposal(state, reason: str, settings) -> Optional[dict]:
+async def fallback_proposal(state, reason: str, settings) -> dict | None:
     from src.scientist.candidates import get_fallback_candidates
+
     candidates = get_fallback_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
     if selected is None:
@@ -33,8 +33,9 @@ async def fallback_proposal(state, reason: str, settings) -> Optional[dict]:
 
 
 @trace_call
-async def reranker_probe_proposal(state, settings) -> Optional[dict]:
+async def reranker_probe_proposal(state, settings) -> dict | None:
     from src.scientist.candidates import get_reranker_probe_candidates
+
     candidates = get_reranker_probe_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
     if selected is None:
@@ -53,8 +54,9 @@ async def reranker_probe_proposal(state, settings) -> Optional[dict]:
 
 
 @trace_call
-async def structured_exploration_proposal(state, settings) -> Optional[dict]:
+async def structured_exploration_proposal(state, settings) -> dict | None:
     from src.scientist.candidates import get_structured_exploration_candidates
+
     candidates = get_structured_exploration_candidates(state, settings)
     selected = await select_unused_candidate(candidates, state)
     if selected is None:
@@ -73,7 +75,7 @@ async def structured_exploration_proposal(state, settings) -> Optional[dict]:
 
 
 @trace_call
-async def select_unused_candidate(candidates: list[dict], state) -> Optional[dict]:
+async def select_unused_candidate(candidates: list[dict], state) -> dict | None:
     used_hashes: set[str] = set()
     try:
         async with Database().connect() as db:

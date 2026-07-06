@@ -1,9 +1,8 @@
 import pytest
-
+from config.settings import EvalSettings, Settings
 from src.models.rag_config import RAGConfig
 from src.orchestrator.validator import validator_node
 from src.rag_pipeline.retriever import _build_query_fusion_llm
-from config.settings import Settings, EvalSettings
 
 
 def _base(**overrides):
@@ -40,9 +39,7 @@ def test_sentence_window_dense_requires_sentence_window_parser():
     with pytest.raises(ValueError):
         RAGConfig(**_base(node_parser="sentence", retriever="sentence_window_dense"))
 
-    config = RAGConfig(
-        **_base(node_parser="sentence_window", retriever="sentence_window_dense")
-    )
+    config = RAGConfig(**_base(node_parser="sentence_window", retriever="sentence_window_dense"))
     assert config.window_size == 3
 
 
@@ -66,11 +63,13 @@ def test_summary_embedding_remains_configurable_but_guarded_by_validator():
 
 
 def _blocking_settings() -> Settings:
-    return Settings(evaluation=EvalSettings(
-        allow_new_index_builds=True,
-        allow_expensive_parser_builds=False,
-        allow_summary_embedding_retriever=False,
-    ))
+    return Settings(
+        evaluation=EvalSettings(
+            allow_new_index_builds=True,
+            allow_expensive_parser_builds=False,
+            allow_summary_embedding_retriever=False,
+        )
+    )
 
 
 def test_validator_blocks_disabled_summary_embedding():

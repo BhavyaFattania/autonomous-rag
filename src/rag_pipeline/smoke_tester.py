@@ -15,9 +15,7 @@ async def smoke_test_node(state, settings) -> dict:
     from src.rag_pipeline.pipeline import retrieve_contexts
 
     config = RAGConfig(**state["validated_config"])
-    questions, _ = load_eval_questions(
-        n=settings.evaluation.smoke_test_n_questions
-    )
+    questions, _ = load_eval_questions(n=settings.evaluation.smoke_test_n_questions)
     collection_name = state["validated_config"].get("_collection_name")
 
     try:
@@ -25,10 +23,11 @@ async def smoke_test_node(state, settings) -> dict:
             retrieve_contexts(config, questions, settings, collection_name=collection_name),
             timeout=180.0,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {"status": "FAILED_SMOKE", "failure_reason": "Smoke test timed out after 180s"}
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         return {"status": "FAILED_SMOKE", "failure_reason": f"Pipeline error: {e}"}
 
@@ -44,6 +43,3 @@ async def smoke_test_node(state, settings) -> dict:
         "status": "RUNNING",
         "experiment_cost_usd": state.get("experiment_cost_usd", 0.0) + cost,
     }
-
-
-

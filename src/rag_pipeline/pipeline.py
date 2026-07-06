@@ -3,18 +3,19 @@ import json
 import time
 from pathlib import Path
 
-from src.utils.langfuse_compat import observe
-
-from src.models.rag_config import RAGConfig
-from src.rag_pipeline.retriever import build_retriever
-from src.rag_pipeline.generator import generate_answer
 from src.indexer.collection_manager import get_or_build_collection
+from src.models.rag_config import RAGConfig
+from src.rag_pipeline.generator import generate_answer
+from src.rag_pipeline.retriever import build_retriever
 from src.utils.hashing import get_config_hash
+from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
+
 log = get_logger("pipeline")
 
 RETRIEVAL_CACHE_PATH = Path("data/retrieval_cache")
 RETRIEVAL_CACHE_PATH.mkdir(parents=True, exist_ok=True)
+
 
 @observe(name="run_pipeline")
 async def run_pipeline(
@@ -24,12 +25,13 @@ async def run_pipeline(
     collection_name: str | None = None,
     env=None,
 ) -> tuple[list[str], list[list[str]], float]:
-    collection_name = collection_name or await get_or_build_collection(config,settings, env=env)
+    collection_name = collection_name or await get_or_build_collection(config, settings, env=env)
     max_concurrency = settings.evaluation.max_concurrent_questions
 
-    cost = 0.0 # Handled globally by openrouter.py, but we could return 0.0 or track delta
+    cost = 0.0  # Handled globally by openrouter.py, but we could return 0.0 or track delta
 
     from src.storage.cost_tracker import get_total
+
     start_cost = get_total()
 
     started = time.perf_counter()
@@ -60,7 +62,10 @@ async def run_pipeline(
     started = time.perf_counter()
     log.info("pipeline_generation_start", questions=len(questions), concurrency=max_concurrency)
     answers = await asyncio.gather(
-        *[answer_one(question, context) for question, context in zip(questions, contexts)]
+        *[
+            answer_one(question, context)
+            for question, context in zip(questions, contexts, strict=False)
+        ]
     )
     log.info(
         "pipeline_generation_complete",
@@ -81,7 +86,9 @@ async def retrieve_contexts(
     collection_name: str | None = None,
     env=None,
 ) -> tuple[list[list[str]], float]:
-    results, cost = await retrieve_results(config, questions, settings, collection_name=collection_name, env=env)
+    results, cost = await retrieve_results(
+        config, questions, settings, collection_name=collection_name, env=env
+    )
     return _results_to_contexts(results), cost
 
 
@@ -94,7 +101,7 @@ async def retrieve_results(
 ) -> tuple[list[list[dict]], float]:
     from src.storage.cost_tracker import get_total
 
-    collection_name = collection_name or await get_or_build_collection(config, settings,env=env)
+    collection_name = collection_name or await get_or_build_collection(config, settings, env=env)
     max_concurrency = settings.evaluation.max_concurrent_questions
     start_cost = get_total()
     started = time.perf_counter()
@@ -158,7 +165,9 @@ async def _get_or_build_results(
             log.warning("retrieval_cache_unreadable", path=str(cache_path))
 
     started = time.perf_counter()
-    retriever = await build_retriever(config, collection_name=collection_name, settings=settings, env=env)
+    retriever = await build_retriever(
+        config, collection_name=collection_name, settings=settings, env=env
+    )
     semaphore = asyncio.Semaphore(max_concurrency)
 
     async def retrieve_one(question: str) -> list[dict]:
@@ -185,24 +194,26 @@ def _retrieval_cache_path(
     questions: list[str],
     collection_name: str,
 ) -> Path:
-    key = get_config_hash({
-        "collection_name": collection_name,
-        "embedding_model": config.embedding_model,
-        "chunk_size": config.chunk_size,
-        "chunk_overlap": config.chunk_overlap,
-        "node_parser": config.node_parser,
-        "retriever": config.retriever,
-        "window_size": config.window_size,
-        "semantic_threshold": config.semantic_threshold,
-        "semantic_buffer_size": config.semantic_buffer_size,
-        "top_k": config.top_k,
-        "hybrid_alpha": config.hybrid_alpha,
-        "fusion_mode": config.fusion_mode,
-        "fusion_num_queries": config.fusion_num_queries,
-        "reranker": config.reranker,
-        "reranker_top_n": config.reranker_top_n,
-        "questions": questions,
-    })
+    key = get_config_hash(
+        {
+            "collection_name": collection_name,
+            "embedding_model": config.embedding_model,
+            "chunk_size": config.chunk_size,
+            "chunk_overlap": config.chunk_overlap,
+            "node_parser": config.node_parser,
+            "retriever": config.retriever,
+            "window_size": config.window_size,
+            "semantic_threshold": config.semantic_threshold,
+            "semantic_buffer_size": config.semantic_buffer_size,
+            "top_k": config.top_k,
+            "hybrid_alpha": config.hybrid_alpha,
+            "fusion_mode": config.fusion_mode,
+            "fusion_num_queries": config.fusion_num_queries,
+            "reranker": config.reranker,
+            "reranker_top_n": config.reranker_top_n,
+            "questions": questions,
+        }
+    )
     return RETRIEVAL_CACHE_PATH / f"{key}.json"
 
 

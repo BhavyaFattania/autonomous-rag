@@ -1,11 +1,20 @@
-from unittest.mock import patch
+from config.settings import (
+    EvalSettings,
+    ExploreExploitSettings,
+    ReflectionSettings,
+    SearchSpaceSettings,
+    Settings,
+)
 from src.orchestrator.validator import validator_node
 from src.scientist.candidates import get_structured_exploration_candidates
 from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt
-from config.settings import Settings, SearchSpaceSettings, EvalSettings, ReflectionSettings, ExploreExploitSettings
 
 
-def _make_test_settings(search_space: dict | None = None, eval_overrides: dict | None = None, reflection_overrides: dict | None = None) -> Settings:
+def _make_test_settings(
+    search_space: dict | None = None,
+    eval_overrides: dict | None = None,
+    reflection_overrides: dict | None = None,
+) -> Settings:
     return Settings(
         evaluation=EvalSettings(
             allow_new_index_builds=True,
@@ -18,14 +27,16 @@ def _make_test_settings(search_space: dict | None = None, eval_overrides: dict |
 
 
 def test_validator_enforces_search_space():
-    settings = _make_test_settings(search_space={
-        "allowed_node_parsers": ["sentence"],
-        "allowed_retrievers": ["dense"],
-        "allowed_chunk_sizes": [512],
-        "allowed_chunk_overlaps": [128],
-        "allowed_generator_models": ["deepseek/deepseek-v4-flash"],
-        "allowed_rerankers": [None],
-    })
+    settings = _make_test_settings(
+        search_space={
+            "allowed_node_parsers": ["sentence"],
+            "allowed_retrievers": ["dense"],
+            "allowed_chunk_sizes": [512],
+            "allowed_chunk_overlaps": [128],
+            "allowed_generator_models": ["deepseek/deepseek-v4-flash"],
+            "allowed_rerankers": [None],
+        }
+    )
 
     # Valid config
     state_valid = {
@@ -80,20 +91,28 @@ def test_validator_enforces_search_space():
 
     res_invalid_parser = validator_node(state_invalid_parser, settings=settings)
     assert res_invalid_parser["status"] == "FAILED_VALIDATION"
-    assert "node_parser='token' is not in developer allowed list" in res_invalid_parser["failure_reason"]
+    assert (
+        "node_parser='token' is not in developer allowed list"
+        in res_invalid_parser["failure_reason"]
+    )
 
     res_invalid_retriever = validator_node(state_invalid_retriever, settings=settings)
     assert res_invalid_retriever["status"] == "FAILED_VALIDATION"
-    assert "retriever='bm25' is not in developer allowed list" in res_invalid_retriever["failure_reason"]
+    assert (
+        "retriever='bm25' is not in developer allowed list"
+        in res_invalid_retriever["failure_reason"]
+    )
 
 
 def test_candidates_filtering():
-    settings = _make_test_settings(search_space={
-        "allowed_node_parsers": ["sentence"],
-        "allowed_retrievers": ["dense"],
-        "allowed_chunk_sizes": [512],
-        "allowed_chunk_overlaps": [128],
-    })
+    settings = _make_test_settings(
+        search_space={
+            "allowed_node_parsers": ["sentence"],
+            "allowed_retrievers": ["dense"],
+            "allowed_chunk_sizes": [512],
+            "allowed_chunk_overlaps": [128],
+        }
+    )
 
     state = {
         "baseline_config": {

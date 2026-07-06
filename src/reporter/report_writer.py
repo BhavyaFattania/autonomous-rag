@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from src.utils.openrouter import call_openrouter
 from src.core.provider import Provider
+from src.utils.openrouter import call_openrouter
 
 
 async def report_writer_node(state, settings, provider: Provider | None = None) -> dict:
@@ -69,20 +69,22 @@ Run data:
 
 
 def _fallback_report(state, error: str) -> str:
-    return "\n".join([
-        "# RAG Optimizer Overnight Run Report",
-        "",
-        f"Report LLM skipped or failed: {error or 'disabled in run_settings.yaml'}",
-        f"Run ID: {state.get('run_id')}",
-        f"Total Cost: ${state.get('total_cost_usd', 0.0):.4f}",
-        f"Experiments Completed:   {state.get('experiments_completed', 0)}",
-        f"Experiments Accepted:    {state.get('experiments_accepted', 0)}",
-        f"Experiments Competitive: {state.get('experiments_competitive', 0)}",
-        f"Experiments Repeated:    {state.get('experiments_repeated', 0)}",
-        "",
-        "## Best Configuration",
-        "```json",
-        json.dumps(state.get("current_best_config", {}), indent=2),
-        "```",
-        f"Best Score: {state.get('current_best_weighted_score', 0.0):.4f}",
-    ])
+    return "\n".join(
+        [
+            "# RAG Optimizer Overnight Run Report",
+            "",
+            f"Report LLM skipped or failed: {error or 'disabled in run_settings.yaml'}",
+            f"Run ID: {state.get('run_id')}",
+            f"Total Cost: ${state.get('total_cost_usd', 0.0):.4f}",
+            f"Experiments Completed:   {state.get('experiments_completed', 0)}",
+            f"Experiments Accepted:    {state.get('experiments_accepted', 0)}",
+            f"Experiments Competitive: {state.get('experiments_competitive', 0)}",
+            f"Experiments Repeated:    {state.get('experiments_repeated', 0)}",
+            "",
+            "## Best Configuration",
+            "```json",
+            json.dumps(state.get("current_best_config", {}), indent=2),
+            "```",
+            f"Best Score: {state.get('current_best_weighted_score', 0.0):.4f}",
+        ]
+    )

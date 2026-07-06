@@ -9,7 +9,6 @@ import json
 import urllib.request
 from pathlib import Path
 
-
 URL = "http://curtis.ml.cmu.edu/datasets/hotpot/hotpot_dev_fullwiki_v1.json"
 QUESTIONS_PATH = Path("data/hotpotqa/questions.jsonl")
 

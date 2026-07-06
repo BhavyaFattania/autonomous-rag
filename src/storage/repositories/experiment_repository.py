@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 
 import aiosqlite
 
@@ -9,7 +8,7 @@ from src.utils.function_trace import trace_call
 
 
 class ExperimentRepository:
-    def __init__(self, db: Optional[aiosqlite.Connection] = None):
+    def __init__(self, db: aiosqlite.Connection | None = None):
         self._db = db
 
     async def insert(self, experiment: Experiment) -> int:
@@ -40,8 +39,8 @@ class ExperimentRepository:
             return cursor.lastrowid
 
     async def find_by_config_hash(
-        self, config_hash: str, exclude_statuses: Optional[tuple[str, ...]] = None
-    ) -> Optional[int]:
+        self, config_hash: str, exclude_statuses: tuple[str, ...] | None = None
+    ) -> int | None:
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
         async with db_or_connect(self._db) as db:
@@ -58,7 +57,7 @@ class ExperimentRepository:
             return row[0] if row else None
 
     async def find_best_historical(
-        self, config_hash: str, exclude_statuses: Optional[tuple[str, ...]] = None
+        self, config_hash: str, exclude_statuses: tuple[str, ...] | None = None
     ) -> HistoricalRecord:
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
@@ -92,9 +91,7 @@ class ExperimentRepository:
             )
 
     @trace_call(log_return=False)
-    async def find_used_hashes(
-        self, exclude_statuses: Optional[tuple[str, ...]] = None
-    ) -> set[str]:
+    async def find_used_hashes(self, exclude_statuses: tuple[str, ...] | None = None) -> set[str]:
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
         async with db_or_connect(self._db) as db:

@@ -1,9 +1,11 @@
 import os
+
 import httpx
-from pydantic import Field
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.schema import NodeWithScore, QueryBundle
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+from pydantic import Field
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
+
 from src.utils.logger import get_logger
 from src.utils.openrouter import build_openrouter_headers
 
@@ -55,7 +57,9 @@ class OpenRouterRerank(BaseNodePostprocessor):
             with httpx.Client(timeout=60.0) as client:
                 response = client.post(url, headers=headers, json=payload)
                 if response.status_code == 429:
-                    raise httpx.HTTPStatusError("Rate limit hit 429", request=response.request, response=response)
+                    raise httpx.HTTPStatusError(
+                        "Rate limit hit 429", request=response.request, response=response
+                    )
                 response.raise_for_status()
                 return response.json()
 
@@ -98,7 +102,9 @@ class OpenRouterRerank(BaseNodePostprocessor):
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(url, headers=headers, json=payload)
                 if response.status_code == 429:
-                    raise httpx.HTTPStatusError("Rate limit hit 429", request=response.request, response=response)
+                    raise httpx.HTTPStatusError(
+                        "Rate limit hit 429", request=response.request, response=response
+                    )
                 response.raise_for_status()
                 return response.json()
 

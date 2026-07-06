@@ -12,8 +12,6 @@ import asyncio
 import chromadb
 from llama_index.core import StorageContext, SummaryIndex, VectorStoreIndex
 from llama_index.core.base.base_retriever import BaseRetriever
-from llama_index.core.storage.docstore import SimpleDocumentStore
-from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.core.retrievers import (
     AutoMergingRetriever,
     QueryFusionRetriever,
@@ -21,14 +19,16 @@ from llama_index.core.retrievers import (
     SummaryIndexEmbeddingRetriever,
 )
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
+from llama_index.core.schema import NodeWithScore, QueryBundle
+from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from src.indexer.collection_names import collection_name as _idx_collection_name, CHROMA_PATH
-from src.indexer.collection_cache import load_bm25_nodes, load_bm25_engine
+from src.indexer.collection_cache import load_bm25_engine, load_bm25_nodes
+from src.indexer.collection_names import CHROMA_PATH
+from src.indexer.collection_names import collection_name as _idx_collection_name
 from src.models.rag_config import RAGConfig
 from src.utils.logger import get_logger
-from src.core.provider import Provider
 
 log = get_logger("retriever")
 
@@ -58,8 +58,7 @@ class WeightedHybridRetriever(BaseRetriever):
         add(bm25_nodes, 1.0 - self.alpha)
         ranked = sorted(fused.values(), key=lambda item: item["score"], reverse=True)
         return [
-            NodeWithScore(node=item["node"], score=item["score"])
-            for item in ranked[: self.top_k]
+            NodeWithScore(node=item["node"], score=item["score"]) for item in ranked[: self.top_k]
         ]
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
@@ -92,7 +91,9 @@ class RerankingRetriever(BaseRetriever):
         return self.reranker.postprocess_nodes(nodes, query_bundle=query_bundle)
 
 
-async def build_retriever(config: RAGConfig, settings, collection_name: str | None = None, env=None):
+async def build_retriever(
+    config: RAGConfig, settings, collection_name: str | None = None, env=None
+):
     collection_name = collection_name or _idx_collection_name(config)
 
     dense_retriever, bm25_retriever, nodes, storage_context = _build_components(
@@ -207,10 +208,7 @@ def _build_components(config: RAGConfig, collection_name: str):
     if getattr(engine, "corpus", None) is None:
         from llama_index.core.vector_stores.utils import node_to_metadata_dict
 
-        engine.corpus = [
-            node_to_metadata_dict(node) | {"node_id": node.node_id}
-            for node in nodes
-        ]
+        engine.corpus = [node_to_metadata_dict(node) | {"node_id": node.node_id} for node in nodes]
     bm25_retriever = BM25Retriever(
         existing_bm25=engine,
         similarity_top_k=config.top_k,
@@ -243,6 +241,7 @@ def _build_query_fusion_llm(config: RAGConfig, env=None):
         return MockLLM()
 
     from llama_index.llms.openai import OpenAI
+
     from src.utils.openrouter import build_openrouter_headers
 
     api_key = (env or {}).get("OPENROUTER_API_KEY")
@@ -271,7 +270,9 @@ def _maybe_apply_reranker(retriever, config: RAGConfig, env=None):
         raise ValueError("OpenRouterRerank dependencies are not installed.")
 
     api_key = (env or {}).get("OPENROUTER_API_KEY")
-    reranker = OpenRouterRerank(model="cohere/rerank-v3.5", top_n=config.reranker_top_n, api_key=api_key)
+    reranker = OpenRouterRerank(
+        model="cohere/rerank-v3.5", top_n=config.reranker_top_n, api_key=api_key
+    )
     log.info(
         "retriever_reranker_enabled_openrouter",
         model="cohere/rerank-v3.5",

@@ -1,24 +1,98 @@
 # src/scientist/candidates.py
 
-import json
 from src.utils.function_trace import trace_call
+
 
 @trace_call
 def get_structured_exploration_candidates(state, settings) -> list[dict]:
     index_configs = _available_index_configs(state, settings)
     variants = [
-        {"retriever": "dense", "top_k": 3, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "dense", "top_k": 5, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "dense", "top_k": 7, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "bm25", "top_k": 5, "hybrid_alpha": 0.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "weighted_hybrid_rrf", "top_k": 5, "hybrid_alpha": 0.7, "reranker": None, "reranker_top_n": None},
-        {"retriever": "weighted_hybrid_rrf", "top_k": 7, "hybrid_alpha": 0.3, "reranker": None, "reranker_top_n": None},
-        {"retriever": "query_fusion_simple", "top_k": 5, "hybrid_alpha": 0.5, "fusion_num_queries": 1, "reranker": None, "reranker_top_n": None},
-        {"retriever": "query_fusion_rrf", "top_k": 5, "hybrid_alpha": 0.7, "fusion_num_queries": 1, "reranker": None, "reranker_top_n": None},
-        {"retriever": "sentence_window_dense", "top_k": 5, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "auto_merging", "top_k": 5, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "recursive", "top_k": 5, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "dense", "top_k": 5, "hybrid_alpha": 1.0, "reranker": "CohereRerank", "reranker_top_n": 5},
+        {
+            "retriever": "dense",
+            "top_k": 3,
+            "hybrid_alpha": 1.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "dense",
+            "top_k": 5,
+            "hybrid_alpha": 1.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "dense",
+            "top_k": 7,
+            "hybrid_alpha": 1.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "bm25",
+            "top_k": 5,
+            "hybrid_alpha": 0.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "weighted_hybrid_rrf",
+            "top_k": 5,
+            "hybrid_alpha": 0.7,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "weighted_hybrid_rrf",
+            "top_k": 7,
+            "hybrid_alpha": 0.3,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "query_fusion_simple",
+            "top_k": 5,
+            "hybrid_alpha": 0.5,
+            "fusion_num_queries": 1,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "query_fusion_rrf",
+            "top_k": 5,
+            "hybrid_alpha": 0.7,
+            "fusion_num_queries": 1,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "sentence_window_dense",
+            "top_k": 5,
+            "hybrid_alpha": 1.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "auto_merging",
+            "top_k": 5,
+            "hybrid_alpha": 1.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "recursive",
+            "top_k": 5,
+            "hybrid_alpha": 1.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "dense",
+            "top_k": 5,
+            "hybrid_alpha": 1.0,
+            "reranker": "CohereRerank",
+            "reranker_top_n": 5,
+        },
     ]
     return _combine_candidates(index_configs, variants, variants_first=True, settings=settings)
 
@@ -37,11 +111,32 @@ def get_reranker_probe_candidates(state, settings) -> list[dict]:
         key=lambda item: 0 if all(item.get(k) == v for k, v in preferred_chunk.items()) else 1,
     )
     variants = [
-        {"retriever": "dense", "top_k": 10, "hybrid_alpha": 1.0, "reranker": "CohereRerank", "reranker_top_n": 10},
-        {"retriever": "weighted_hybrid_rrf", "top_k": 10, "hybrid_alpha": 0.7, "reranker": "CohereRerank", "reranker_top_n": 10},
-        {"retriever": "query_fusion_rrf", "top_k": 10, "hybrid_alpha": 0.7, "fusion_num_queries": 1, "reranker": "CohereRerank", "reranker_top_n": 10},
+        {
+            "retriever": "dense",
+            "top_k": 10,
+            "hybrid_alpha": 1.0,
+            "reranker": "CohereRerank",
+            "reranker_top_n": 10,
+        },
+        {
+            "retriever": "weighted_hybrid_rrf",
+            "top_k": 10,
+            "hybrid_alpha": 0.7,
+            "reranker": "CohereRerank",
+            "reranker_top_n": 10,
+        },
+        {
+            "retriever": "query_fusion_rrf",
+            "top_k": 10,
+            "hybrid_alpha": 0.7,
+            "fusion_num_queries": 1,
+            "reranker": "CohereRerank",
+            "reranker_top_n": 10,
+        },
     ]
-    return _combine_candidates(ordered_index_configs, variants, variants_first=False, settings=settings)
+    return _combine_candidates(
+        ordered_index_configs, variants, variants_first=False, settings=settings
+    )
 
 
 @trace_call
@@ -49,14 +144,47 @@ def get_fallback_candidates(state, settings) -> list[dict]:
     indexed_configs = _available_index_configs(state, settings)
 
     retrieval_variants = [
-        {"retriever": "dense", "top_k": 10, "hybrid_alpha": 1.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "weighted_hybrid_rrf", "top_k": 12, "hybrid_alpha": 0.7, "reranker": None, "reranker_top_n": None},
-        {"retriever": "query_fusion_rrf", "top_k": 10, "hybrid_alpha": 0.7, "fusion_num_queries": 1, "reranker": None, "reranker_top_n": None},
-        {"retriever": "bm25", "top_k": 10, "hybrid_alpha": 0.0, "reranker": None, "reranker_top_n": None},
-        {"retriever": "dense", "top_k": 10, "hybrid_alpha": 1.0, "reranker": "CohereRerank", "reranker_top_n": 10},
+        {
+            "retriever": "dense",
+            "top_k": 10,
+            "hybrid_alpha": 1.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "weighted_hybrid_rrf",
+            "top_k": 12,
+            "hybrid_alpha": 0.7,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "query_fusion_rrf",
+            "top_k": 10,
+            "hybrid_alpha": 0.7,
+            "fusion_num_queries": 1,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "bm25",
+            "top_k": 10,
+            "hybrid_alpha": 0.0,
+            "reranker": None,
+            "reranker_top_n": None,
+        },
+        {
+            "retriever": "dense",
+            "top_k": 10,
+            "hybrid_alpha": 1.0,
+            "reranker": "CohereRerank",
+            "reranker_top_n": 10,
+        },
     ]
 
-    return _combine_candidates(indexed_configs, retrieval_variants, variants_first=False, settings=settings)
+    return _combine_candidates(
+        indexed_configs, retrieval_variants, variants_first=False, settings=settings
+    )
 
 
 @trace_call(log_return=False, label="_combine_candidates")  # return too large, skip it
@@ -91,20 +219,24 @@ def _combine_candidates(index_configs, variants, variants_first, settings) -> li
     if variants_first:
         for variant in variants:
             for index_config in index_configs:
-                candidates.append({
-                    **index_config,
-                    **variant,
-                    "generator_model": generator_model,
-                })
+                candidates.append(
+                    {
+                        **index_config,
+                        **variant,
+                        "generator_model": generator_model,
+                    }
+                )
         return candidates
 
     for index_config in index_configs:
         for variant in variants:
-            candidates.append({
-                **index_config,
-                **variant,
-                "generator_model": generator_model,
-            })
+            candidates.append(
+                {
+                    **index_config,
+                    **variant,
+                    "generator_model": generator_model,
+                }
+            )
     return candidates
 
 
@@ -124,11 +256,20 @@ def _available_index_configs(state, settings) -> list[dict]:
         # Filter available index configs according to search space constraints
         filtered = []
         for iconfig in indexed_configs:
-            if allowed_node_parsers is not None and iconfig.get("node_parser") not in allowed_node_parsers:
+            if (
+                allowed_node_parsers is not None
+                and iconfig.get("node_parser") not in allowed_node_parsers
+            ):
                 continue
-            if allowed_chunk_sizes is not None and iconfig.get("chunk_size") not in allowed_chunk_sizes:
+            if (
+                allowed_chunk_sizes is not None
+                and iconfig.get("chunk_size") not in allowed_chunk_sizes
+            ):
                 continue
-            if allowed_chunk_overlaps is not None and iconfig.get("chunk_overlap") not in allowed_chunk_overlaps:
+            if (
+                allowed_chunk_overlaps is not None
+                and iconfig.get("chunk_overlap") not in allowed_chunk_overlaps
+            ):
                 continue
             filtered.append(iconfig)
         return filtered
@@ -136,15 +277,55 @@ def _available_index_configs(state, settings) -> list[dict]:
     baseline = state.get("baseline_config") or state.get("current_best_config") or {}
     embedding_model = baseline.get("embedding_model", "openai/text-embedding-3-small")
     candidates = [
-        {"embedding_model": embedding_model, "node_parser": "sentence", "chunk_size": 512, "chunk_overlap": 128},
-        {"embedding_model": embedding_model, "node_parser": "sentence", "chunk_size": 1024, "chunk_overlap": 200},
-        {"embedding_model": embedding_model, "node_parser": "token", "chunk_size": 768, "chunk_overlap": 128},
-        {"embedding_model": embedding_model, "node_parser": "sentence_window", "chunk_size": 512, "chunk_overlap": 64, "window_size": 3},
-        {"embedding_model": embedding_model, "node_parser": "hierarchical", "chunk_size": 512, "chunk_overlap": 64},
+        {
+            "embedding_model": embedding_model,
+            "node_parser": "sentence",
+            "chunk_size": 512,
+            "chunk_overlap": 128,
+        },
+        {
+            "embedding_model": embedding_model,
+            "node_parser": "sentence",
+            "chunk_size": 1024,
+            "chunk_overlap": 200,
+        },
+        {
+            "embedding_model": embedding_model,
+            "node_parser": "token",
+            "chunk_size": 768,
+            "chunk_overlap": 128,
+        },
+        {
+            "embedding_model": embedding_model,
+            "node_parser": "sentence_window",
+            "chunk_size": 512,
+            "chunk_overlap": 64,
+            "window_size": 3,
+        },
+        {
+            "embedding_model": embedding_model,
+            "node_parser": "hierarchical",
+            "chunk_size": 512,
+            "chunk_overlap": 64,
+        },
     ]
     semantic_candidates = [
-        {"embedding_model": embedding_model, "node_parser": "semantic", "chunk_size": 768, "chunk_overlap": 128, "semantic_threshold": 95, "semantic_buffer_size": 1},
-        {"embedding_model": embedding_model, "node_parser": "semantic_double", "chunk_size": 768, "chunk_overlap": 128, "semantic_threshold": 90, "semantic_buffer_size": 1},
+        {
+            "embedding_model": embedding_model,
+            "node_parser": "semantic",
+            "chunk_size": 768,
+            "chunk_overlap": 128,
+            "semantic_threshold": 95,
+            "semantic_buffer_size": 1,
+        },
+        {
+            "embedding_model": embedding_model,
+            "node_parser": "semantic_double",
+            "chunk_size": 768,
+            "chunk_overlap": 128,
+            "semantic_threshold": 90,
+            "semantic_buffer_size": 1,
+        },
     ]
     if settings.evaluation.allow_expensive_parser_builds:
         candidates.extend(semantic_candidates)
@@ -174,8 +355,10 @@ def _available_index_configs(state, settings) -> list[dict]:
             continue
         if allowed_chunk_sizes is not None and cand.get("chunk_size") not in allowed_chunk_sizes:
             continue
-        if allowed_chunk_overlaps is not None and cand.get("chunk_overlap") not in allowed_chunk_overlaps:
+        if (
+            allowed_chunk_overlaps is not None
+            and cand.get("chunk_overlap") not in allowed_chunk_overlaps
+        ):
             continue
         filtered.append(cand)
     return filtered
-

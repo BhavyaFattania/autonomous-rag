@@ -1,5 +1,6 @@
-import json
 import hashlib
+import json
+
 
 def get_config_hash(config_dict: dict) -> str:
     """Returns SHA-256 hash of sorted JSON config."""

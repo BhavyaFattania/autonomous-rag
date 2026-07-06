@@ -1,6 +1,6 @@
+from src.core.provider import Provider
 from src.utils.langfuse_compat import observe
 from src.utils.openrouter import call_openrouter
-from src.core.provider import Provider
 
 
 @observe(name="generate_answer")

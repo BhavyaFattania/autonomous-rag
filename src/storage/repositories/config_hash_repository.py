@@ -1,5 +1,4 @@
-from typing import Optional
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 import aiosqlite
 
@@ -7,11 +6,11 @@ from src.storage.repositories._shared import db_or_connect
 
 
 class ConfigHashRepository:
-    def __init__(self, db: Optional[aiosqlite.Connection] = None):
+    def __init__(self, db: aiosqlite.Connection | None = None):
         self._db = db
 
-    async def insert(self, config_hash: str, first_seen: Optional[str] = None):
-        first_seen = first_seen or datetime.now(timezone.utc).isoformat()
+    async def insert(self, config_hash: str, first_seen: str | None = None):
+        first_seen = first_seen or datetime.now(UTC).isoformat()
         async with db_or_connect(self._db) as db:
             await db.execute(
                 """
@@ -38,11 +37,11 @@ class ConfigHashRepository:
             return {row[0] for row in await cursor.fetchall()}
 
     async def delete_stale(
-        self, ttl_days: int = 7, exclude_statuses: Optional[tuple[str, ...]] = None
+        self, ttl_days: int = 7, exclude_statuses: tuple[str, ...] | None = None
     ) -> int:
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=ttl_days)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(days=ttl_days)).isoformat()
         async with db_or_connect(self._db) as db:
             result = await db.execute(
                 f"""

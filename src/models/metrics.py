@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class SingleRunMetrics(BaseModel):
     faithfulness: float = 0.0
     answer_relevancy: float = 0.0
@@ -21,6 +22,7 @@ class SingleRunMetrics(BaseModel):
             + 0.10 * self.context_recall
         )
 
+
 class AggregatedMetrics(BaseModel):
     run_1: SingleRunMetrics
     run_2: SingleRunMetrics | None = None
@@ -35,11 +37,12 @@ class AggregatedMetrics(BaseModel):
     median_ndcg_at_k: float = 0.0
     median_mrr: float = 0.0
     median_weighted_score: float
-    std_dev_weighted_score: float   # Standard deviation across 3 runs (not variance)
+    std_dev_weighted_score: float  # Standard deviation across 3 runs (not variance)
 
     @classmethod
     def from_runs(cls, runs: list[SingleRunMetrics]) -> "AggregatedMetrics":
         import statistics
+
         assert len(runs) >= 1, "At least 1 run required"
 
         def _median(key):

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+
 from src.utils.function_trace import trace_call
 
 log = None
@@ -14,7 +15,7 @@ def build_scientist_prompt(
     history_summary: str = "",
     settings,
 ) -> str:
-    
+
     system_prompt = Path("prompts/scientist_v1.txt").read_text()
 
     search_space = settings.search_space
@@ -25,15 +26,25 @@ def build_scientist_prompt(
     indexed_configs_text = "Any valid chunk_size/chunk_overlap pair."
     if not settings.evaluation.allow_new_index_builds:
         from src.indexer.collection_manager import list_available_index_configs
+
         indexed_configs = list_available_index_configs()
 
         filtered_configs = []
         for iconfig in indexed_configs:
-            if allowed_node_parsers is not None and iconfig.get("node_parser") not in allowed_node_parsers:
+            if (
+                allowed_node_parsers is not None
+                and iconfig.get("node_parser") not in allowed_node_parsers
+            ):
                 continue
-            if allowed_chunk_sizes is not None and iconfig.get("chunk_size") not in allowed_chunk_sizes:
+            if (
+                allowed_chunk_sizes is not None
+                and iconfig.get("chunk_size") not in allowed_chunk_sizes
+            ):
                 continue
-            if allowed_chunk_overlaps is not None and iconfig.get("chunk_overlap") not in allowed_chunk_overlaps:
+            if (
+                allowed_chunk_overlaps is not None
+                and iconfig.get("chunk_overlap") not in allowed_chunk_overlaps
+            ):
                 continue
             filtered_configs.append(iconfig)
         indexed_configs = filtered_configs
@@ -71,7 +82,11 @@ def build_scientist_prompt(
 
     constraints_text = ""
     if constraints_lines:
-        constraints_text = "\nCRITICAL DEVELOPER CONSTRAINTS (You must strictly follow these rules):\n" + "\n".join(constraints_lines) + "\n"
+        constraints_text = (
+            "\nCRITICAL DEVELOPER CONSTRAINTS (You must strictly follow these rules):\n"
+            + "\n".join(constraints_lines)
+            + "\n"
+        )
 
     user_message = f"""
 System instructions:

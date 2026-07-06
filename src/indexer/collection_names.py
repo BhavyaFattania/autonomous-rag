@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Any
 
 import chromadb
+
 from src.indexer.parser_registry import parser_slug
 from src.models.rag_config import RAGConfig
 

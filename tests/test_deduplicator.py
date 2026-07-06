@@ -1,11 +1,12 @@
-from src.utils.config_helpers import logical_config as _logical_config
+import os
+from pathlib import Path
+
+import aiosqlite
+import pytest
 from src.scientist.proposal import select_unused_candidate as _select_unused_candidate
 from src.storage.database import Database
+from src.utils.config_helpers import logical_config as _logical_config
 from src.utils.hashing import get_config_hash
-import aiosqlite
-import os
-import pytest
-from pathlib import Path
 
 
 @pytest.fixture

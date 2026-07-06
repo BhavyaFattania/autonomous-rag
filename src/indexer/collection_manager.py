@@ -1,20 +1,24 @@
-from pathlib import Path
-
+from src.core.provider import Provider
+from src.indexer.collection_cache import (
+    bm25_node_count,
+    cache_is_complete,
+    expensive_parser_builds_allowed,
+    new_index_builds_allowed,
+)
+from src.indexer.collection_names import (
+    bm25_cache_path,
+    bm25_engine_path,
+)
 from src.indexer.collection_names import (
     collection_name as _collection_name,
-    bm25_cache_path, bm25_engine_path,
+)
+from src.indexer.collection_names import (
     get_chroma_client as _get_chroma_client,
 )
-from src.indexer.collection_cache import (
-    cache_is_complete, bm25_node_count,
-    new_index_builds_allowed, expensive_parser_builds_allowed,
-    effective_corpus_limit,
-)
-from src.indexer.index_builder import build_collection, build_bm25_cache_only
+from src.indexer.index_builder import build_bm25_cache_only, build_collection
 from src.models.rag_config import RAGConfig
-from src.utils.logger import get_logger
 from src.utils.function_trace import trace_call
-from src.core.provider import Provider
+from src.utils.logger import get_logger
 
 log = get_logger("indexer")
 
@@ -30,15 +34,17 @@ def list_available_index_configs() -> list[dict]:
         config_dict = _config_from_collection_stem(stem, prefix)
         if config_dict is None:
             continue
-        if collection_is_cached(RAGConfig(
-            top_k=5,
-            hybrid_alpha=0.5,
-            retriever="weighted_hybrid_rrf",
-            reranker=None,
-            reranker_top_n=None,
-            generator_model="deepseek/deepseek-v4-flash",
-            **config_dict,
-        )):
+        if collection_is_cached(
+            RAGConfig(
+                top_k=5,
+                hybrid_alpha=0.5,
+                retriever="weighted_hybrid_rrf",
+                reranker=None,
+                reranker_top_n=None,
+                generator_model="deepseek/deepseek-v4-flash",
+                **config_dict,
+            )
+        ):
             configs.append(config_dict)
     return sorted(
         configs,
@@ -102,8 +108,7 @@ async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
         existing = chroma_client.get_collection(name)
         count = existing.count()
         if count > 0 and cache_is_complete(name, count):
-            log.info("collection_cache_hit", collection=name,
-                     vectors=count, bm25_cached=True)
+            log.info("collection_cache_hit", collection=name, vectors=count, bm25_cached=True)
             return name
         if count > 0 and (not bm25_cache.exists() or not engine_cache.exists()):
             if not new_index_builds_allowed(settings):
@@ -120,7 +125,9 @@ async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
             expected = bm25_node_count(name)
             log.warning(
                 "collection_cache_incomplete",
-                collection=name, vectors=count, expected_nodes=expected,
+                collection=name,
+                vectors=count,
+                expected_nodes=expected,
             )
         if not new_index_builds_allowed(settings):
             raise RuntimeError(
@@ -135,10 +142,11 @@ async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
         pass
 
     if not new_index_builds_allowed(settings):
-        raise RuntimeError(
-            f"Collection {name} is not cached and allow_new_index_builds=false"
-        )
-    if config.node_parser in {"semantic", "semantic_double"} and not expensive_parser_builds_allowed(settings):
+        raise RuntimeError(f"Collection {name} is not cached and allow_new_index_builds=false")
+    if config.node_parser in {
+        "semantic",
+        "semantic_double",
+    } and not expensive_parser_builds_allowed(settings):
         raise RuntimeError(
             f"Collection {name} requires expensive parser '{config.node_parser}' "
             "and is not cached. Prebuild it or set allow_expensive_parser_builds=true."
@@ -155,6 +163,7 @@ async def indexer_node(state, settings, env=None, provider: Provider | None = No
         collection_name = await get_or_build_collection(config, settings, env)
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         log.error("indexer_failed", error=str(e))
         return {"status": "FAILED_API_ERROR", "failure_reason": f"Indexer failed: {e}"}

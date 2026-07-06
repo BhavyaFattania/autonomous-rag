@@ -5,8 +5,9 @@ WAL mode is MANDATORY for safe async access.
 Refactored for DI: Database implements IDatabase protocol.
 """
 
-import aiosqlite
 from contextlib import asynccontextmanager
+
+import aiosqlite
 
 DEFAULT_DB_PATH = "experiments.sqlite"
 

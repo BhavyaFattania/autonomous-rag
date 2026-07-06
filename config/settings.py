@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class RunSettings(BaseModel):
@@ -12,7 +11,7 @@ class RunSettings(BaseModel):
 
 
 class EvalSettings(BaseModel):
-    baseline_score_override: Optional[float] = None
+    baseline_score_override: float | None = None
     n_eval_runs: int = 1
     n_questions: int = 10
     full_eval_n_questions: int = 50
@@ -68,12 +67,12 @@ class ReportSettings(BaseModel):
 
 
 class SearchSpaceSettings(BaseModel):
-    allowed_node_parsers: Optional[list[str]] = None
-    allowed_retrievers: Optional[list[str]] = None
-    allowed_chunk_sizes: Optional[list[int]] = None
-    allowed_chunk_overlaps: Optional[list[int]] = None
-    allowed_generator_models: Optional[list[str]] = None
-    allowed_rerankers: Optional[list[Optional[str]]] = None
+    allowed_node_parsers: list[str] | None = None
+    allowed_retrievers: list[str] | None = None
+    allowed_chunk_sizes: list[int] | None = None
+    allowed_chunk_overlaps: list[int] | None = None
+    allowed_generator_models: list[str] | None = None
+    allowed_rerankers: list[str | None] | None = None
 
 
 class Settings(BaseModel):

@@ -4,13 +4,19 @@
 from unittest.mock import patch
 
 import chromadb  # noqa: F401
-
-from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt, _truncate_history
+from config.settings import (
+    EvalSettings,
+    ExploreExploitSettings,
+    ReflectionSettings,
+    SearchSpaceSettings,
+    Settings,
+)
+from src.scientist.prompt_builder import _truncate_history
+from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt
 from src.scientist.reflection import _truncate_to_sentence
-from config.settings import Settings, SearchSpaceSettings, EvalSettings, ReflectionSettings, ExploreExploitSettings
-
 
 # ─── _build_scientist_prompt ─────────────────────────────────────────────────
+
 
 def _make_settings(overrides: dict | None = None) -> Settings:
     """Build a Settings object for test use."""
@@ -19,7 +25,9 @@ def _make_settings(overrides: dict | None = None) -> Settings:
     return Settings(
         evaluation=EvalSettings(**overrides.get("evaluation", {})),
         reflection=ReflectionSettings(**overrides.get("reflection", {"max_history_tokens": 500})),
-        explore_exploit=ExploreExploitSettings(**overrides.get("explore_exploit", {"exploit_probability": 0.5})),
+        explore_exploit=ExploreExploitSettings(
+            **overrides.get("explore_exploit", {"exploit_probability": 0.5})
+        ),
         search_space=SearchSpaceSettings(**search_space_raw),
     )
 
@@ -72,24 +80,30 @@ def test_prompt_no_constraints_when_search_space_empty():
 
 
 def test_prompt_injects_node_parser_constraint():
-    prompt = _make_prompt(settings_override={
-        "search_space": {"allowed_node_parsers": ["sentence", "token"]},
-    })
+    prompt = _make_prompt(
+        settings_override={
+            "search_space": {"allowed_node_parsers": ["sentence", "token"]},
+        }
+    )
     assert "CRITICAL DEVELOPER CONSTRAINTS" in prompt
     assert "node_parser: must be one of ['sentence', 'token']" in prompt
 
 
 def test_prompt_injects_retriever_constraint():
-    prompt = _make_prompt(settings_override={
-        "search_space": {"allowed_retrievers": ["dense"]},
-    })
+    prompt = _make_prompt(
+        settings_override={
+            "search_space": {"allowed_retrievers": ["dense"]},
+        }
+    )
     assert "retriever: must be one of ['dense']" in prompt
 
 
 def test_prompt_injects_chunk_size_constraint():
-    prompt = _make_prompt(settings_override={
-        "search_space": {"allowed_chunk_sizes": [512, 1024]},
-    })
+    prompt = _make_prompt(
+        settings_override={
+            "search_space": {"allowed_chunk_sizes": [512, 1024]},
+        }
+    )
     assert "chunk_size: must be one of [512, 1024]" in prompt
 
 
@@ -116,6 +130,7 @@ def test_prompt_ends_with_json_instruction():
 
 
 # ─── _truncate_history ────────────────────────────────────────────────────────
+
 
 def test_truncate_history_empty():
     assert _truncate_history([], max_chars=100) == ""
@@ -144,6 +159,7 @@ def test_truncate_history_single_line():
 
 
 # ─── _truncate_to_sentence (reflection) ──────────────────────────────────────
+
 
 def test_truncate_to_sentence_no_truncation_needed():
     text = "Short text."

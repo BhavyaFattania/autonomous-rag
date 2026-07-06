@@ -1,15 +1,17 @@
 import asyncio
 import json
+
 from config.loader import load_baseline_config
+from dotenv import load_dotenv
+from src.data.question_loader import load_eval_question_items
+from src.evaluator.ragas_runner import run_single_eval
+from src.models.metrics import AggregatedMetrics
 from src.models.rag_config import RAGConfig
 from src.rag_pipeline.pipeline import run_pipeline
-from src.evaluator.ragas_runner import run_single_eval
-from src.data.question_loader import load_eval_question_items
-from src.storage.cost_tracker import initialize, get_total
-from src.models.metrics import AggregatedMetrics
-from dotenv import load_dotenv
+from src.storage.cost_tracker import get_total, initialize
 
 load_dotenv()
+
 
 async def main():
     initialize(hard_ceiling=10.0, warning_threshold=7.0)
@@ -35,6 +37,7 @@ async def main():
 
     print(f"Final baseline median score: {agg.median_weighted_score}")
     print(f"Total API cost: ${get_total()}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

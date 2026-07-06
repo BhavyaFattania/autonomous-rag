@@ -1,36 +1,36 @@
 import pickle
 from pathlib import Path
 
-from llama_index.core import VectorStoreIndex, StorageContext
-from llama_index.vector_stores.chroma import ChromaVectorStore
 import chromadb
+from llama_index.core import StorageContext, VectorStoreIndex
+from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from src.indexer.parser_registry import build_node_parser
 from src.indexer.collection_cache import (
     build_embed_model,
     effective_corpus_limit,
     load_corpus_as_documents,
 )
 from src.indexer.collection_names import bm25_cache_path, bm25_engine_path
+from src.indexer.parser_registry import build_node_parser
 from src.models.rag_config import RAGConfig
 from src.utils.logger import get_logger
 
 log = get_logger("indexer")
 
 EMBEDDING_DIMS = {
-    "qwen/qwen3-embedding-8b":       4096,
-    "qwen/qwen3-embedding-4b":       2560,
+    "qwen/qwen3-embedding-8b": 4096,
+    "qwen/qwen3-embedding-4b": 2560,
     "openai/text-embedding-3-small": 1536,
-    "baai/bge-m3":                   1024,
+    "baai/bge-m3": 1024,
 }
 
 CORPUS_PATH = Path("data/corpus/hotpotqa_paragraphs.jsonl")
 
 
 def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings, env=None):
-    assert CORPUS_PATH.exists(), (
-        f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
-    )
+    assert (
+        CORPUS_PATH.exists()
+    ), f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
     embed_model = build_embed_model(config, env)
     splitter = build_node_parser(config, embed_model=embed_model)
     docs = load_corpus_as_documents(CORPUS_PATH, limit=effective_corpus_limit(config, settings))
@@ -42,6 +42,7 @@ def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings, env
         pickle.dump(nodes, f)
 
     from llama_index.retrievers.bm25 import BM25Retriever
+
     bm25_retriever = BM25Retriever.from_defaults(nodes=nodes)
     bm25_retriever.bm25.corpus = bm25_retriever.corpus
     with open(engine_path, "wb") as f:
@@ -50,10 +51,16 @@ def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings, env
     log.info("bm25_state_cached", nodes=len(nodes), engine_path=str(engine_path))
 
 
-async def build_collection(config: RAGConfig, collection_name: str, chroma_client: chromadb.PersistentClient, settings, env=None):
-    assert CORPUS_PATH.exists(), (
-        f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
-    )
+async def build_collection(
+    config: RAGConfig,
+    collection_name: str,
+    chroma_client: chromadb.PersistentClient,
+    settings,
+    env=None,
+):
+    assert (
+        CORPUS_PATH.exists()
+    ), f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
 
     if config.embedding_model not in EMBEDDING_DIMS:
         raise ValueError(f"Unknown embedding model: {config.embedding_model}")
@@ -83,6 +90,7 @@ async def build_collection(config: RAGConfig, collection_name: str, chroma_clien
         pickle.dump(nodes, f)
 
     from llama_index.retrievers.bm25 import BM25Retriever
+
     bm25_retriever = BM25Retriever.from_defaults(nodes=nodes)
     bm25_retriever.bm25.corpus = bm25_retriever.corpus
     with open(engine_path, "wb") as f:

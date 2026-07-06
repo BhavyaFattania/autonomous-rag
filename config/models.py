@@ -1,15 +1,14 @@
 from pydantic import BaseModel
-from typing import Optional
 
 
 class ModelConfig(BaseModel):
     model_id: str
-    reasoning_effort: Optional[str] = None
+    reasoning_effort: str | None = None
     max_tokens: int = 4096
-    temperature: Optional[float] = None
-    top_p: Optional[float] = None
-    response_format: Optional[str] = None
-    exclude_reasoning: Optional[bool] = None
+    temperature: float | None = None
+    top_p: float | None = None
+    response_format: str | None = None
+    exclude_reasoning: bool | None = None
 
 
 class ModelRouting(BaseModel):

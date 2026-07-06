@@ -1,21 +1,17 @@
 """Tests demonstrating dependency injection with mock providers."""
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from src.core.provider import Provider
+import pytest
 from src.core.interfaces import (
     ICostTracker,
     ILLMClient,
-    IDatabase,
-    IChromaClientFactory,
-    IRagasFactory,
-    IModelRoutingProvider,
 )
-
+from src.core.provider import Provider
 
 # ── Mock Implementations ───────────────────────────────────────────────────────
+
 
 class MockCostTracker:
     def __init__(self):
@@ -55,6 +51,7 @@ class MockChromaFactory:
 
     def path(self):
         from pathlib import Path
+
         return Path("/tmp/mock_chroma")
 
 
@@ -85,6 +82,7 @@ class MockModelRoutingProvider:
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
+
 
 class TestProvider:
     def test_provider_wires_all_deps(self):
@@ -145,18 +143,20 @@ class TestProvider:
         from src.scientist.brain import scientist_node
 
         mock_llm = MockLLMClient()
-        valid_json = json.dumps({
-            "embedding_model": "openai/text-embedding-3-small",
-            "chunk_size": 512,
-            "chunk_overlap": 128,
-            "node_parser": "sentence",
-            "retriever": "dense",
-            "top_k": 5,
-            "hybrid_alpha": 1.0,
-            "reranker": None,
-            "generator_model": "deepseek/deepseek-v4-flash",
-            "hypothesis": "Smaller chunks improve recall",
-        })
+        valid_json = json.dumps(
+            {
+                "embedding_model": "openai/text-embedding-3-small",
+                "chunk_size": 512,
+                "chunk_overlap": 128,
+                "node_parser": "sentence",
+                "retriever": "dense",
+                "top_k": 5,
+                "hybrid_alpha": 1.0,
+                "reranker": None,
+                "generator_model": "deepseek/deepseek-v4-flash",
+                "hypothesis": "Smaller chunks improve recall",
+            }
+        )
         mock_llm.call.return_value = valid_json
 
         provider = Provider(

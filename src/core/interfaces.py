@@ -5,22 +5,23 @@ Enables DI: module → interface → implementation.
 
 from __future__ import annotations
 
-import asyncio
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
-
 # ─── Cost Tracking ────────────────────────────────────────────────────────────
+
 
 @runtime_checkable
 class ICostTracker(Protocol):
-    def initialize(self, hard_ceiling: float, warning_threshold: float, start_cost: float = 0.0) -> None: ...
+    def initialize(
+        self, hard_ceiling: float, warning_threshold: float, start_cost: float = 0.0
+    ) -> None: ...
     def add_cost(self, usd: float) -> float: ...
     def get_total(self) -> float: ...
 
 
 # ─── LLM Client ───────────────────────────────────────────────────────────────
+
 
 @runtime_checkable
 class ILLMClient(Protocol):
@@ -39,6 +40,7 @@ class ILLMClient(Protocol):
 
 # ─── Embedding Service ────────────────────────────────────────────────────────
 
+
 @runtime_checkable
 class IEmbeddingService(Protocol):
     async def embed_texts(self, texts: list[str]) -> list[list[float]]: ...
@@ -48,14 +50,17 @@ class IEmbeddingService(Protocol):
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 
+
 @runtime_checkable
 class IDatabase(Protocol):
     path: str
+
     async def init(self) -> None: ...
     def connect(self) -> Any: ...
 
 
 # ─── Chroma Client Factory ────────────────────────────────────────────────────
+
 
 @runtime_checkable
 class IChromaClientFactory(Protocol):
@@ -65,6 +70,7 @@ class IChromaClientFactory(Protocol):
 
 # ─── RAGAS Factory ─────────────────────────────────────────────────────────────
 
+
 @runtime_checkable
 class IRagasFactory(Protocol):
     def build_llm(self, model_routing: Any, env: dict | None = None) -> Any: ...
@@ -73,6 +79,7 @@ class IRagasFactory(Protocol):
 
 
 # ─── Model Routing Provider ───────────────────────────────────────────────────
+
 
 class IModelRoutingProvider(Protocol):
     def get_model_id(self, role: str) -> str: ...

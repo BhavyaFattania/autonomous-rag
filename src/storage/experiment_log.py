@@ -1,14 +1,12 @@
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-import aiosqlite
-
+from src.storage.cost_tracker import get_total
 from src.storage.database import Database
 from src.storage.models import Experiment
-from src.storage.repositories.experiment_repository import ExperimentRepository
 from src.storage.repositories.config_hash_repository import ConfigHashRepository
-from src.storage.cost_tracker import get_total
+from src.storage.repositories.experiment_repository import ExperimentRepository
 from src.utils.config_helpers import logical_config
 from src.utils.hashing import get_config_hash
 
@@ -33,6 +31,7 @@ def _config_summary(config: dict) -> str:
         f"reranker={reranker}"
     )
 
+
 async def recorder_node(state) -> dict:
     experiment_uuid = state.get("experiment_uuid") or str(uuid.uuid4())
     config_source = state.get("validated_config") or state.get("proposed_config", {})
@@ -49,8 +48,8 @@ async def recorder_node(state) -> dict:
     baseline_score = state.get("current_best_weighted_score", 0.0)
     cost = state.get("experiment_cost_usd", 0.0)
 
-    started_at = state.get("experiment_started_at", datetime.now(timezone.utc).isoformat())
-    finished_at = datetime.now(timezone.utc).isoformat()
+    started_at = state.get("experiment_started_at", datetime.now(UTC).isoformat())
+    finished_at = datetime.now(UTC).isoformat()
 
     experiment = Experiment(
         experiment_uuid=experiment_uuid,

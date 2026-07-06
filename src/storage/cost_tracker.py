@@ -7,6 +7,7 @@ CostTracker instance. Functions delegate to it for backward compat.
 """
 
 import threading
+
 from src.utils.logger import get_logger
 
 log = get_logger("cost_tracker")

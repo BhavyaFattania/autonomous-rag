@@ -12,6 +12,7 @@ Two public APIs:
 """
 
 from __future__ import annotations
+
 from src.utils.logger import get_logger
 
 log = get_logger("conversation_summary")
@@ -82,9 +83,7 @@ async def sliding_window_compress(
     recent = entries[-recent_k:]
 
     prior_block = (
-        f"Prior summary (already compressed):\n{existing_summary}\n\n"
-        if existing_summary
-        else ""
+        f"Prior summary (already compressed):\n{existing_summary}\n\n" if existing_summary else ""
     )
     entries_text = "\n".join(older)
     prompt = _SUMMARY_PROMPT_TEMPLATE.format(
@@ -147,13 +146,9 @@ async def sliding_window_compress_messages(
     older = messages[:-recent_k]
     recent = messages[-recent_k:]
 
-    older_text = "\n".join(
-        f"[{m.get('role', '?')}]: {m.get('content', '')}" for m in older
-    )
+    older_text = "\n".join(f"[{m.get('role', '?')}]: {m.get('content', '')}" for m in older)
     prior_block = (
-        f"Prior summary (already compressed):\n{existing_summary}\n\n"
-        if existing_summary
-        else ""
+        f"Prior summary (already compressed):\n{existing_summary}\n\n" if existing_summary else ""
     )
     prompt = _SUMMARY_PROMPT_TEMPLATE.format(
         prior_block=prior_block,

@@ -4,11 +4,10 @@ Refactored for DI: accepts explicit api_key and api_base.
 """
 
 import os
-from typing import List
 
 import nest_asyncio
-from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.bridge.pydantic import Field
+from llama_index.core.embeddings import BaseEmbedding
 from openai import AsyncOpenAI
 
 nest_asyncio.apply()
@@ -16,11 +15,13 @@ nest_asyncio.apply()
 
 class OpenRouterEmbedding(BaseEmbedding):
     model_name: str = Field(description="OpenRouter model ID")
-    api_key: str    = Field(description="OpenRouter API key")
-    api_base: str   = Field(default="https://openrouter.ai/api/v1")
+    api_key: str = Field(description="OpenRouter API key")
+    api_base: str = Field(default="https://openrouter.ai/api/v1")
     embed_batch_size: int = Field(default=1024)
 
-    def __init__(self, model_name: str, api_key: str | None = None, api_base: str | None = None, **kwargs):
+    def __init__(
+        self, model_name: str, api_key: str | None = None, api_base: str | None = None, **kwargs
+    ):
         api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
         api_base = api_base or "https://openrouter.ai/api/v1"
         super().__init__(
@@ -36,14 +37,15 @@ class OpenRouterEmbedding(BaseEmbedding):
             base_url=self.api_base,
         )
 
-    async def _aget_query_embedding(self, query: str) -> List[float]:
+    async def _aget_query_embedding(self, query: str) -> list[float]:
         return (await self._embed_async([query]))[0]
 
-    async def _aget_text_embedding(self, text: str) -> List[float]:
+    async def _aget_text_embedding(self, text: str) -> list[float]:
         return (await self._embed_async([text]))[0]
 
-    async def _aget_text_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def _aget_text_embeddings(self, texts: list[str]) -> list[list[float]]:
         import asyncio
+
         batches = [
             texts[i : i + self.embed_batch_size]
             for i in range(0, len(texts), self.embed_batch_size)
@@ -51,7 +53,7 @@ class OpenRouterEmbedding(BaseEmbedding):
         results_nested = await asyncio.gather(*[self._embed_async(b) for b in batches])
         return [emb for batch_result in results_nested for emb in batch_result]
 
-    async def _embed_async(self, texts: List[str]) -> List[List[float]]:
+    async def _embed_async(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
         client = self._client()
@@ -70,14 +72,15 @@ class OpenRouterEmbedding(BaseEmbedding):
                     f"even for a single text. Check model availability on OpenRouter."
                 )
             mid = len(texts) // 2
-            left  = await self._embed_async(texts[:mid])
+            left = await self._embed_async(texts[:mid])
             right = await self._embed_async(texts[mid:])
             return left + right
 
         return [item.embedding for item in sorted(response.data, key=lambda x: x.index)]
 
-    def _get_query_embedding(self, query: str) -> List[float]:
+    def _get_query_embedding(self, query: str) -> list[float]:
         import asyncio
+
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
@@ -85,8 +88,9 @@ class OpenRouterEmbedding(BaseEmbedding):
             asyncio.set_event_loop(loop)
         return loop.run_until_complete(self._embed_async([query]))[0]
 
-    def _get_text_embedding(self, text: str) -> List[float]:
+    def _get_text_embedding(self, text: str) -> list[float]:
         import asyncio
+
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
@@ -94,8 +98,9 @@ class OpenRouterEmbedding(BaseEmbedding):
             asyncio.set_event_loop(loop)
         return loop.run_until_complete(self._embed_async([text]))[0]
 
-    def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def _get_text_embeddings(self, texts: list[str]) -> list[list[float]]:
         import asyncio
+
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:

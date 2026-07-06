@@ -8,10 +8,12 @@ Module-level call_openrouter() delegates to a default instance for backward comp
 from __future__ import annotations
 
 import os
-import asyncio
+
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from src.storage.cost_tracker import add_cost, BudgetExceededError
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+from src.storage.cost_tracker import add_cost
+from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
 
 log = get_logger("openrouter")
@@ -21,20 +23,22 @@ RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
 NON_RETRYABLE_STATUS_CODES = {400, 401, 403, 422}
 
 MODEL_PRICING = {
-    "deepseek/deepseek-v4-pro":         (0.435, 0.870),
-    "deepseek/deepseek-v4-flash":       (0.140, 0.280),
-    "deepseek/deepseek-v4-flash:free":  (0.000, 0.000),
-    "qwen/qwen3-30b-a3b":              (0.100, 0.300),
-    "qwen/qwen3.5-flash-02-23":        (0.065, 0.260),
-    "openai/gpt-oss-20b":              (0.050, 0.200),
+    "deepseek/deepseek-v4-pro": (0.435, 0.870),
+    "deepseek/deepseek-v4-flash": (0.140, 0.280),
+    "deepseek/deepseek-v4-flash:free": (0.000, 0.000),
+    "qwen/qwen3-30b-a3b": (0.100, 0.300),
+    "qwen/qwen3.5-flash-02-23": (0.065, 0.260),
+    "openai/gpt-oss-20b": (0.050, 0.200),
 }
 
 
 class OpenRouterError(Exception):
     pass
 
+
 class OpenRouterRateLimitError(OpenRouterError):
     pass
+
 
 class OpenRouterNonRetryableError(OpenRouterError):
     pass
@@ -55,10 +59,7 @@ class OpenRouterClient:
 
     def compute_cost(self, model_id: str, prompt_tokens: int, completion_tokens: int) -> float:
         price_in, price_out = MODEL_PRICING.get(model_id, (0.0, 0.0))
-        return (
-            (prompt_tokens / 1_000_000) * price_in
-            + (completion_tokens / 1_000_000) * price_out
-        )
+        return (prompt_tokens / 1_000_000) * price_in + (completion_tokens / 1_000_000) * price_out
 
     @retry(
         retry=retry_if_exception_type(OpenRouterError),
@@ -107,7 +108,7 @@ class OpenRouterClient:
             message = choice["message"]
             content = message["content"]
         except (KeyError, IndexError) as e:
-            raise OpenRouterError(f"Unexpected response shape: {e}")
+            raise OpenRouterError(f"Unexpected response shape: {e}") from e
         finish_reason = choice.get("finish_reason")
         reasoning_text = _extract_reasoning_text(message)
 
@@ -170,7 +171,9 @@ class OpenRouterClient:
             if fallback_model_id:
                 log.warning("rate_limit_fallback", primary=model_id, fallback=fallback_model_id)
                 return await self._call_once(
-                    fallback_model_id, messages, max_tokens,
+                    fallback_model_id,
+                    messages,
+                    max_tokens,
                     reasoning_effort=None,
                     temperature=temperature,
                     task=f"{task}_fallback",
@@ -235,8 +238,6 @@ def _extract_reasoning_text(message: dict) -> str:
                 break
     return "\n".join(parts)
 
-
-from src.utils.langfuse_compat import observe
 
 @observe(name="call_openrouter")
 async def call_openrouter(

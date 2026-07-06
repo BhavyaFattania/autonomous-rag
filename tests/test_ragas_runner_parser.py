@@ -1,12 +1,12 @@
 from langchain_core.prompt_values import StringPromptValue
 from pydantic import BaseModel
-
 from ragas.prompt.pydantic_prompt import RagasOutputParser
-
 from src.evaluator.ragas_setup import (
-    build_ragas_metrics as _build_ragas_metrics,
     _build_openrouter_extra_body,
     _build_openrouter_model_kwargs,
+)
+from src.evaluator.ragas_setup import (
+    build_ragas_metrics as _build_ragas_metrics,
 )
 from src.utils.json_repair import (
     install_ragas_output_parser_compat_patch as _install_ragas_output_parser_compat_patch,
@@ -35,7 +35,7 @@ async def test_ragas_parser_unwraps_text_wrapped_json():
     result = await parser.parse_output_string(
         output_string='{"text": "{\\"reason\\": \\"not useful\\", \\"verdict\\": 0}"}',
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,       # type: ignore
+        llm=None,  # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -48,11 +48,9 @@ async def test_ragas_parser_wraps_bare_recall_classification_list():
     parser = RagasOutputParser(pydantic_object=ContextRecallClassifications)
 
     result = await parser.parse_output_string(
-        output_string=(
-            '[{"statement": "A", "reason": "supported", "attributed": 1}]'
-        ),
+        output_string=('[{"statement": "A", "reason": "supported", "attributed": 1}]'),
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,       # type: ignore
+        llm=None,  # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -73,7 +71,7 @@ async def test_ragas_parser_uses_conservative_fallback_for_malformed_verdict():
     result = await parser.parse_output_string(
         output_string='reason: not useful verdict: "0"',
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,       # type: ignore
+        llm=None,  # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -88,7 +86,7 @@ async def test_ragas_parser_repairs_bang_corrupted_verdict_json():
     result = await parser.parse_output_string(
         output_string='!{! "reason": "supported!", "verdict": !!1! }',
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,       # type: ignore
+        llm=None,  # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -106,7 +104,7 @@ async def test_ragas_parser_repairs_bang_corrupted_recall_keys():
             '"reason!": "supported", "attributed!!!": !1! }!]}'
         ),
         prompt_value=StringPromptValue(text="Output: "),
-        llm=None,       # type: ignore
+        llm=None,  # type: ignore
         callbacks=[],
         retries_left=0,
     )
@@ -116,6 +114,7 @@ async def test_ragas_parser_repairs_bang_corrupted_recall_keys():
 
 def test_ragas_judge_openrouter_kwargs_force_json_without_reasoning():
     from config.models import ModelConfig
+
     judge_config = ModelConfig(
         model_id="openrouter/test-model",
         response_format="json_object",

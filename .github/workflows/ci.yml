@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev
+
+      - name: Ruff (lint)
+        run: poetry run ruff check .
+
+      - name: Black (format check)
+        run: poetry run black --check .
+
+      - name: Mypy (type check)
+        # Non-blocking for now: 27 pre-existing errors need triage before this can hard-gate.
+        continue-on-error: true
+        run: poetry run mypy src
+
+      - name: Pytest
+        run: poetry run pytest

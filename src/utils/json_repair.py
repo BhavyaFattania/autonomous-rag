@@ -9,6 +9,7 @@ from langchain_core.prompt_values import StringPromptValue
 from ragas.llms import LangchainLLMWrapper
 from ragas.prompt.pydantic_prompt import RagasOutputParser
 from ragas.prompt.utils import extract_json
+
 from src.utils.logger import get_logger
 
 log = get_logger("json_repair")
@@ -80,9 +81,7 @@ def _json_repair_candidates(jsonstr: str) -> list[str]:
     cleaned = _strip_json_bang_artifacts(jsonstr)
     cleaned_unwrapped = _unwrap_text_wrapped_json(cleaned)
     unwrapped_cleaned = _strip_json_bang_artifacts(unwrapped)
-    return list(
-        dict.fromkeys([unwrapped, unwrapped_cleaned, cleaned_unwrapped, cleaned, jsonstr])
-    )
+    return list(dict.fromkeys([unwrapped, unwrapped_cleaned, cleaned_unwrapped, cleaned, jsonstr]))
 
 
 def _strip_json_bang_artifacts(text: str) -> str:

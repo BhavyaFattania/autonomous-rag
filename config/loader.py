@@ -1,10 +1,10 @@
 import os
-import yaml
 from functools import lru_cache
 from pathlib import Path
 
-from config.settings import Settings
+import yaml
 from config.models import ModelRouting
+from config.settings import Settings
 
 _HERE = Path(__file__).resolve().parent
 
@@ -32,6 +32,7 @@ def load_settings() -> Settings:
     settings = Settings(**raw)
     if search_space_raw:
         from config.settings import SearchSpaceSettings
+
         settings.search_space = SearchSpaceSettings(**search_space_raw)
     return settings
 

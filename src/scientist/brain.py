@@ -1,18 +1,20 @@
 import json
-import re
 import random
+import re
 import time
 import uuid
-from src.utils.langfuse_compat import observe
-from src.utils.openrouter import call_openrouter
-from src.utils.logger import get_logger
-from src.utils.function_trace import trace_call
-from src.scientist.prompt_builder import build_scientist_prompt, build_history_lines
-from src.scientist.proposal import (
-    fallback_proposal, reranker_probe_proposal,
-    structured_exploration_proposal, select_unused_candidate,
-)
+
 from src.core.provider import Provider
+from src.scientist.prompt_builder import build_history_lines, build_scientist_prompt
+from src.scientist.proposal import (
+    fallback_proposal,
+    reranker_probe_proposal,
+    structured_exploration_proposal,
+)
+from src.utils.function_trace import trace_call
+from src.utils.langfuse_compat import observe
+from src.utils.logger import get_logger
+from src.utils.openrouter import call_openrouter
 
 log = get_logger("scientist")
 

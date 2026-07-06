@@ -1,16 +1,18 @@
 import asyncio
 import time
+
+from config.loader import load_env, load_model_routing
 from datasets import Dataset
 from ragas import evaluate as ragas_evaluate
 from ragas.run_config import RunConfig
-from src.models.metrics import SingleRunMetrics
+
 from src.data.question_loader import load_eval_question_items
 from src.evaluator.ir_metrics import evaluate_ir_metrics
-from src.evaluator.ragas_setup import build_ragas_llm, build_ragas_embeddings, build_ragas_metrics
+from src.evaluator.ragas_setup import build_ragas_embeddings, build_ragas_llm, build_ragas_metrics
+from src.models.metrics import SingleRunMetrics
 from src.rag_pipeline.pipeline import contexts_to_results
 from src.utils.logger import get_logger
 
-from config.loader import load_model_routing, load_env
 log = get_logger("evaluator")
 
 
@@ -56,8 +58,7 @@ async def run_single_eval(
 
     fast_metrics = SingleRunMetrics(**ir_scores)
     should_run_ragas = run_ragas or (
-        ragas_min_fast_score is not None
-        and fast_metrics.weighted_score >= ragas_min_fast_score
+        ragas_min_fast_score is not None and fast_metrics.weighted_score >= ragas_min_fast_score
     )
     if not should_run_ragas:
         return fast_metrics
@@ -110,7 +111,9 @@ async def run_single_eval(
         try:
             worker_loop = asyncio.new_event_loop()
             result = await loop.run_in_executor(
-                None, _run_evaluate, worker_loop,
+                None,
+                _run_evaluate,
+                worker_loop,
             )
             break
         except TimeoutError:
@@ -151,10 +154,11 @@ async def run_single_eval(
 
 
 async def evaluator_node(state, settings, env=None, model_routing=None) -> dict:
-    from src.models.rag_config import RAGConfig
-    from src.models.metrics import AggregatedMetrics
-    from src.rag_pipeline.pipeline import retrieve_results, contexts_to_results
     import asyncio
+
+    from src.models.metrics import AggregatedMetrics
+    from src.models.rag_config import RAGConfig
+    from src.rag_pipeline.pipeline import retrieve_results
 
     eval_settings = settings.evaluation
     config = RAGConfig(**state["validated_config"])
@@ -165,9 +169,7 @@ async def evaluator_node(state, settings, env=None, model_routing=None) -> dict:
     full_every = eval_settings.full_eval_every_n_experiments
     use_full_suite = full_every > 0 and experiment_number % full_every == 0
     n_questions = (
-        eval_settings.full_eval_n_questions
-        if use_full_suite
-        else eval_settings.n_questions
+        eval_settings.full_eval_n_questions if use_full_suite else eval_settings.n_questions
     )
     question_items = load_eval_question_items(n=n_questions)
     question_ids = [item["id"] for item in question_items]
@@ -202,31 +204,42 @@ async def evaluator_node(state, settings, env=None, model_routing=None) -> dict:
         tolerance = eval_settings.ragas_audit_score_tolerance
         ragas_min_fast_score = state.get("current_best_weighted_score", 0.0) - tolerance
     if use_full_suite and config.reranker == "CohereRerank":
-        log.warning("ragas_audit_skipped_for_cohere_full_suite", experiment_number=experiment_number)
+        log.warning(
+            "ragas_audit_skipped_for_cohere_full_suite", experiment_number=experiment_number
+        )
         run_ragas = False
         ragas_min_fast_score = None
     for run_num in range(1, n_runs + 1):
         log.info("eval_run_starting", run=run_num, experiment_id=state["experiment_id"])
         try:
             results, run_cost = await asyncio.wait_for(
-                retrieve_results(config, questions, settings, collection_name=collection_name, env=env),
+                retrieve_results(
+                    config, questions, settings, collection_name=collection_name, env=env
+                ),
                 timeout=eval_settings.max_runtime_sec_per_eval,
             )
             contexts = [[item.get("text", "") for item in items] for items in results]
             cost_this_node += run_cost
             metrics = await run_single_eval(
-                questions, None, contexts, ground_truths,
-                retrieval_results=results, question_ids=question_ids,
+                questions,
+                None,
+                contexts,
+                ground_truths,
+                retrieval_results=results,
+                question_ids=question_ids,
                 supporting_titles=supporting_titles,
-                run_ragas=run_ragas, ragas_min_fast_score=ragas_min_fast_score,
-                timeout_sec=ragas_timeout, timeout_backoff_factor=ragas_timeout_backoff_factor,
-                max_timeout_sec=ragas_max_timeout, timeout_retries=ragas_timeout_retries,
+                run_ragas=run_ragas,
+                ragas_min_fast_score=ragas_min_fast_score,
+                timeout_sec=ragas_timeout,
+                timeout_backoff_factor=ragas_timeout_backoff_factor,
+                max_timeout_sec=ragas_max_timeout,
+                timeout_retries=ragas_timeout_retries,
                 metrics=eval_settings.ragas_metrics,
                 env=env,
             )
             runs.append(metrics)
             log.info("eval_run_complete", run=run_num, weighted_score=metrics.weighted_score)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log.error("eval_run_timeout", run=run_num)
             return {
                 "status": "FAILED_TIMEOUT",

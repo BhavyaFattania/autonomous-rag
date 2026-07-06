@@ -1,7 +1,7 @@
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
 from src.utils.config_helpers import logical_config
-from src.utils.logger import get_logger
 from src.utils.function_trace import trace_call
+from src.utils.logger import get_logger
 
 log = get_logger("scorer")
 
@@ -61,8 +61,8 @@ def acceptance_node(state, settings) -> dict:
         # Guard all three primary IR metrics — not just recall
         metric_regressions = {
             "recall_at_k": current_best_metrics.recall_at_k - metrics.median_recall_at_k,
-            "ndcg_at_k":   current_best_metrics.ndcg_at_k   - metrics.median_ndcg_at_k,
-            "mrr":         current_best_metrics.mrr          - metrics.median_mrr,
+            "ndcg_at_k": current_best_metrics.ndcg_at_k - metrics.median_ndcg_at_k,
+            "mrr": current_best_metrics.mrr - metrics.median_mrr,
         }
         for metric_name, regression in metric_regressions.items():
             if regression > max_regression:

@@ -1,4 +1,3 @@
-from typing import Optional
 from pydantic import BaseModel, field_validator, model_validator
 
 VALID_CHUNK_SIZES = [256, 512, 768, 1024, 1536, 2048]
@@ -33,6 +32,7 @@ VALID_GENERATOR_MODELS = [
     "qwen/qwen3-30b-a3b",
 ]
 
+
 class RAGConfig(BaseModel):
     chunk_size: int
     chunk_overlap: int
@@ -41,13 +41,13 @@ class RAGConfig(BaseModel):
     embedding_model: str
     node_parser: str = "sentence"
     retriever: str = "weighted_hybrid_rrf"
-    window_size: Optional[int] = None
-    semantic_threshold: Optional[int] = None
-    semantic_buffer_size: Optional[int] = None
-    fusion_mode: Optional[str] = None
-    fusion_num_queries: Optional[int] = None
-    reranker: Optional[str]
-    reranker_top_n: Optional[int]
+    window_size: int | None = None
+    semantic_threshold: int | None = None
+    semantic_buffer_size: int | None = None
+    fusion_mode: str | None = None
+    fusion_num_queries: int | None = None
+    reranker: str | None
+    reranker_top_n: int | None
     generator_model: str
 
     @field_validator("node_parser")
@@ -157,7 +157,7 @@ class RAGConfig(BaseModel):
         if self.reranker is None and self.reranker_top_n is not None:
             raise ValueError("reranker_top_n must be null when reranker is null")
         if self.reranker_top_n is not None and not (2 <= self.reranker_top_n <= 10):
-            raise ValueError(f"reranker_top_n must be between 2 and 10")
+            raise ValueError("reranker_top_n must be between 2 and 10")
         if self.reranker_top_n is not None and self.reranker_top_n > self.top_k:
             raise ValueError(
                 f"reranker_top_n ({self.reranker_top_n}) must be less than or equal to top_k ({self.top_k})"

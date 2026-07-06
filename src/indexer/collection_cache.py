@@ -3,6 +3,7 @@ import pickle
 from pathlib import Path
 
 from llama_index.core import Document
+
 from src.indexer.collection_names import bm25_cache_path, bm25_engine_path
 from src.models.rag_config import RAGConfig
 from src.utils.logger import get_logger

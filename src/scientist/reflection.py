@@ -1,8 +1,8 @@
+from src.core.provider import Provider
+from src.utils.function_trace import trace_call
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
 from src.utils.openrouter import call_openrouter
-from src.utils.function_trace import trace_call
-from src.core.provider import Provider
 
 log = get_logger("reflection")
 
