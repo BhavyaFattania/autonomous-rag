@@ -11,7 +11,6 @@ from datasets import Dataset
 from ragas import evaluate as ragas_evaluate
 from ragas.run_config import RunConfig
 
-
 from src.evaluator.ir_metrics import evaluate_ir_metrics
 from src.evaluator.ragas_setup import build_ragas_embeddings, build_ragas_llm, build_ragas_metrics
 from src.models.metrics import SingleRunMetrics

@@ -1,6 +1,5 @@
 import asyncio
 
-
 from src.data.question_loader import load_eval_question_items
 from src.evaluator.ragas_runner import run_single_eval
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
