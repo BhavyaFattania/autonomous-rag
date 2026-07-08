@@ -62,8 +62,8 @@ def _build_qrels_and_run(
         qrels[qid] = {}
 
         for rank, item in enumerate(retrieval_results[idx]):
-            title = item.get("title") or item.get("doc_id") or item.get("node_id")
-            doc_id = title if use_titles else item.get("node_id", title)
+            title = str(item.get("title") or item.get("doc_id") or item.get("node_id") or "")
+            doc_id = title if use_titles else str(item.get("node_id") or title or "")
             score = item.get("score")
             if not isinstance(score, int | float):
                 score = 1.0 / (rank + 1)
