@@ -1,3 +1,8 @@
+"""Information Retrieval metrics evaluation (recall, precision, NDCG, MRR).
+
+Computes retrieval quality metrics by comparing ranked results against ground truths.
+Supports ranx library with fallback implementation if unavailable.
+"""
 from __future__ import annotations
 
 
@@ -8,6 +13,10 @@ def evaluate_ir_metrics(
     supporting_titles: list[list[str]] | None,
     k: int,
 ) -> dict[str, float]:
+    """Compute recall@k, precision@k, NDCG@k, and MRR metrics.
+
+    Uses supporting_titles if provided, otherwise matches ground_truth strings against result text.
+    """
     qrels, runs = _build_qrels_and_run(
         question_ids=question_ids,
         retrieval_results=retrieval_results,
@@ -41,6 +50,7 @@ def _build_qrels_and_run(
     ground_truths: list[str],
     supporting_titles: list[list[str]] | None,
 ) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, float]]]:
+    """Build qrels (ground truth) and run (ranked results) dicts for metric evaluation."""
     qrels: dict[str, dict[str, int]] = {}
     runs: dict[str, dict[str, float]] = {}
 
@@ -74,6 +84,7 @@ def _evaluate_ir_fallback(
     runs: dict[str, dict[str, float]],
     k: int,
 ) -> dict[str, float]:
+    """Fallback IR metric computation when ranx is unavailable."""
     recalls = []
     precisions = []
     ndcgs = []
@@ -102,6 +113,7 @@ def _evaluate_ir_fallback(
 
 
 def _ndcg(hits: list[int], ideal_hits: int) -> float:
+    """Compute Normalized Discounted Cumulative Gain."""
     import math
 
     dcg = sum(hit / math.log2(rank + 2) for rank, hit in enumerate(hits))
@@ -110,6 +122,7 @@ def _ndcg(hits: list[int], ideal_hits: int) -> float:
 
 
 def _mrr(hits: list[int]) -> float:
+    """Compute Mean Reciprocal Rank (1 / rank of first hit, or 0 if no hits)."""
     for rank, hit in enumerate(hits, start=1):
         if hit:
             return 1.0 / rank

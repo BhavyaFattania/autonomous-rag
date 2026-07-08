@@ -14,6 +14,8 @@ from src.core.provider import Provider
 
 
 class MockCostTracker:
+    """Fake ICostTracker backed by an in-memory float, no persistence."""
+
     def __init__(self):
         self._total = 0.0
         self._ceiling = 100.0
@@ -31,6 +33,8 @@ class MockCostTracker:
 
 
 class MockLLMClient:
+    """Fake ILLMClient whose call() is an AsyncMock so tests can assert/override the response."""
+
     def __init__(self):
         self.call = AsyncMock(return_value="mock response")
 
@@ -39,6 +43,8 @@ class MockLLMClient:
 
 
 class MockDatabase:
+    """Fake Database with no-op init/connect for tests that don't need real persistence."""
+
     def __init__(self):
         self.path = ":memory:"
         self.init = AsyncMock()
@@ -46,6 +52,8 @@ class MockDatabase:
 
 
 class MockChromaFactory:
+    """Fake Chroma client/path factory to avoid touching disk in tests."""
+
     def get_client(self):
         return MagicMock()
 
@@ -56,6 +64,8 @@ class MockChromaFactory:
 
 
 class MockRagasFactory:
+    """Fake factory for RAGAS LLM/embeddings/metrics, returning mocks instead of real clients."""
+
     def build_llm(self, model_routing, env=None):
         return MagicMock()
 
@@ -67,6 +77,8 @@ class MockRagasFactory:
 
 
 class MockModelRoutingProvider:
+    """Fake model-routing provider with a fixed role -> model-id mapping."""
+
     def __init__(self):
         self._models = {
             "scientist": "mock/scientist-model",
@@ -85,7 +97,10 @@ class MockModelRoutingProvider:
 
 
 class TestProvider:
+    """Verifies Provider correctly wires and exposes all injected dependencies."""
+
     def test_provider_wires_all_deps(self):
+        """All constructor args are stored as-is (identity, not copies) on the Provider instance."""
         pt = MockCostTracker()
         llm = MockLLMClient()
         db = MockDatabase()
@@ -113,6 +128,7 @@ class TestProvider:
 
     @pytest.mark.asyncio
     async def test_mock_cost_tracker(self):
+        """Sanity check that the mock tracker itself accumulates cost correctly."""
         tracker = MockCostTracker()
         tracker.initialize(hard_ceiling=10.0, warning_threshold=7.0)
         assert tracker.get_total() == 0.0
@@ -125,6 +141,7 @@ class TestProvider:
 
     @pytest.mark.asyncio
     async def test_mock_llm_client(self):
+        """Sanity check that the mock LLM client returns the stubbed response and records the call."""
         llm = MockLLMClient()
 
         result = await llm.call(

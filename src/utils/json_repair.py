@@ -1,4 +1,10 @@
-# src/utils/json_repair.py
+"""
+JSON repair utilities for RAGAS output parsing resilience.
+
+Monkey-patches RAGAS's output parser to gracefully recover from malformed JSON
+using multiple repair strategies: unwrapping nested JSON, removing artifacts,
+field extraction fallbacks. Critical for reliability across model outputs.
+"""
 
 import json
 import re
@@ -16,6 +22,7 @@ log = get_logger("json_repair")
 
 
 def install_ragas_output_parser_compat_patch() -> None:
+    """Install compatibility monkey-patch on RagasOutputParser to enable JSON repair."""
     if getattr(RagasOutputParser, "_autonomous_rag_compat_patch", False):
         return
 
@@ -31,6 +38,7 @@ async def _parse_ragas_output_string_compat(
     callbacks,
     retries_left: int = 1,
 ):
+    """Parse RAGAS output with fallback repairs: normalization then per-field extraction."""
     callbacks = callbacks or []
     try:
         jsonstr = _normalize_ragas_json(output_string, self.pydantic_object)
@@ -46,6 +54,7 @@ async def _parse_ragas_output_string_compat(
 
 
 def _normalize_ragas_json(output_string: str, output_model: type) -> str:
+    """Apply multiple JSON repair strategies and reshape to match expected model schema."""
     parsed = None
     parsed_jsonstr = output_string.strip()
     for jsonstr in [output_string.strip(), extract_json(output_string).strip()]:
@@ -77,6 +86,7 @@ def _normalize_ragas_json(output_string: str, output_model: type) -> str:
 
 
 def _json_repair_candidates(jsonstr: str) -> list[str]:
+    """Generate repair candidates: unwrap, strip artifacts, and their combinations."""
     unwrapped = _unwrap_text_wrapped_json(jsonstr)
     cleaned = _strip_json_bang_artifacts(jsonstr)
     cleaned_unwrapped = _unwrap_text_wrapped_json(cleaned)
@@ -85,10 +95,12 @@ def _json_repair_candidates(jsonstr: str) -> list[str]:
 
 
 def _strip_json_bang_artifacts(text: str) -> str:
+    """Remove exclamation marks that sometimes wrap JSON outputs."""
     return text.replace("!", "")
 
 
 def _unwrap_text_wrapped_json(jsonstr: str) -> str:
+    """Extract JSON from a {"text": "..."} wrapper if present."""
     try:
         parsed = json.loads(jsonstr)
     except json.JSONDecodeError:
@@ -102,6 +114,7 @@ def _unwrap_text_wrapped_json(jsonstr: str) -> str:
 
 
 def _fallback_ragas_output(output_string: str, output_model: type) -> dict:
+    """Last-resort fallback: extract individual fields via regex when JSON parsing fails."""
     output_string = _strip_json_bang_artifacts(output_string)
     fields = set(output_model.model_fields)
     if {"reason", "verdict"}.issubset(fields):
@@ -123,10 +136,12 @@ def _fallback_ragas_output(output_string: str, output_model: type) -> dict:
 
 
 def _looks_like_recall_item(value) -> bool:
+    """Check if a dict has the shape of a RAGAS factuality judgment item."""
     return isinstance(value, dict) and {"statement", "reason", "attributed"}.issubset(value)
 
 
 def _extract_binary_field(text: str, field: str) -> int:
+    """Extract a boolean/binary field (0 or 1) via regex, with fallback to 0."""
     pattern = rf'"?{re.escape(field)}"?\s*[:=]\s*"?([01]|yes|no|true|false)"?'
     match = re.search(pattern, text, flags=re.IGNORECASE)
     if not match:
@@ -136,6 +151,7 @@ def _extract_binary_field(text: str, field: str) -> int:
 
 
 def _extract_reason(text: str) -> str:
+    """Extract "reason" field; returns conservative fallback if not found."""
     reason = _extract_quoted_field(text, "reason")
     if reason:
         return reason
@@ -143,6 +159,7 @@ def _extract_reason(text: str) -> str:
 
 
 def _extract_quoted_field(text: str, field: str) -> str:
+    """Extract a quoted string field via regex; handles JSON escapes."""
     pattern = rf'"{re.escape(field)}"\s*:\s*"((?:\\.|[^"\\])*)"'
     match = re.search(pattern, text, flags=re.DOTALL)
     if not match:

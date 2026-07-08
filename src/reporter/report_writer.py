@@ -1,3 +1,5 @@
+"""Generate markdown report summarizing RAG optimization run results."""
+
 import json
 from pathlib import Path
 
@@ -6,6 +8,7 @@ from src.utils.openrouter import call_openrouter
 
 
 async def report_writer_node(state, settings, provider: Provider | None = None) -> dict:
+    """Generate final markdown report for overnight run with metrics and recommendations."""
     report_path = Path("reports/overnight_run_report.md")
     report_path.parent.mkdir(exist_ok=True)
 
@@ -44,6 +47,7 @@ async def report_writer_node(state, settings, provider: Provider | None = None) 
 
 
 def _build_report_prompt(state) -> str:
+    """Build LLM prompt with run state payload for report generation."""
     payload = {
         "run_id": state.get("run_id"),
         "total_cost_usd": state.get("total_cost_usd", 0.0),
@@ -69,6 +73,7 @@ Run data:
 
 
 def _fallback_report(state, error: str) -> str:
+    """Generate plain-text report fallback when LLM is skipped or fails."""
     return "\n".join(
         [
             "# RAG Optimizer Overnight Run Report",

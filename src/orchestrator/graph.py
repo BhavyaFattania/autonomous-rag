@@ -1,3 +1,4 @@
+"""Langgraph workflow orchestration: defines the RAG optimization loop topology and routing logic."""
 from datetime import UTC, datetime
 from functools import partial
 
@@ -16,6 +17,7 @@ def build_graph(
     model_routing=None,
     provider: Provider | None = None,
 ) -> CompiledStateGraph:
+    """Build and compile the overnight optimization workflow graph."""
     workflow = StateGraph(WorkflowState)
 
     from src.evaluator.ragas_runner import evaluator_node
@@ -68,18 +70,21 @@ def build_graph(
 
 
 def _after_validator(state: WorkflowState) -> str:
+    """Route to recorder if validation failed, else to deduplicator."""
     if state["status"] == "FAILED_VALIDATION":
         return "recorder"
     return "deduplicator"
 
 
 def _after_deduplicator(state: WorkflowState) -> str:
+    """Route to recorder if duplicate detected, else to budget_guard."""
     if state["status"] == "FAILED_DUPLICATE":
         return "recorder"
     return "budget_guard"
 
 
 def _after_budget_guard(state: WorkflowState) -> str:
+    """Route to report_writer if budget exceeded, else to indexer."""
     if state["status"] == "BUDGET_EXCEEDED":
         return "report_writer"
     return "indexer"
@@ -92,18 +97,21 @@ def _after_indexer(state: WorkflowState) -> str:
 
 
 def _after_smoke_test(state: WorkflowState) -> str:
+    """Route to recorder if smoke test failed, else to evaluator."""
     if state["status"] == "FAILED_SMOKE":
         return "recorder"
     return "evaluator"
 
 
 def _after_evaluator(state: WorkflowState) -> str:
+    """Route to recorder on API/timeout errors, else to acceptance."""
     if state["status"] in ("FAILED_TIMEOUT", "FAILED_API_ERROR"):
         return "recorder"
     return "acceptance"
 
 
 def _after_recorder(state: WorkflowState) -> str:
+    """Check termination conditions: budget, experiment count, failures, elapsed time. Route to report_writer or reflection."""
     if state["status"] == "BUDGET_EXCEEDED":
         return "report_writer"
 

@@ -1,7 +1,10 @@
+"""Tests for IR metric computation (recall/precision/nDCG/MRR) from retrieval results."""
+
 from src.evaluator.ir_metrics import evaluate_ir_metrics
 
 
 def test_ir_metrics_use_supporting_titles_when_present():
+    """When supporting_titles are given, relevance is judged by title match, not answer text containment."""
     scores = evaluate_ir_metrics(
         question_ids=["q1"],
         retrieval_results=[
@@ -22,6 +25,7 @@ def test_ir_metrics_use_supporting_titles_when_present():
 
 
 def test_ir_metrics_fall_back_to_answer_containment():
+    """With no supporting_titles, relevance falls back to checking if the ground-truth answer is in the node text."""
     scores = evaluate_ir_metrics(
         question_ids=["q1"],
         retrieval_results=[

@@ -1,3 +1,7 @@
+"""Building and caching vector and BM25 indices.
+
+Handles corpus loading, node parsing, embeddings, and dual-cache persistence.
+"""
 import pickle
 from pathlib import Path
 
@@ -28,6 +32,7 @@ CORPUS_PATH = Path("data/corpus/hotpotqa_paragraphs.jsonl")
 
 
 def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings, env=None):
+    """Build and cache BM25 nodes and engine for existing collection; skip Chroma."""
     assert (
         CORPUS_PATH.exists()
     ), f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
@@ -58,6 +63,7 @@ async def build_collection(
     settings,
     env=None,
 ):
+    """Build complete collection: parse corpus, embed nodes, cache BM25, populate Chroma."""
     assert (
         CORPUS_PATH.exists()
     ), f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."

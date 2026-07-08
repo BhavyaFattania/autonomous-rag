@@ -1,3 +1,7 @@
+"""Repository for managing experiments and their results.
+
+Handles CRUD operations for experiments including best-score queries and historical baseline lookups.
+"""
 import json
 
 import aiosqlite
@@ -8,10 +12,13 @@ from src.utils.function_trace import trace_call
 
 
 class ExperimentRepository:
+    """DAO for experiments table — tracks experiment runs, scores, and outcomes."""
     def __init__(self, db: aiosqlite.Connection | None = None):
+        """Initialize with optional connection; if None, creates connections on-demand."""
         self._db = db
 
     async def insert(self, experiment: Experiment) -> int:
+        """Insert experiment and return its database row ID."""
         async with db_or_connect(self._db) as db:
             cursor = await db.execute(
                 """
@@ -41,6 +48,7 @@ class ExperimentRepository:
     async def find_by_config_hash(
         self, config_hash: str, exclude_statuses: tuple[str, ...] | None = None
     ) -> int | None:
+        """Find the first non-excluded experiment for a config_hash."""
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
         async with db_or_connect(self._db) as db:
@@ -59,6 +67,7 @@ class ExperimentRepository:
     async def find_best_historical(
         self, config_hash: str, exclude_statuses: tuple[str, ...] | None = None
     ) -> HistoricalRecord:
+        """Find highest-scoring non-excluded experiment for config_hash; returns empty record if none."""
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
         async with db_or_connect(self._db) as db:
@@ -92,6 +101,7 @@ class ExperimentRepository:
 
     @trace_call(log_return=False)
     async def find_used_hashes(self, exclude_statuses: tuple[str, ...] | None = None) -> set[str]:
+        """Return all config hashes from non-excluded experiments plus those in config_hashes table."""
         exclude = exclude_statuses or ("FAILED_VALIDATION",)
         placeholders = ", ".join("?" for _ in exclude)
         async with db_or_connect(self._db) as db:

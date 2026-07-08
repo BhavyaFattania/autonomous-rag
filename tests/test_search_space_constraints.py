@@ -1,3 +1,6 @@
+"""Tests that developer-configured search-space restrictions are enforced by the validator, candidate
+generator, and scientist prompt — the three places that must independently respect them."""
+
 from config.settings import (
     EvalSettings,
     ExploreExploitSettings,
@@ -15,6 +18,7 @@ def _make_test_settings(
     eval_overrides: dict | None = None,
     reflection_overrides: dict | None = None,
 ) -> Settings:
+    """Build a Settings object with new-index-builds allowed and the given search-space restrictions."""
     return Settings(
         evaluation=EvalSettings(
             allow_new_index_builds=True,
@@ -27,6 +31,7 @@ def _make_test_settings(
 
 
 def test_validator_enforces_search_space():
+    """validator_node accepts configs within the allowed search space and rejects those outside it, with a reason naming the offending field."""
     settings = _make_test_settings(
         search_space={
             "allowed_node_parsers": ["sentence"],
@@ -105,6 +110,7 @@ def test_validator_enforces_search_space():
 
 
 def test_candidates_filtering():
+    """get_structured_exploration_candidates only yields candidates matching the allowed search space."""
     settings = _make_test_settings(
         search_space={
             "allowed_node_parsers": ["sentence"],
@@ -130,6 +136,7 @@ def test_candidates_filtering():
 
 
 def test_brain_prompt_incorporates_constraints():
+    """The scientist LLM prompt includes an explicit constraints section listing the allowed search space."""
     settings = _make_test_settings(
         search_space={
             "allowed_node_parsers": ["sentence"],

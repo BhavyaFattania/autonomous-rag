@@ -17,6 +17,7 @@ from pathlib import Path
 
 
 def _ensure_venv():
+    """Check if running in a virtual environment; if not, re-exec via the venv Python."""
     in_venv = sys.prefix != sys.base_prefix or hasattr(sys, "real_prefix")
     if not in_venv:
         project_root = Path(__file__).resolve().parent.parent
@@ -57,6 +58,7 @@ _stop_requested = False
 
 
 def _handle_signal(sig, frame):
+    """Handle SIGTERM or SIGINT by setting a flag to pause after current experiment."""
     global _stop_requested
     console.print(
         "\n[bold yellow]Signal received. Finishing current experiment then stopping...[/]"
@@ -115,6 +117,7 @@ def main(max_exp, max_hours, dry_run, resume):
 
 
 async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id=None):
+    """Execute the agentic optimization graph with checkpointing, cost tracking, and signal handling."""
     from config.loader import load_baseline_config
     from config.models import ModelRouting
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
@@ -247,6 +250,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
 
 
 def _validate_environment():
+    """Check for required env vars and data files; exit with error if any are missing."""
     import os
 
     required = ["OPENROUTER_API_KEY"]

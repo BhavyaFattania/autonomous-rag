@@ -34,7 +34,10 @@ log = get_logger("retriever")
 
 
 class WeightedHybridRetriever(BaseRetriever):
+    """Blends dense and BM25 retrieval via reciprocal-rank fusion with configurable alpha."""
+
     def __init__(self, dense_retriever, bm25_retriever, alpha: float, top_k: int):
+        """Initialize with two retrievers and fusion weight (0=BM25, 1=dense, 0.5=equal)."""
         super().__init__()
         self.dense_retriever = dense_retriever
         self.bm25_retriever = bm25_retriever
@@ -46,6 +49,7 @@ class WeightedHybridRetriever(BaseRetriever):
         dense_nodes: list[NodeWithScore],
         bm25_nodes: list[NodeWithScore],
     ) -> list[NodeWithScore]:
+        """Fuse ranked results using reciprocal-rank scoring weighted by alpha."""
         fused: dict[str, dict] = {}
 
         def add(nodes: list[NodeWithScore], weight: float):
@@ -62,11 +66,13 @@ class WeightedHybridRetriever(BaseRetriever):
         ]
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        """Synchronous retrieval: call both retrievers and fuse results."""
         dense_nodes = self.dense_retriever.retrieve(query_bundle)
         bm25_nodes = self.bm25_retriever.retrieve(query_bundle)
         return self._fuse(dense_nodes, bm25_nodes)
 
     async def _aretrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        """Asynchronous retrieval: call both retrievers concurrently and fuse results."""
         dense_nodes, bm25_nodes = await asyncio.gather(
             self.dense_retriever.aretrieve(query_bundle),
             self.bm25_retriever.aretrieve(query_bundle),
@@ -75,16 +81,21 @@ class WeightedHybridRetriever(BaseRetriever):
 
 
 class RerankingRetriever(BaseRetriever):
+    """Wraps a retriever and applies reranking to improve result quality."""
+
     def __init__(self, base_retriever, reranker):
+        """Initialize with a base retriever and reranker."""
         super().__init__()
         self.base_retriever = base_retriever
         self.reranker = reranker
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        """Retrieve from base retriever and rerank results."""
         nodes = self.base_retriever.retrieve(query_bundle)
         return self.reranker.postprocess_nodes(nodes, query_bundle=query_bundle)
 
     async def _aretrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        """Async retrieve and rerank, using async reranker if available."""
         nodes = await self.base_retriever.aretrieve(query_bundle)
         if hasattr(self.reranker, "apostprocess_nodes"):
             return await self.reranker.apostprocess_nodes(nodes, query_bundle=query_bundle)
@@ -94,6 +105,7 @@ class RerankingRetriever(BaseRetriever):
 async def build_retriever(
     config: RAGConfig, settings, collection_name: str | None = None, env=None
 ):
+    """Build and configure a retriever based on RAG config (dense, BM25, hybrid, query fusion, etc)."""
     collection_name = collection_name or _idx_collection_name(config)
 
     dense_retriever, bm25_retriever, nodes, storage_context = _build_components(
@@ -194,6 +206,7 @@ async def build_retriever(
 
 
 def _build_components(config: RAGConfig, collection_name: str):
+    """Load vector store, dense retriever, BM25 engine, and storage context from Chroma and cache."""
     chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
     from src.utils.openrouter_embedding import OpenRouterEmbedding
 
@@ -223,6 +236,7 @@ def _build_components(config: RAGConfig, collection_name: str):
 
 
 def _build_query_fusion(config, dense_retriever, bm25_retriever, mode, env=None):
+    """Create a QueryFusionRetriever that generates query variants and fuses results."""
     return QueryFusionRetriever(
         [dense_retriever, bm25_retriever],
         llm=_build_query_fusion_llm(config, env),
@@ -235,6 +249,7 @@ def _build_query_fusion(config, dense_retriever, bm25_retriever, mode, env=None)
 
 
 def _build_query_fusion_llm(config: RAGConfig, env=None):
+    """Return MockLLM if fusion_num_queries <= 1, otherwise OpenAI-compatible OpenRouter LLM."""
     if (config.fusion_num_queries or 1) <= 1:
         from llama_index.core.llms import MockLLM
 
@@ -263,6 +278,7 @@ except ImportError:
 
 
 def _maybe_apply_reranker(retriever, config: RAGConfig, env=None):
+    """Wrap retriever with RerankingRetriever if config.reranker is CohereRerank, else return as-is."""
     if config.reranker != "CohereRerank":
         return retriever
 

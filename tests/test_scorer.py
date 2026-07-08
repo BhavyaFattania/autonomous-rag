@@ -1,9 +1,12 @@
+"""Tests for the acceptance_node scoring gate that decides if a candidate config beats the current best."""
+
 from config.settings import AcceptanceSettings, Settings
 from src.evaluator.scorer import acceptance_node
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
 
 
 def test_acceptance_promotes_any_positive_gain_when_enabled():
+    """With accept_any_score_gain=True, even a tiny weighted-score improvement is ACCEPTED."""
     settings = Settings(
         acceptance=AcceptanceSettings(
             accept_any_score_gain=True,

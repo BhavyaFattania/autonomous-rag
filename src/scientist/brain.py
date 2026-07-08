@@ -1,3 +1,8 @@
+"""Main scientist loop that proposes RAG configurations via LLM or deterministic candidates.
+
+Orchestrates explore/exploit strategy with optional structured exploration and reranker probing phases.
+"""
+
 import json
 import random
 import re
@@ -21,12 +26,14 @@ log = get_logger("scientist")
 
 @trace_call
 def _should_run_structured_exploration(state, settings) -> bool:
+    """Check if we should run a structured exploration candidate instead of LLM proposal."""
     limit = settings.explore_exploit.structured_exploration_experiments
     return state.get("experiments_completed", 0) < limit
 
 
 @trace_call
 def _should_force_reranker_probe(state, settings) -> bool:
+    """Check if we should force a reranker probe at regular intervals."""
     every_n = settings.explore_exploit.reranker_probe_every_n_experiments
     experiment_number = state.get("experiments_completed", 0) + 1
     return every_n > 0 and experiment_number % every_n == 0
@@ -35,6 +42,11 @@ def _should_force_reranker_probe(state, settings) -> bool:
 @observe(name="scientist_node")
 @trace_call(log_return=False)
 async def scientist_node(state, settings, provider: Provider | None = None) -> dict:
+    """Propose a new RAG config: runs structured exploration, reranker probes, or LLM sampling with explore/exploit strategy.
+
+    Returns a dict with experiment_uuid, proposed_config, hypothesis, status, and history_summary.
+    Falls back to local candidate selection if LLM fails.
+    """
     from src.utils.conversation_summary import sliding_window_compress
 
     history_lines = build_history_lines(state)
