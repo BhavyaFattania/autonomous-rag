@@ -1,5 +1,3 @@
-"""Tests for RAGConfig's cross-field validation and defaulting (parser/retriever compatibility rules)."""
-
 import pytest
 from config.settings import EvalSettings, Settings
 from src.models.rag_config import RAGConfig
@@ -8,7 +6,6 @@ from src.rag_pipeline.retriever import _build_query_fusion_llm
 
 
 def _base(**overrides):
-    """Minimal valid RAGConfig dict, overridable per test."""
     config = {
         "chunk_size": 512,
         "chunk_overlap": 128,
@@ -24,7 +21,6 @@ def _base(**overrides):
 
 
 def test_defaults_keep_legacy_config_valid():
-    """A config with no node_parser/retriever specified still defaults to the original (legacy) behavior."""
     config = RAGConfig(**_base())
 
     assert config.node_parser == "sentence"
@@ -32,7 +28,6 @@ def test_defaults_keep_legacy_config_valid():
 
 
 def test_auto_merging_requires_hierarchical_parser():
-    """auto_merging retriever is rejected unless node_parser="hierarchical"."""
     with pytest.raises(ValueError):
         RAGConfig(**_base(node_parser="sentence", retriever="auto_merging"))
 
@@ -41,7 +36,6 @@ def test_auto_merging_requires_hierarchical_parser():
 
 
 def test_sentence_window_dense_requires_sentence_window_parser():
-    """sentence_window_dense retriever requires node_parser="sentence_window" and defaults window_size=3."""
     with pytest.raises(ValueError):
         RAGConfig(**_base(node_parser="sentence", retriever="sentence_window_dense"))
 
@@ -50,7 +44,6 @@ def test_sentence_window_dense_requires_sentence_window_parser():
 
 
 def test_query_fusion_gets_default_mode_and_num_queries():
-    """query_fusion_rrf retriever defaults fusion_mode and fusion_num_queries when unset."""
     config = RAGConfig(**_base(retriever="query_fusion_rrf"))
 
     assert config.fusion_mode == "reciprocal_rerank"
@@ -58,21 +51,18 @@ def test_query_fusion_gets_default_mode_and_num_queries():
 
 
 def test_query_fusion_single_query_uses_mock_llm():
-    """With fusion_num_queries=1, no real LLM call is needed so a MockLLM is used for query generation."""
     config = RAGConfig(**_base(retriever="query_fusion_rrf"))
 
     assert _build_query_fusion_llm(config).__class__.__name__ == "MockLLM"
 
 
 def test_summary_embedding_remains_configurable_but_guarded_by_validator():
-    """RAGConfig itself allows summary_embedding; enforcement of the "disabled" policy happens in the validator, not here."""
     config = RAGConfig(**_base(retriever="summary_embedding"))
 
     assert config.retriever == "summary_embedding"
 
 
 def _blocking_settings() -> Settings:
-    """Settings with expensive-parser builds and summary_embedding retriever both disabled."""
     return Settings(
         evaluation=EvalSettings(
             allow_new_index_builds=True,
@@ -83,7 +73,6 @@ def _blocking_settings() -> Settings:
 
 
 def test_validator_blocks_disabled_summary_embedding():
-    """validator_node rejects summary_embedding when the setting disables it, even though RAGConfig allows it."""
     result = validator_node(
         {"proposed_config": _base(retriever="summary_embedding")},
         settings=_blocking_settings(),
@@ -94,7 +83,6 @@ def test_validator_blocks_disabled_summary_embedding():
 
 
 def test_validator_blocks_uncached_semantic_parser(monkeypatch):
-    """A semantic parser config with no prebuilt cache is rejected when expensive builds are disabled."""
     monkeypatch.setattr("src.indexer.collection_manager.collection_is_cached", lambda _: False)
     result = validator_node(
         {

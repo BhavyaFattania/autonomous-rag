@@ -1,10 +1,3 @@
-"""
-Generate LLM-based answers from context and question.
-
-Uses the specified model via provider LLM client or direct OpenRouter API.
-Applies low temperature (0.1) for consistent, factual responses.
-"""
-
 from src.core.provider import Provider
 from src.utils.langfuse_compat import observe
 from src.utils.openrouter import call_openrouter
@@ -17,7 +10,6 @@ async def generate_answer(
     model_id: str = "deepseek/deepseek-v4-flash",
     provider: Provider | None = None,
 ) -> str:
-    """Generate answer using LLM with given contexts. Falls back to direct OpenRouter if no provider."""
     context_text = "\n\n".join(f"[{i+1}] {c}" for i, c in enumerate(contexts))
     prompt = f"""Answer the following question using only the provided context.
 If the context does not contain enough information, say "I don't know."

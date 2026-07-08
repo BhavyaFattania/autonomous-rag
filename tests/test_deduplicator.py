@@ -1,5 +1,3 @@
-"""Tests for config-hash-based deduplication of experiment candidates."""
-
 import os
 from pathlib import Path
 
@@ -22,7 +20,6 @@ def local_tmp_path(tmp_path_factory):
 
 
 def test_deduplicator_hash_ignores_internal_config_keys():
-    """Internal-only keys (e.g. "_collection_name") must not change the config hash used for dedup."""
     stored_config = {
         "chunk_size": 512,
         "chunk_overlap": 64,
@@ -38,7 +35,6 @@ def test_deduplicator_hash_ignores_internal_config_keys():
 
 
 async def test_scientist_candidate_selection_skips_reserved_hash(local_tmp_path):
-    """select_unused_candidate must skip a candidate whose config hash is already recorded in the DB."""
     db_path = str(local_tmp_path / "experiments.sqlite")
 
     old_default = Database.default_path
@@ -68,7 +64,6 @@ async def test_scientist_candidate_selection_skips_reserved_hash(local_tmp_path)
 
 
 def _candidate(top_k: int) -> dict:
-    """Build a minimal candidate RAG config dict, varying only top_k."""
     return {
         "chunk_size": 512,
         "chunk_overlap": 64,

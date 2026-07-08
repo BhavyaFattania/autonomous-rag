@@ -1,5 +1,3 @@
-"""Tests for the RAGAS output-parser compat patch: JSON repair and unwrapping of malformed LLM judge output."""
-
 from langchain_core.prompt_values import StringPromptValue
 from pydantic import BaseModel
 from ragas.prompt.pydantic_prompt import RagasOutputParser
@@ -31,7 +29,6 @@ class ContextRecallClassifications(BaseModel):
 
 
 async def test_ragas_parser_unwraps_text_wrapped_json():
-    """Output wrapped in a {"text": "..."} envelope is unwrapped before pydantic parsing."""
     _install_ragas_output_parser_compat_patch()
     parser = RagasOutputParser(pydantic_object=Verification)
 
@@ -47,7 +44,6 @@ async def test_ragas_parser_unwraps_text_wrapped_json():
 
 
 async def test_ragas_parser_wraps_bare_recall_classification_list():
-    """A bare JSON list is wrapped into the expected {"classifications": [...]} shape."""
     _install_ragas_output_parser_compat_patch()
     parser = RagasOutputParser(pydantic_object=ContextRecallClassifications)
 
@@ -69,7 +65,6 @@ async def test_ragas_parser_wraps_bare_recall_classification_list():
 
 
 async def test_ragas_parser_uses_conservative_fallback_for_malformed_verdict():
-    """Non-JSON key:value text still parses, defaulting to a conservative (0) verdict."""
     _install_ragas_output_parser_compat_patch()
     parser = RagasOutputParser(pydantic_object=Verification)
 
@@ -85,7 +80,6 @@ async def test_ragas_parser_uses_conservative_fallback_for_malformed_verdict():
 
 
 async def test_ragas_parser_repairs_bang_corrupted_verdict_json():
-    """JSON corrupted with stray "!" characters (a known judge-model quirk) is repaired before parsing."""
     _install_ragas_output_parser_compat_patch()
     parser = RagasOutputParser(pydantic_object=Verification)
 
@@ -101,7 +95,6 @@ async def test_ragas_parser_repairs_bang_corrupted_verdict_json():
 
 
 async def test_ragas_parser_repairs_bang_corrupted_recall_keys():
-    """The same "!"-corruption repair also works when keys (not just values) are corrupted."""
     _install_ragas_output_parser_compat_patch()
     parser = RagasOutputParser(pydantic_object=ContextRecallClassifications)
 
@@ -120,7 +113,6 @@ async def test_ragas_parser_repairs_bang_corrupted_recall_keys():
 
 
 def test_ragas_judge_openrouter_kwargs_force_json_without_reasoning():
-    """A judge ModelConfig with exclude_reasoning=True produces the OpenRouter kwargs to disable reasoning tokens."""
     from config.models import ModelConfig
 
     judge_config = ModelConfig(
@@ -138,7 +130,6 @@ def test_ragas_judge_openrouter_kwargs_force_json_without_reasoning():
 
 
 def test_build_ragas_metrics_uses_requested_names():
-    """build_ragas_metrics returns metric objects matching the requested names, in the same order."""
     metrics = _build_ragas_metrics(
         [
             "faithfulness",

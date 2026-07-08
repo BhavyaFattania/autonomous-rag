@@ -69,3 +69,4 @@ Search guidance:
 - If a family repeatedly scores below best by more than 0.05, move away from it.
 - In EXPLORE mode, change parser or retriever family unless the current best is clearly local-search worthy.
 - In EXPLOIT mode, modify one or two parameters around the best region.
+- Hybrid alpha cannot be None, it can either be 1.0 for pure dense retrieval, 0.0 for pure BM25, or anything in between for a hybrid retrieval.

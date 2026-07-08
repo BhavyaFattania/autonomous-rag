@@ -2,7 +2,6 @@
 
 This document provides a detailed breakdown of the classes, objects, protocols, and workflows within the **Autonomous RAG** repository.
 
----
 
 ## 1. Project Overview
 
@@ -39,7 +38,6 @@ graph TD
     report_writer --> END["END (Stop Loop)"]
 ```
 
----
 
 ## 2. Core Class & Object Breakdown
 

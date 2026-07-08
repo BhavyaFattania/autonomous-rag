@@ -1,15 +1,10 @@
-"""Generate candidate RAG configurations for structured exploration, reranker probing, and fallback scenarios.
-
-Provides exploration phases (deterministic sweeps of chunking/retrieval modes) and fallback options
-when LLM proposal or exploration exhausts available configurations.
-"""
+# src/scientist/candidates.py
 
 from src.utils.function_trace import trace_call
 
 
 @trace_call
 def get_structured_exploration_candidates(state, settings) -> list[dict]:
-    """Return candidates for systematic exploration of retrieval and chunking parameters."""
     index_configs = _available_index_configs(state, settings)
     variants = [
         {

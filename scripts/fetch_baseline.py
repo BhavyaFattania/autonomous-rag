@@ -1,14 +1,3 @@
-"""
-Evaluate the baseline RAG configuration on a small sample of questions.
-
-Loads the baseline config, runs 3 trials on 5 eval questions, and outputs aggregated metrics
-(median score, standard deviation) to baseline_score.json. Used as the starting point for
-autonomous configuration optimization.
-
-Usage:
-    python scripts/fetch_baseline.py
-"""
-
 import asyncio
 import json
 
@@ -25,7 +14,6 @@ load_dotenv()
 
 
 async def main():
-    """Initialize cost tracking, run baseline evaluation trials, and save aggregated metrics."""
     initialize(hard_ceiling=10.0, warning_threshold=7.0)
     config_dict = load_baseline_config()
     config = RAGConfig(**config_dict)

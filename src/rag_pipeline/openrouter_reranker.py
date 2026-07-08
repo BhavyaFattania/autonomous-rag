@@ -1,10 +1,3 @@
-"""
-Cohere reranking via OpenRouter API.
-
-Wraps Cohere's rerank-v3.5 model with retry logic for rate limits and async support.
-BaseNodePostprocessor interface integrates seamlessly with llama_index retrievers.
-"""
-
 import os
 
 import httpx
@@ -20,19 +13,11 @@ log = get_logger("openrouter_reranker")
 
 
 def is_openrouter_rate_limit_error(exception: Exception) -> bool:
-    """Check if exception indicates a 429 rate limit from OpenRouter."""
     msg = str(exception).lower()
     return "429" in msg or "too_many_requests" in msg or "rate limit" in msg
 
 
 class OpenRouterRerank(BaseNodePostprocessor):
-    """
-    Rerank nodes using Cohere's rerank model via OpenRouter.
-
-    Configurable model (default: cohere/rerank-v3.5), top_n results, and API key.
-    Supports both sync and async reranking with exponential backoff on rate limits.
-    """
-
     model: str = Field(default="cohere/rerank-v3.5")
     top_n: int = Field(default=5)
     api_key: str | None = Field(default=None)
@@ -46,7 +31,6 @@ class OpenRouterRerank(BaseNodePostprocessor):
         nodes: list[NodeWithScore],
         query_bundle: QueryBundle | None = None,
     ) -> list[NodeWithScore]:
-        """Synchronous reranking. Calls OpenRouter API with retry on rate limits."""
         if not nodes or query_bundle is None:
             return nodes
 
@@ -92,7 +76,6 @@ class OpenRouterRerank(BaseNodePostprocessor):
         nodes: list[NodeWithScore],
         query_bundle: QueryBundle | None = None,
     ) -> list[NodeWithScore]:
-        """Asynchronous reranking. Calls OpenRouter API with async client and retry on rate limits."""
         if not nodes or query_bundle is None:
             return nodes
 
@@ -136,7 +119,6 @@ class OpenRouterRerank(BaseNodePostprocessor):
     def _build_reranked_nodes(
         self, nodes: list[NodeWithScore], data: dict, top_n: int
     ) -> list[NodeWithScore]:
-        """Extract reranked results from API response and rebuild NodeWithScore objects with relevance scores."""
         results = data.get("results", [])
         reranked_nodes = []
         for r in results:
