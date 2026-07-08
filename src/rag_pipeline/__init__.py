@@ -1,3 +1,5 @@
+"""RAG pipeline components: retriever construction, answer generation, and smoke testing."""
+
 from src.rag_pipeline.generator import generate_answer
 from src.rag_pipeline.openrouter_reranker import OpenRouterRerank, is_openrouter_rate_limit_error
 from src.rag_pipeline.pipeline import contexts_to_results, retrieve_contexts, retrieve_results

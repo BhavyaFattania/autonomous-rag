@@ -14,19 +14,24 @@ log = get_logger("cost_tracker")
 
 
 class CostTracker:
+    """Thread-safe cost tracker with budget enforcement via ceiling and warning thresholds."""
+
     def __init__(self, hard_ceiling: float = 10.00, warning_threshold: float = 7.00):
+        """Initialize cost tracker. Raises BudgetExceededError when hard_ceiling is hit."""
         self._lock = threading.Lock()
         self._total_cost_usd: float = 0.0
         self._hard_ceiling: float = hard_ceiling
         self._warning_threshold: float = warning_threshold
 
     def initialize(self, hard_ceiling: float, warning_threshold: float, start_cost: float = 0.0):
+        """Reset tracker with new budget limits and optional starting cost."""
         with self._lock:
             self._hard_ceiling = hard_ceiling
             self._warning_threshold = warning_threshold
             self._total_cost_usd = start_cost
 
     def add_cost(self, usd: float) -> float:
+        """Add cost and return new total. Raises BudgetExceededError if ceiling exceeded."""
         with self._lock:
             self._total_cost_usd += usd
             total = self._total_cost_usd
@@ -40,6 +45,7 @@ class CostTracker:
             return total
 
     def get_total(self) -> float:
+        """Return current total cost."""
         with self._lock:
             return self._total_cost_usd
 

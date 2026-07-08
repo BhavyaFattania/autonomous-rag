@@ -1,6 +1,9 @@
 """
 Backfill supporting_titles into data/hotpotqa/questions.jsonl.
 
+Fetches metadata from the official HotpotQA dataset and enriches the local questions file
+with supporting article titles for each question. Run as a one-shot script during data setup.
+
 Usage:
     python scripts/enrich_hotpotqa_questions.py
 """
@@ -14,6 +17,7 @@ QUESTIONS_PATH = Path("data/hotpotqa/questions.jsonl")
 
 
 def main():
+    """Load existing questions, fetch HotpotQA metadata, and enrich with supporting_titles."""
     if not QUESTIONS_PATH.exists():
         raise FileNotFoundError(f"{QUESTIONS_PATH} not found")
 

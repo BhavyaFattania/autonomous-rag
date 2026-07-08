@@ -15,6 +15,8 @@ def db_or_connect(db: aiosqlite.Connection | None):
 
 
 class _NoopContext:
+    """Context manager that returns a provided connection without closing it."""
+
     def __init__(self, db: aiosqlite.Connection):
         self._db = db
 
@@ -26,6 +28,8 @@ class _NoopContext:
 
 
 class _AutoCommitContext:
+    """Context manager that creates a new connection, commits on success, and always closes it."""
+
     async def __aenter__(self):
         self._db = await aiosqlite.connect(Database.default_path)
         return self._db

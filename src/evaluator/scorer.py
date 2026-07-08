@@ -1,3 +1,8 @@
+"""Scoring and acceptance logic for RAG configuration experiments.
+
+Evaluates proposed configurations against baseline using weighted median scores,
+variance thresholds, and metric regression guards.
+"""
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
 from src.utils.config_helpers import logical_config
 from src.utils.function_trace import trace_call
@@ -89,6 +94,7 @@ def _accept_best_config(
     baseline_score: float,
     relative_improvement: float,
 ) -> dict:
+    """Log acceptance and return updated state with new best config and metrics."""
     log.info(
         "experiment_accepted",
         proposed_score=proposed_score,

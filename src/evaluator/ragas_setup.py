@@ -1,3 +1,8 @@
+"""Setup and configuration for RAGAS evaluation framework.
+
+Provides utilities for building RAGAS-compatible LLM wrappers, embeddings, metrics,
+and response validation against OpenRouter API.
+"""
 import os
 
 from config.models import ModelRouting
@@ -22,6 +27,7 @@ log = get_logger("evaluator")
 def build_ragas_llm(
     model_routing=ModelRouting, env=None, api_key: str | None = None
 ) -> LangchainLLMWrapper:
+    """Build a RAGAS-compatible LLM wrapper configured for OpenRouter judging."""
     install_ragas_output_parser_compat_patch()
     judge_config = model_routing.ragas_judge
     model_kwargs = _build_openrouter_model_kwargs(judge_config)
@@ -53,6 +59,7 @@ def build_ragas_llm(
 def build_ragas_embeddings(
     model_name: str, env=None, api_key: str | None = None
 ) -> OpenAIEmbeddings:
+    """Build OpenAI-compatible embeddings for RAGAS metric calculation."""
     resolved_key = api_key or (
         env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"]
     )
@@ -64,12 +71,14 @@ def build_ragas_embeddings(
 
 
 def _build_openrouter_model_kwargs(judge_config) -> dict:
+    """Extract model kwargs (e.g. response format) from judge config."""
     if judge_config.response_format == "json_object":
         return {"response_format": {"type": "json_object"}}
     return {}
 
 
 def _build_openrouter_extra_body(judge_config) -> dict:
+    """Build OpenRouter-specific request body options (e.g. reasoning exclusion)."""
     extra_body = {}
     if judge_config.exclude_reasoning:
         extra_body["reasoning"] = {"effort": "none", "exclude": True}
@@ -77,6 +86,7 @@ def _build_openrouter_extra_body(judge_config) -> dict:
 
 
 def build_ragas_metrics(metric_names: list[str]):
+    """Instantiate RAGAS metric objects from a list of metric names."""
     available_metrics = {
         "faithfulness": faithfulness,
         "answer_relevancy": answer_relevancy,
@@ -88,6 +98,7 @@ def build_ragas_metrics(metric_names: list[str]):
 
 
 def _ragas_generation_finished(response: LLMResult) -> bool:
+    """Check if all LLM generations finished successfully or hit token limit."""
     finish_reasons = []
     for generation in response.flatten():
         item = generation.generations[0][0]

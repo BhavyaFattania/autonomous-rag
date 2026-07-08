@@ -20,4 +20,5 @@ def _instance(path=None):
 
 
 async def init_db(path=None):
+    """Initialize database by creating tables and indexes."""
     return await _instance(path).init()

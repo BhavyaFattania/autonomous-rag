@@ -1,3 +1,7 @@
+"""Collection lifecycle management: building, caching, and retrieving vector collections.
+
+Orchestrates index creation, cache hits/misses, and BM25 engine synchronization.
+"""
 from src.core.provider import Provider
 from src.indexer.collection_cache import (
     bm25_node_count,
@@ -25,6 +29,7 @@ log = get_logger("indexer")
 
 @trace_call
 def list_available_index_configs() -> list[dict]:
+    """List all cached index configurations with complete BM25 and vector cache."""
     configs = []
     prefix = "rag_openai_text_embedding_3_small_"
     for path in bm25_cache_path("").parent.glob(f"{prefix}*_nodes.pkl"):
@@ -54,6 +59,7 @@ def list_available_index_configs() -> list[dict]:
 
 @trace_call
 def _config_from_collection_stem(stem: str, prefix: str) -> dict | None:
+    """Parse collection name stem into RAGConfig dict; returns None if invalid format."""
     parts = stem.removeprefix(prefix).split("_")
     if len(parts) == 2:
         try:
@@ -90,6 +96,7 @@ def _config_from_collection_stem(stem: str, prefix: str) -> dict | None:
 
 
 def collection_is_cached(config: RAGConfig) -> bool:
+    """Check if vector collection exists and BM25 cache is complete."""
     name = _collection_name(config)
     try:
         collection = _get_chroma_client().get_collection(name)
@@ -99,6 +106,7 @@ def collection_is_cached(config: RAGConfig) -> bool:
 
 
 async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
+    """Retrieve cached collection or build from scratch if missing/incomplete; returns collection name."""
     name = _collection_name(config)
     chroma_client = _get_chroma_client()
     bm25_cache = bm25_cache_path(name)
@@ -158,6 +166,7 @@ async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
 
 
 async def indexer_node(state, settings, env=None, provider: Provider | None = None) -> dict:
+    """Graph node: resolve or build collection, return status and updated config with _collection_name."""
     config = RAGConfig(**state["validated_config"])
     try:
         collection_name = await get_or_build_collection(config, settings, env)

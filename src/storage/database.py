@@ -13,12 +13,16 @@ DEFAULT_DB_PATH = "experiments.sqlite"
 
 
 class Database:
+    """Manages SQLite connection with WAL mode for safe async access."""
+
     default_path: str = DEFAULT_DB_PATH
 
     def __init__(self, path: str | None = None):
+        """Initialize database with optional custom path."""
         self.path = path if path is not None else Database.default_path
 
     async def init(self):
+        """Create tables, set pragma settings, and backfill config_hashes from existing experiments."""
         async with aiosqlite.connect(self.path) as db:
             await db.execute("PRAGMA journal_mode=WAL;")
             await db.execute("PRAGMA synchronous=NORMAL;")
@@ -44,6 +48,7 @@ class Database:
 
     @asynccontextmanager
     async def connect(self):
+        """Context manager for async database connection."""
         async with aiosqlite.connect(self.path) as db:
             yield db
 

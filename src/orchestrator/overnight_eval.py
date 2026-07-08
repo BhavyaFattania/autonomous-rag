@@ -1,3 +1,5 @@
+"""Evaluates RAG configs via multi-run baseline and final-best protocols with caching."""
+
 import asyncio
 import json
 from pathlib import Path
@@ -16,6 +18,7 @@ CACHE_DIR = Path("data/eval_cache")
 
 
 def empty_metrics() -> dict:
+    """Return zero-initialized metric template for aggregation."""
     return {
         "faithfulness": 0.0,
         "answer_relevancy": 0.0,
@@ -30,6 +33,7 @@ def empty_metrics() -> dict:
 
 
 async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, dict]:
+    """Evaluate baseline config, cache result, and return weighted score + metrics."""
     console.print(Rule("[bold cyan]Phase 0 baseline evaluation[/]"))
     eval_settings = settings.evaluation
     config = RAGConfig(**baseline)
@@ -113,6 +117,7 @@ async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, 
 
 
 async def evaluate_final_best(state: dict, settings, env=None) -> None:
+    """Evaluate best config found during search with full RAGAS metrics."""
     best_config = state.get("current_best_config") or state.get("baseline_config")
     if not best_config:
         console.print("[bold yellow]No best config available for final evaluation.[/]")

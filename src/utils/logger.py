@@ -1,3 +1,9 @@
+"""Structured logging configuration using structlog with stdlib integration.
+
+Sets up colored, human-readable console logging for development with selective
+third-party library silencing to reduce noise.
+"""
+
 import logging
 import sys
 
@@ -5,6 +11,7 @@ import structlog
 
 
 def setup_logging():
+    """Configure structlog with stdlib integration and suppress noisy third-party libs."""
     structlog.configure(
         processors=[
             structlog.stdlib.add_log_level,
@@ -33,4 +40,5 @@ def setup_logging():
 
 
 def get_logger(name: str):
+    """Get a named logger instance (e.g., 'openrouter', 'conversation_summary')."""
     return structlog.get_logger(name)

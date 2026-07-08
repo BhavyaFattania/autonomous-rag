@@ -1,3 +1,10 @@
+"""
+Experiment deduplication and config hash tracking.
+
+Detects repeated configurations to prevent redundant trials and maintains
+a rolling cleanup of stale hash records.
+"""
+
 import aiosqlite
 
 from src.storage.database import Database
@@ -14,6 +21,7 @@ _STALE_HASH_TTL_DAYS = 7
 
 @trace_call
 async def _fetch_best_historical_record(db, config_hash: str) -> dict:
+    """Retrieve best experiment result for a config hash."""
     repo = ExperimentRepository(db)
     record = await repo.find_best_historical(config_hash)
     return {
@@ -26,6 +34,7 @@ async def _fetch_best_historical_record(db, config_hash: str) -> dict:
 
 @trace_call
 async def deduplicator_node(state) -> dict:
+    """Check if config was already tried; block duplicate or mark success; clean stale records."""
     from src.utils.hashing import get_config_hash
 
     config_hash = get_config_hash(logical_config(state["validated_config"]))

@@ -1,3 +1,10 @@
+"""
+Experiment recording and state tracking for RAG optimization runs.
+
+Logs experiment results to SQLite, tracks success/failure patterns,
+and updates run statistics as experiments complete.
+"""
+
 import json
 import uuid
 from datetime import UTC, datetime
@@ -19,6 +26,7 @@ PIPELINE_FAILURE_STATUSES = {
 
 
 def _config_summary(config: dict) -> str:
+    """Format config dict into human-readable summary for logging patterns."""
     if not config:
         return "config=<none>"
     reranker = config.get("reranker") or "None"
@@ -33,6 +41,7 @@ def _config_summary(config: dict) -> str:
 
 
 async def recorder_node(state) -> dict:
+    """Persist experiment result to database and update run statistics."""
     experiment_uuid = state.get("experiment_uuid") or str(uuid.uuid4())
     config_source = state.get("validated_config") or state.get("proposed_config", {})
     config_dict = logical_config(config_source)

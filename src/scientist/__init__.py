@@ -1,3 +1,10 @@
+"""Autonomous scientist module for RAG configuration optimization.
+
+Drives an experiment-proposal and reflection loop that systematically explores
+RAG configurations (chunking, retrieval, reranking) to maximize retrieval metrics.
+Combines LLM-guided exploration with deterministic candidate generation and deduplication.
+"""
+
 from src.scientist.brain import scientist_node
 from src.scientist.candidates import (
     get_fallback_candidates,

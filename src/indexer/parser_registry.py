@@ -1,3 +1,7 @@
+"""Node parser factory and configuration encoding.
+
+Maps parser type + config to parser instances and deterministic cache keys.
+"""
 from llama_index.core.node_parser import (
     HierarchicalNodeParser,
     SemanticDoubleMergingSplitterNodeParser,
@@ -11,6 +15,7 @@ from src.models.rag_config import RAGConfig
 
 
 def parser_slug(config: RAGConfig) -> str:
+    """Encode parser type and config as cache-safe string slug."""
     parts = [
         config.node_parser.replace("_", "-"),
         str(config.chunk_size),
@@ -25,6 +30,7 @@ def parser_slug(config: RAGConfig) -> str:
 
 
 def build_node_parser(config: RAGConfig, embed_model=None):
+    """Factory: instantiate node parser based on config type and parameters."""
     if config.node_parser == "sentence":
         return SentenceSplitter(
             chunk_size=config.chunk_size,
@@ -66,6 +72,7 @@ def build_node_parser(config: RAGConfig, embed_model=None):
 
 
 def _hierarchical_chunk_sizes(leaf_size: int) -> list[int]:
+    """Generate hierarchical chunk size levels; leaf_size is smallest."""
     sizes = [2048, 1024, leaf_size]
     unique = sorted({size for size in sizes if size >= 128}, reverse=True)
     return unique if unique else [2048, 512, 128]

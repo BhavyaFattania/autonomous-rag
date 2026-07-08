@@ -1,3 +1,10 @@
+"""
+Orchestrate retrieval and generation phases of the RAG pipeline.
+
+Retrieval results are cached by config hash to avoid redundant API calls.
+Supports concurrent question processing with semaphore-based rate limiting.
+"""
+
 import asyncio
 import json
 import time

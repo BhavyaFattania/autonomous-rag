@@ -1,3 +1,10 @@
+"""
+Scientist LLM prompt construction for RAG config generation.
+
+Builds context-aware prompts with history, constraints, and search space
+to guide LLM exploration or exploitation of RAG configurations.
+"""
+
 import json
 from pathlib import Path
 
@@ -15,6 +22,7 @@ def build_scientist_prompt(
     history_summary: str = "",
     settings,
 ) -> str:
+    """Construct full scientist prompt with mode, history, constraints, and indexed configs."""
 
     system_prompt = Path("prompts/scientist_v1.txt").read_text()
 
@@ -123,6 +131,7 @@ Respond with ONLY the JSON object.
 
 
 def build_history_lines(state) -> list[str]:
+    """Extract accepted and rejected patterns from state into formatted log lines."""
     lines = []
     for i, pattern in enumerate(state.get("successful_patterns", [])):
         lines.append(f"ACCEPTED[{i+1}]: {pattern}")
@@ -132,6 +141,7 @@ def build_history_lines(state) -> list[str]:
 
 
 def _truncate_history(history_lines: list[str], max_chars: int) -> str:
+    """Trim recent experiments to fit token budget, prioritizing newest."""
     selected = []
     total = 0
     for line in reversed(history_lines):

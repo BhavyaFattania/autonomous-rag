@@ -1,3 +1,5 @@
+"""Smoke test validates that retrieval pipeline runs and returns non-empty results."""
+
 import asyncio
 
 from src.data.question_loader import load_eval_questions
@@ -7,10 +9,7 @@ log = get_logger("smoke_test")
 
 
 async def smoke_test_node(state, settings) -> dict:
-    """
-    Verify retrieval runs without crashing and returns non-empty contexts.
-    This is not a quality gate and intentionally avoids LLM generation.
-    """
+    """Verify retrieval runs without crashing and returns non-empty contexts."""
     from src.models.rag_config import RAGConfig
     from src.rag_pipeline.pipeline import retrieve_contexts
 

@@ -1,3 +1,4 @@
+"""RAG pipeline configuration model with comprehensive validation rules."""
 from pydantic import BaseModel, field_validator, model_validator
 
 VALID_CHUNK_SIZES = [256, 512, 768, 1024, 1536, 2048]
@@ -34,25 +35,27 @@ VALID_GENERATOR_MODELS = [
 
 
 class RAGConfig(BaseModel):
+    """Complete RAG pipeline configuration with validated hyperparameters for chunking, retrieval, and generation."""
     chunk_size: int
     chunk_overlap: int
-    top_k: int
-    hybrid_alpha: float
+    top_k: int  # Number of top-k results to retrieve
+    hybrid_alpha: float  # BM25 weight in [0, 1]; hybrid score = alpha*bm25 + (1-alpha)*dense
     embedding_model: str
     node_parser: str = "sentence"
     retriever: str = "weighted_hybrid_rrf"
-    window_size: int | None = None
-    semantic_threshold: int | None = None
-    semantic_buffer_size: int | None = None
-    fusion_mode: str | None = None
-    fusion_num_queries: int | None = None
+    window_size: int | None = None  # For sentence_window parser: context window size
+    semantic_threshold: int | None = None  # For semantic parsers: similarity threshold [80, 99]
+    semantic_buffer_size: int | None = None  # For semantic parsers: buffer size [1, 3]
+    fusion_mode: str | None = None  # For query fusion: "simple", "reciprocal_rerank", or "relative_score"
+    fusion_num_queries: int | None = None  # For query fusion: number of generated queries [1, 4]
     reranker: str | None
-    reranker_top_n: int | None
+    reranker_top_n: int | None  # Re-rank top N results; must be <= top_k
     generator_model: str
 
     @field_validator("node_parser")
     @classmethod
     def validate_node_parser(cls, v):
+        """Validate node_parser is in allowed set."""
         if v not in VALID_NODE_PARSERS:
             raise ValueError(f"node_parser must be one of {VALID_NODE_PARSERS}, got {v}")
         return v

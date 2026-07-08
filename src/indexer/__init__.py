@@ -1,3 +1,4 @@
+"""Indexing subpackage: collection management, caching, and node parsing."""
 from src.indexer.collection_cache import (
     bm25_node_count,
     build_embed_model,

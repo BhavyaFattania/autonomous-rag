@@ -45,11 +45,15 @@ class OpenRouterNonRetryableError(OpenRouterError):
 
 
 class OpenRouterClient:
+    """HTTP client for OpenRouter API with retry, cost tracking, and model fallback."""
+
     def __init__(self, api_key: str | None = None, base_url: str = OPENROUTER_BASE_URL):
+        """Initialize with API key and base URL (defaults from environment/constants)."""
         self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
         self._base_url = base_url
 
     def build_headers(self) -> dict:
+        """Build HTTP headers with auth token and referrer info."""
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",

@@ -19,6 +19,8 @@ from src.core.interfaces import (
 
 
 class Provider:
+    """Dependency injection container holding all external service implementations."""
+
     def __init__(
         self,
         cost_tracker: ICostTracker | None = None,

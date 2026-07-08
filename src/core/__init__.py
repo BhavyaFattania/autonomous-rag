@@ -1,3 +1,5 @@
+"""Core DI interfaces and container. Exposes all service abstractions and the Provider implementation holder."""
+
 from src.core.interfaces import (
     IChromaClientFactory,
     ICostTracker,

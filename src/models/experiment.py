@@ -1,3 +1,4 @@
+"""Experiment tracking and results models for RAG configuration experiments."""
 from datetime import datetime
 from typing import Literal
 
@@ -21,17 +22,18 @@ ExperimentStatus = Literal[
 
 
 class ExperimentRecord(BaseModel):
+    """Complete record of a single RAG configuration experiment run."""
     experiment_id: int
-    experiment_uuid: str  # uuid4 string
+    experiment_uuid: str  # UUID4 unique identifier
     config: RAGConfig
-    config_hash: str  # SHA-256 of sorted JSON config
-    hypothesis: str  # Scientist's rationale (max 500 chars)
+    config_hash: str  # SHA-256 of sorted JSON config for deduplication
+    hypothesis: str  # Scientist's hypothesis/rationale (max 500 chars)
     reflection_summary: str | None
     metrics: AggregatedMetrics | None
-    baseline_weighted_score: float  # What we were beating
+    baseline_weighted_score: float  # Baseline score this experiment aimed to beat
     status: ExperimentStatus
     failure_reason: str | None
-    cost_usd: float  # API cost for this experiment
+    cost_usd: float  # Total API cost for this experiment run
     started_at: datetime
     finished_at: datetime | None
     duration_sec: float | None

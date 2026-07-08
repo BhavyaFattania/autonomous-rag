@@ -1,7 +1,10 @@
+"""Defines WorkflowState schema for overnight RAG config search orchestration."""
+
 from typing import TypedDict
 
 
 class WorkflowState(TypedDict):
+    """State dictionary for graph-based config search workflow."""
     # Run-level identity
     run_id: str  # UUID for this overnight run
     experiment_id: int  # Auto-incrementing from SQLite

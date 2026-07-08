@@ -1,3 +1,8 @@
+"""RAGAS evaluation orchestration and IR metric computation.
+
+Runs full evaluation pipeline: IR metrics (recall/precision/NDCG) + RAGAS metrics (faithfulness/relevancy).
+Handles timeouts with exponential backoff and worker scaling.
+"""
 import asyncio
 import time
 
@@ -17,6 +22,7 @@ log = get_logger("evaluator")
 
 
 def _safe_mean(df, column: str) -> float:
+    """Extract mean of column from pandas DataFrame, returning 0.0 if missing or NaN."""
     if column not in df:
         return 0.0
     value = df[column].mean()
@@ -42,6 +48,11 @@ async def run_single_eval(
     metrics: list[str] | None = None,
     env: dict | None = None,
 ) -> SingleRunMetrics:
+    """Run IR metrics immediately, then conditionally run RAGAS metrics with retry logic.
+
+    Returns early with IR-only scores if run_ragas=False and score below threshold.
+    Retries with backoff and reduced worker count on timeout.
+    """
     if answers is None:
         answers = ground_truths
     assert len(questions) == len(answers) == len(contexts) == len(ground_truths)

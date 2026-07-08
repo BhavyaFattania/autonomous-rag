@@ -1,7 +1,9 @@
+"""RAG evaluation metrics models for single runs and aggregated results."""
 from pydantic import BaseModel
 
 
 class SingleRunMetrics(BaseModel):
+    """Metrics from a single RAG generation run."""
     faithfulness: float = 0.0
     answer_relevancy: float = 0.0
     context_recall: float = 0.0
@@ -14,6 +16,7 @@ class SingleRunMetrics(BaseModel):
 
     @property
     def weighted_score(self) -> float:
+        """Composite score: 35% recall_at_k + 25% ndcg + 20% mrr + 10% precision + 10% context_recall."""
         return (
             0.35 * self.recall_at_k
             + 0.25 * self.ndcg_at_k
@@ -24,6 +27,7 @@ class SingleRunMetrics(BaseModel):
 
 
 class AggregatedMetrics(BaseModel):
+    """Aggregated metrics across multiple runs (up to 3) with median values and variance."""
     run_1: SingleRunMetrics
     run_2: SingleRunMetrics | None = None
     run_3: SingleRunMetrics | None = None
@@ -41,6 +45,7 @@ class AggregatedMetrics(BaseModel):
 
     @classmethod
     def from_runs(cls, runs: list[SingleRunMetrics]) -> "AggregatedMetrics":
+        """Aggregate metrics from multiple runs by computing medians and std dev of weighted scores."""
         import statistics
 
         assert len(runs) >= 1, "At least 1 run required"

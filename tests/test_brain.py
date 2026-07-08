@@ -75,6 +75,7 @@ def test_prompt_mode_explore():
 
 
 def test_prompt_no_constraints_when_search_space_empty():
+    """No search-space restrictions configured -> no constraints block is injected into the prompt."""
     prompt = _make_prompt()
     assert "CRITICAL DEVELOPER CONSTRAINTS" not in prompt
 
@@ -133,10 +134,12 @@ def test_prompt_ends_with_json_instruction():
 
 
 def test_truncate_history_empty():
+    """Empty history truncates to an empty string, not an error."""
     assert _truncate_history([], max_chars=100) == ""
 
 
 def test_truncate_history_within_limit():
+    """History already under max_chars is returned unchanged."""
     lines = ["ACCEPTED[1]: abc", "REJECTED[1]: def"]
     result = _truncate_history(lines, max_chars=1000)
     assert "ACCEPTED[1]: abc" in result
@@ -162,6 +165,7 @@ def test_truncate_history_single_line():
 
 
 def test_truncate_to_sentence_no_truncation_needed():
+    """Text already under max_chars passes through unchanged."""
     text = "Short text."
     assert _truncate_to_sentence(text, max_chars=1000) == text
 

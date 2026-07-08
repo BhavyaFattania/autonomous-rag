@@ -1,3 +1,10 @@
+"""
+Proposal generation strategies for experiment candidates.
+
+Implements fallback local proposals, reranker probes, and structured exploration
+to supplement or replace LLM-generated configurations.
+"""
+
 import random
 import uuid
 
@@ -13,6 +20,7 @@ log = get_logger("scientist")
 
 @trace_call
 async def fallback_proposal(state, reason: str, settings) -> dict | None:
+    """Generate fallback config when scientist LLM fails; returns None if exhausted."""
     from src.scientist.candidates import get_fallback_candidates
 
     candidates = get_fallback_candidates(state, settings)
@@ -34,6 +42,7 @@ async def fallback_proposal(state, reason: str, settings) -> dict | None:
 
 @trace_call
 async def reranker_probe_proposal(state, settings) -> dict | None:
+    """Periodic reranker test to verify Cohere preserves evidence; None if exhausted."""
     from src.scientist.candidates import get_reranker_probe_candidates
 
     candidates = get_reranker_probe_candidates(state, settings)
@@ -55,6 +64,7 @@ async def reranker_probe_proposal(state, settings) -> dict | None:
 
 @trace_call
 async def structured_exploration_proposal(state, settings) -> dict | None:
+    """Systematic chunking and retrieval sweep before exploitation; None if exhausted."""
     from src.scientist.candidates import get_structured_exploration_candidates
 
     candidates = get_structured_exploration_candidates(state, settings)
@@ -76,6 +86,7 @@ async def structured_exploration_proposal(state, settings) -> dict | None:
 
 @trace_call
 async def select_unused_candidate(candidates: list[dict], state) -> dict | None:
+    """Pick first unused candidate from shuffled list; dedup against used_hashes."""
     used_hashes: set[str] = set()
     try:
         async with Database().connect() as db:

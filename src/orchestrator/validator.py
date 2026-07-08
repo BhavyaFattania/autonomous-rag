@@ -1,7 +1,10 @@
+"""Validates proposed RAG configs against developer-defined search space constraints."""
+
 from src.models.rag_config import RAGConfig
 
 
 def validator_node(state, settings, env=None) -> dict:
+    """Check proposed config against allowed values, parser/retriever availability, and budget constraints."""
     try:
         config = RAGConfig(**state["proposed_config"])
 

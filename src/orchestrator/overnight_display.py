@@ -1,3 +1,4 @@
+"""Rich terminal UI utilities for live workflow event display and experiment metrics visualization."""
 from datetime import UTC, datetime
 
 from rich import box
