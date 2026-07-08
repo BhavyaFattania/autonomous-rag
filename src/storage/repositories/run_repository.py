@@ -2,6 +2,7 @@
 
 Simple accessor for the most recent run from the database.
 """
+
 import aiosqlite
 
 from src.storage.repositories._shared import db_or_connect

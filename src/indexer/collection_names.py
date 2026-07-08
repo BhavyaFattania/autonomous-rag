@@ -2,6 +2,7 @@
 
 Generates deterministic collection names from configs and paths for persistent caching.
 """
+
 from pathlib import Path
 
 import chromadb

@@ -21,6 +21,7 @@ class ModelConfig(BaseModel):
 
 class ModelRouting(BaseModel):
     """Agent role-to-model assignment: scientist, coder, generators, judge, tester, reporter."""
+
     scientist: ModelConfig
     coder: ModelConfig
     rag_generator_primary: ModelConfig

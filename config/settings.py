@@ -20,6 +20,7 @@ class RunSettings(BaseModel):
 
 class EvalSettings(BaseModel):
     """Evaluation setup: question counts, RAGAS metrics, timeouts, smoke testing, audit frequency."""
+
     baseline_score_override: float | None = None
     n_eval_runs: int = 1
     n_questions: int = 10
@@ -52,6 +53,7 @@ class EvalSettings(BaseModel):
 
 class AcceptanceSettings(BaseModel):
     """Acceptance criteria: score improvement thresholds, variance tolerance, regression limits."""
+
     accept_any_score_gain: bool = True
     min_weighted_score_improvement: float = 0.03
     competitive_score_tolerance: float = 0.02
@@ -61,6 +63,7 @@ class AcceptanceSettings(BaseModel):
 
 class ExploreExploitSettings(BaseModel):
     """Exploration vs exploitation balance: probabilities, structured exploration count, reranker probing."""
+
     exploit_probability: float = 0.45
     explore_probability: float = 0.55
     structured_exploration_experiments: int = 12
@@ -69,6 +72,7 @@ class ExploreExploitSettings(BaseModel):
 
 class ReflectionSettings(BaseModel):
     """Reflection frequency: brain update interval, history compaction, max token limits."""
+
     update_every_n_experiments: int = 3
     compact_every_n_experiments: int = 8
     max_history_tokens: int = 4000
@@ -76,11 +80,13 @@ class ReflectionSettings(BaseModel):
 
 class ReportSettings(BaseModel):
     """Report generation: LLM-based or template-based summary options."""
+
     use_llm_report: bool = False
 
 
 class SearchSpaceSettings(BaseModel):
     """Search space constraints: allowed parsers, retrievers, chunk sizes, models, rerankers."""
+
     allowed_node_parsers: list[str] | None = None
     allowed_retrievers: list[str] | None = None
     allowed_chunk_sizes: list[int] | None = None
@@ -91,6 +97,7 @@ class SearchSpaceSettings(BaseModel):
 
 class Settings(BaseModel):
     """Top-level settings container: aggregates all run, eval, acceptance, and exploration settings."""
+
     run: RunSettings = Field(default_factory=RunSettings)
     evaluation: EvalSettings = Field(default_factory=EvalSettings)
     acceptance: AcceptanceSettings = Field(default_factory=AcceptanceSettings)

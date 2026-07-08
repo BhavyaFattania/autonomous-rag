@@ -1,4 +1,5 @@
 """RAG pipeline configuration model with comprehensive validation rules."""
+
 from pydantic import BaseModel, field_validator, model_validator
 
 VALID_CHUNK_SIZES = [256, 512, 768, 1024, 1536, 2048]
@@ -36,6 +37,7 @@ VALID_GENERATOR_MODELS = [
 
 class RAGConfig(BaseModel):
     """Complete RAG pipeline configuration with validated hyperparameters for chunking, retrieval, and generation."""
+
     chunk_size: int
     chunk_overlap: int
     top_k: int  # Number of top-k results to retrieve
@@ -46,7 +48,9 @@ class RAGConfig(BaseModel):
     window_size: int | None = None  # For sentence_window parser: context window size
     semantic_threshold: int | None = None  # For semantic parsers: similarity threshold [80, 99]
     semantic_buffer_size: int | None = None  # For semantic parsers: buffer size [1, 3]
-    fusion_mode: str | None = None  # For query fusion: "simple", "reciprocal_rerank", or "relative_score"
+    fusion_mode: str | None = (
+        None  # For query fusion: "simple", "reciprocal_rerank", or "relative_score"
+    )
     fusion_num_queries: int | None = None  # For query fusion: number of generated queries [1, 4]
     reranker: str | None
     reranker_top_n: int | None  # Re-rank top N results; must be <= top_k

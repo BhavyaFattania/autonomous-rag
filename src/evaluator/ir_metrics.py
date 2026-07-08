@@ -3,6 +3,7 @@
 Computes retrieval quality metrics by comparing ranked results against ground truths.
 Supports ranx library with fallback implementation if unavailable.
 """
+
 from __future__ import annotations
 
 

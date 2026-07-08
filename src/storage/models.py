@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 @dataclass
 class Experiment:
     """Single RAG configuration trial with metrics and cost tracking."""
+
     experiment_uuid: str
     run_id: str
     config_hash: str
@@ -26,6 +27,7 @@ class Experiment:
 @dataclass
 class ConfigHash:
     """Deduplication record mapping config hash to first seen timestamp and best score."""
+
     config_hash: str
     first_seen: str
     score: float | None = None
@@ -34,6 +36,7 @@ class ConfigHash:
 @dataclass
 class HistoricalRecord:
     """Best result retrieved for a given config hash from experiment history."""
+
     score: float | None = None
     metrics: dict = field(default_factory=dict)
     status: str = "unknown"
@@ -43,6 +46,7 @@ class HistoricalRecord:
 @dataclass
 class Run:
     """Single optimization run encompassing multiple experiment trials."""
+
     run_id: str
     started_at: str
     finished_at: str | None = None

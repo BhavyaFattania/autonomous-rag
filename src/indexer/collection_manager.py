@@ -2,6 +2,7 @@
 
 Orchestrates index creation, cache hits/misses, and BM25 engine synchronization.
 """
+
 from src.core.provider import Provider
 from src.indexer.collection_cache import (
     bm25_node_count,

@@ -1,4 +1,5 @@
 """Experiment tracking and results models for RAG configuration experiments."""
+
 from datetime import datetime
 from typing import Literal
 
@@ -23,6 +24,7 @@ ExperimentStatus = Literal[
 
 class ExperimentRecord(BaseModel):
     """Complete record of a single RAG configuration experiment run."""
+
     experiment_id: int
     experiment_uuid: str  # UUID4 unique identifier
     config: RAGConfig

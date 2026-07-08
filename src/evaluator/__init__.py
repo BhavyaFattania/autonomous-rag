@@ -12,5 +12,4 @@ __all__ = [
     "run_single_eval",
     "evaluator_node",
     "evaluate_ir_metrics",
-    
 ]

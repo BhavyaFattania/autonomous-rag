@@ -2,6 +2,7 @@
 
 Tracks configuration hashes with scoring and TTL-based cleanup to avoid redundant experiments.
 """
+
 from datetime import UTC, datetime, timedelta
 
 import aiosqlite
@@ -11,6 +12,7 @@ from src.storage.repositories._shared import db_or_connect
 
 class ConfigHashRepository:
     """DAO for config_hashes table — tracks seen configurations and their scores."""
+
     def __init__(self, db: aiosqlite.Connection | None = None):
         """Initialize with optional connection; if None, creates connections on-demand."""
         self._db = db

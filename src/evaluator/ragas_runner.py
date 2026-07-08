@@ -3,6 +3,7 @@
 Runs full evaluation pipeline: IR metrics (recall/precision/NDCG) + RAGAS metrics (faithfulness/relevancy).
 Handles timeouts with exponential backoff and worker scaling.
 """
+
 import asyncio
 import time
 
@@ -161,4 +162,3 @@ async def run_single_eval(
         **metric_values,
         **ir_scores,
     )
-

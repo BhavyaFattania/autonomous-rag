@@ -10,6 +10,7 @@ except ImportError:
 
     def observe(*args, **kwargs):
         """No-op fallback decorator when Langfuse is unavailable."""
+
         def decorator(func):
             return func
 
