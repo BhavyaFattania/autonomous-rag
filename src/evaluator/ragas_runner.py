@@ -121,12 +121,7 @@ async def run_single_eval(
 
         try:
             worker_loop = asyncio.new_event_loop()
-            result = await loop.run_in_executor(
-                None,
-                _run_evaluate,
-                worker_loop,
-                run_config
-            )
+            result = await loop.run_in_executor(None, _run_evaluate, worker_loop, run_config)
             break
         except TimeoutError:
             if attempt >= timeout_retries:
