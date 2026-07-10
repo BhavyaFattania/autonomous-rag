@@ -18,6 +18,7 @@ class ModelConfig(BaseModel):
     top_p: float | None = None
     response_format: str | None = None
     reasoning: bool | None = None
+    base_url: str | None = None
 
 
 class ModelRouting(BaseModel):
@@ -30,3 +31,4 @@ class ModelRouting(BaseModel):
     ragas_judge: ModelConfig
     smoke_tester: ModelConfig
     report_writer: ModelConfig
+    ragas_embedding_model:ModelConfig

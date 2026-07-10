@@ -87,7 +87,7 @@ async def run_single_eval(
         return fast_metrics
     ragas_llm = build_ragas_llm(model_routing=load_model_routing(), env=env or load_env())
     ragas_embeddings = (
-        build_ragas_embeddings("openai/text-embedding-3-small", env=env or load_env())
+        build_ragas_embeddings(model_routing=load_model_routing, env=env or load_env())
         if "answer_relevancy" in metric_names
         else None
     )

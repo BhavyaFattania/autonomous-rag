@@ -11,9 +11,16 @@ models:
     max_tokens: 8192
     task: "scientist"
     temperature: null
-    reasoning: true  
+    reasoning: true
+    base_url: "https://openrouter.ai/api/v1"  
     # Response parsing: use data["choices"][0]["message"]["content"] for the JSON answer.
     # Do NOT strip <think> tags — they will not appear in content.
+  
+  
+  ragas_embedding_model:
+    model_id: "openai/text-embedding-3-small"
+    base_url: "https://openrouter.ai/api/v1"  
+    
 
   coder:
     # Phase 5+ only. Not used in Phase 0–4.
@@ -21,6 +28,7 @@ models:
     reasoning_effort: "high"
     max_tokens: 4096
     task: "coder"
+    base_url: "https://openrouter.ai/api/v1"  
 
   rag_generator_primary:
     model_id: "deepseek/deepseek-v4-flash"
@@ -28,6 +36,7 @@ models:
     temperature: 0.1
     max_tokens: 1024
     task: "rag_generator_primary"
+    base_url: "https://openrouter.ai/api/v1"  
     # Fallback triggered on HTTP 429 (rate limit)
 
   rag_generator_fallback:
@@ -36,6 +45,7 @@ models:
     temperature: 0.1
     max_tokens: 1024
     task: "rag_generator_fallback"
+    base_url: "https://openrouter.ai/api/v1"  
 
   ragas_judge:
     model_id: "qwen/qwen3.5-flash-02-23"
@@ -45,6 +55,7 @@ models:
     response_format: "json_object"
     reasoning: false
     task: "ragas_judge"
+    base_url: "https://openrouter.ai/api/v1"  
 
   smoke_tester:
     model_id: "qwen/qwen3.5-flash-02-23"
@@ -52,21 +63,25 @@ models:
     temperature: 0.1
     max_tokens: 256
     task: "smoke_tester"
+    base_url: "https://openrouter.ai/api/v1"  
 
   reflection:
     model_id: "deepseek/deepseek-v4-pro"
     reasoning_effort: "high"
     max_tokens: 4096
     task: "reflection"
+    base_url: "https://openrouter.ai/api/v1"  
 
   conversation_summary:
     model_id: "deepseek/deepseek-v4-pro"
     reasoning_effort: "high"
     max_tokens: 4096
     task: "conversation_summary"
+    base_url: "https://openrouter.ai/api/v1"  
 
   report_writer:
     model_id: "deepseek/deepseek-v4-pro"
     reasoning_effort: "high"
     max_tokens: 8192
     task: "report_writer"
+    base_url: "https://openrouter.ai/api/v1"  

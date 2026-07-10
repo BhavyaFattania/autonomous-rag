@@ -33,19 +33,18 @@ def build_ragas_llm(
     judge_config = model_routing.ragas_judge
     model_kwargs = _build_openrouter_model_kwargs(judge_config)
     extra_body = _build_openrouter_extra_body(judge_config)
-    model_id = judge_config.model_id
     resolved_key = api_key or (
         env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"]
     )
     log.info(
         "ragas_judge_configured",
-        model=model_id,
+        model=judge_config.model_id,
         response_format=judge_config.response_format,
         include_reasoning=judge_config.reasoning,
     )
     llm = ChatOpenAI(
-        model=model_id,
-        base_url="https://openrouter.ai/api/v1",
+        model=judge_config.model_id,
+        base_url=judge_config.base_url,
         api_key=resolved_key,
         temperature=judge_config.temperature,
         max_completion_tokens=judge_config.max_tokens,
@@ -58,15 +57,16 @@ def build_ragas_llm(
 
 
 def build_ragas_embeddings(
-    model_name: str, env=None, api_key: str | None = None
+    model_routing=ModelRouting, env=None, api_key: str | None = None
 ) -> OpenAIEmbeddings:
     """Build OpenAI-compatible embeddings for RAGAS metric calculation."""
+    embedding_model = model_routing.ragas_embedding_model
     resolved_key = api_key or (
         env.get("OPENROUTER_API_KEY") if env else os.environ["OPENROUTER_API_KEY"]
     )
     return OpenAIEmbeddings(
-        model=model_name,
-        base_url="https://openrouter.ai/api/v1",
+        model=embedding_model.model_id,
+        base_url=embedding_model.base_url,
         api_key=resolved_key,
     )
 
