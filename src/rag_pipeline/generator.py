@@ -1,10 +1,13 @@
+from config.loader import load_model_routing
+
 from src.core.provider import Provider
 from src.utils.langfuse_compat import observe
 from src.utils.openrouter import call_openrouter
-from config.loader import load_model_routing
+
 model_routing = load_model_routing()
 generator_primary = model_routing.rag_generator_primary
 generator_fallback = model_routing.rag_generator_fallback
+
 
 @observe(name="generate_answer")
 async def generate_answer(

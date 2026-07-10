@@ -31,4 +31,4 @@ class ModelRouting(BaseModel):
     ragas_judge: ModelConfig
     smoke_tester: ModelConfig
     report_writer: ModelConfig
-    ragas_embedding_model:ModelConfig
+    ragas_embedding_model: ModelConfig
