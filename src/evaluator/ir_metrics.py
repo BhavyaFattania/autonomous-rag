@@ -28,6 +28,7 @@ def evaluate_ir_metrics(
         return {"recall_at_k": 0.0, "precision_at_k": 0.0, "ndcg_at_k": 0.0, "mrr": 0.0}
 
     try:
+        # pyrefly: ignore [missing-import]
         from ranx import Qrels, Run, evaluate
 
         scores = evaluate(

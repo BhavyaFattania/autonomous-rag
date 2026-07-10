@@ -106,7 +106,7 @@ async def run_single_eval(
             max_workers=worker_count,
         )
 
-        def _run_evaluate(loop_for_thread, cfg=run_config):
+        def _run_evaluate(loop_for_thread, cfg):
             asyncio.set_event_loop(loop_for_thread)
             return ragas_evaluate(
                 dataset=dataset,
@@ -125,6 +125,7 @@ async def run_single_eval(
                 None,
                 _run_evaluate,
                 worker_loop,
+                run_config
             )
             break
         except TimeoutError:
