@@ -12,11 +12,12 @@ class ModelConfig(BaseModel):
 
     model_id: str
     reasoning_effort: str | None = None
+    task: str | None = "LLM"
     max_tokens: int = 4096
     temperature: float | None = None
     top_p: float | None = None
     response_format: str | None = None
-    exclude_reasoning: bool | None = None
+    reasoning: bool | None = None
 
 
 class ModelRouting(BaseModel):

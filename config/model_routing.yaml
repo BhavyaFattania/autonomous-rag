@@ -9,6 +9,9 @@ models:
     # When reasoning_effort is set, do NOT include temperature/top_p in the request.
     # Use max_tokens: 4096. Reasoning budget will be ~3276 tokens (80% of 4096).
     max_tokens: 8192
+    task: "scientist"
+    temperature: null
+    reasoning: true  
     # Response parsing: use data["choices"][0]["message"]["content"] for the JSON answer.
     # Do NOT strip <think> tags — they will not appear in content.
 
@@ -17,12 +20,14 @@ models:
     model_id: "deepseek/deepseek-v4-flash"
     reasoning_effort: "high"
     max_tokens: 4096
+    task: "coder"
 
   rag_generator_primary:
-    model_id: "deepseek/deepseek-v4-flash:free"
+    model_id: "deepseek/deepseek-v4-flash"
     reasoning_effort: null        # No reasoning for generation tasks
     temperature: 0.1
     max_tokens: 1024
+    task: "rag_generator_primary"
     # Fallback triggered on HTTP 429 (rate limit)
 
   rag_generator_fallback:
@@ -30,6 +35,7 @@ models:
     reasoning_effort: null
     temperature: 0.1
     max_tokens: 1024
+    task: "rag_generator_fallback"
 
   ragas_judge:
     model_id: "qwen/qwen3.5-flash-02-23"
@@ -37,25 +43,30 @@ models:
     temperature: 0.0
     max_tokens: 4096
     response_format: "json_object"
-    exclude_reasoning: true
+    reasoning: false
+    task: "ragas_judge"
 
   smoke_tester:
     model_id: "qwen/qwen3.5-flash-02-23"
     reasoning_effort: null
     temperature: 0.1
     max_tokens: 256
+    task: "smoke_tester"
 
   reflection:
     model_id: "deepseek/deepseek-v4-pro"
     reasoning_effort: "high"
     max_tokens: 4096
+    task: "reflection"
 
   conversation_summary:
     model_id: "deepseek/deepseek-v4-pro"
     reasoning_effort: "high"
     max_tokens: 4096
+    task: "conversation_summary"
 
   report_writer:
     model_id: "deepseek/deepseek-v4-pro"
     reasoning_effort: "high"
     max_tokens: 8192
+    task: "report_writer"

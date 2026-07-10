@@ -4,6 +4,8 @@ import re
 import time
 import uuid
 
+from config.loader import load_model_routing
+
 from src.core.provider import Provider
 from src.scientist.prompt_builder import build_history_lines, build_scientist_prompt
 from src.scientist.proposal import (
@@ -17,6 +19,8 @@ from src.utils.logger import get_logger
 from src.utils.openrouter import call_openrouter
 
 log = get_logger("scientist")
+model_routing = load_model_routing()
+scientist_llm = model_routing.scientist
 
 
 @trace_call
@@ -72,11 +76,11 @@ async def scientist_node(state, settings, provider: Provider | None = None) -> d
         llm = provider.llm_client if provider else None
         if llm:
             raw_response = await llm.call(
-                model_id="deepseek/deepseek-v4-pro",
+                model_id=scientist_llm.model_id,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=8192,
+                max_tokens=scientist_llm.max_tokens,
                 task="scientist",
-                reasoning_effort="high",
+                reasoning_effort=scientist_llm.reasoning_effort,
                 temperature=None,
                 return_reasoning=True,
             )

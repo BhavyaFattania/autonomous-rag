@@ -41,7 +41,7 @@ def build_ragas_llm(
         "ragas_judge_configured",
         model=model_id,
         response_format=judge_config.response_format,
-        exclude_reasoning=judge_config.exclude_reasoning,
+        include_reasoning=judge_config.reasoning,
     )
     llm = ChatOpenAI(
         model=model_id,
@@ -81,7 +81,7 @@ def _build_openrouter_model_kwargs(judge_config) -> dict:
 def _build_openrouter_extra_body(judge_config) -> dict:
     """Build OpenRouter-specific request body options (e.g. reasoning exclusion)."""
     extra_body = {}
-    if judge_config.exclude_reasoning:
+    if judge_config.reasoning is False:
         extra_body["reasoning"] = {"effort": "none", "exclude": True}
     return extra_body
 
