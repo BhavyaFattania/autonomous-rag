@@ -45,6 +45,8 @@ docs/debug_reports
 .codex/
 .mcp.json
 
+
 # OS files
 .DS_Store
 Thumbs.db
+opencode.json
