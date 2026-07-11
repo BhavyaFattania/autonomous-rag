@@ -1,6 +1,7 @@
 from config.loader import load_model_routing
 
 from src.core.provider import Provider
+from src.prompts.templates import QA_GENERATION_TEMPLATE
 from src.utils.langfuse_compat import observe
 from src.utils.openrouter import call_openrouter
 
@@ -17,14 +18,7 @@ async def generate_answer(
     provider: Provider | None = None,
 ) -> str:
     context_text = "\n\n".join(f"[{i+1}] {c}" for i, c in enumerate(contexts))
-    prompt = f"""Answer the following question using only the provided context.
-If the context does not contain enough information, say "I don't know."
-
-Context:
-{context_text}
-
-Question: {question}
-Answer:"""
+    prompt = QA_GENERATION_TEMPLATE.format(context_text=context_text, question=question)
 
     llm = provider.llm_client if provider else None
     if llm:

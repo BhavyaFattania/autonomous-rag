@@ -8,6 +8,8 @@ guiding the next generation of experiments.
 from config.loader import load_model_routing
 
 from src.core.provider import Provider
+from src.prompts.templates import REFLECTION_TEMPLATE
+from src.utils.context_budget import truncate_to_token_budget
 from src.utils.function_trace import trace_call
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
@@ -17,19 +19,8 @@ model_routing = load_model_routing()
 reflection_llm = model_routing.reflection
 log = get_logger("reflection")
 
-_MAX_REFLECTION_CHARS = 4000
-
-
-def _truncate_to_sentence(text: str, max_chars: int) -> str:
-    """Trim text to max_chars by cutting at sentence boundary."""
-    if len(text) <= max_chars:
-        return text
-    window = text[:max_chars]
-    for sep in ("\n", ".", "!", "?"):
-        idx = window.rfind(sep)
-        if idx > max_chars // 2:
-            return window[: idx + 1].rstrip()
-    return window.rstrip()
+# Roughly equivalent to the previous 4000-character budget, expressed in tokens.
+_MAX_REFLECTION_TOKENS = 1000
 
 
 @observe(name="reflection_node")
@@ -71,7 +62,7 @@ async def reflection_node(state, settings, provider: Provider | None = None) -> 
         log.warning("reflection_unexpected_type", type=type(summary).__name__)
         return {}
 
-    return {"reflection_summary": _truncate_to_sentence(summary.strip(), _MAX_REFLECTION_CHARS)}
+    return {"reflection_summary": truncate_to_token_budget(summary.strip(), _MAX_REFLECTION_TOKENS)}
 
 
 def _build_reflection_prompt(state) -> str:
@@ -81,19 +72,9 @@ def _build_reflection_prompt(state) -> str:
     best_config = state.get("current_best_config", {})
     best_score = state.get("current_best_weighted_score", 0.0)
 
-    return f"""
-You are analyzing a RAG optimization run.
-
-Current best score: {best_score:.4f}
-Current best config: {best_config}
-
-Accepted patterns:
-{successful}
-
-Rejected or failed patterns:
-{failed}
-
-Extract concise, actionable rules for the next scientist prompt. Focus on which
-chunking, top_k, hybrid_alpha, reranker, and generator choices appear to help or
-hurt. Do not invent evidence. Return 5-8 bullet points only.
-""".strip()
+    return REFLECTION_TEMPLATE.format(
+        best_score=best_score,
+        best_config=best_config,
+        successful=successful,
+        failed=failed,
+    )

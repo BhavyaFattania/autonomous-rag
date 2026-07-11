@@ -8,6 +8,7 @@ to guide LLM exploration or exploitation of RAG configurations.
 import json
 from pathlib import Path
 
+from src.utils.context_budget import count_tokens
 from src.utils.function_trace import trace_call
 
 log = None
@@ -70,7 +71,7 @@ def build_scientist_prompt(
         history_lines = build_history_lines(state)
         history_text = _truncate_history(
             history_lines,
-            max_chars=settings.reflection.max_history_tokens * 4,
+            max_tokens=settings.reflection.max_history_tokens,
         )
 
     mode = "EXPLOIT (refine near current best)" if exploit else "EXPLORE (try something new)"
@@ -140,14 +141,14 @@ def build_history_lines(state) -> list[str]:
     return lines
 
 
-def _truncate_history(history_lines: list[str], max_chars: int) -> str:
-    """Trim recent experiments to fit token budget, prioritizing newest."""
-    selected = []
+def _truncate_history(history_lines: list[str], max_tokens: int) -> str:
+    """Trim recent experiments to fit token budget, prioritizing newest whole lines."""
+    selected: list[str] = []
     total = 0
     for line in reversed(history_lines):
-        line_len = len(line) + 1
-        if selected and total + line_len > max_chars:
+        line_tokens = count_tokens(line)
+        if selected and total + line_tokens > max_tokens:
             break
         selected.append(line)
-        total += line_len
+        total += line_tokens
     return "\n".join(reversed(selected))

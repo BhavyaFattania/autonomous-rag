@@ -6,6 +6,7 @@ from pathlib import Path
 from config.loader import load_model_routing
 
 from src.core.provider import Provider
+from src.prompts.templates import REPORT_TEMPLATE
 from src.utils.openrouter import call_openrouter
 
 model_routing = load_model_routing()
@@ -69,14 +70,7 @@ def _build_report_prompt(state) -> str:
         "failed_patterns": state.get("failed_patterns", []),
         "reflection_summary": state.get("reflection_summary", ""),
     }
-    return f"""
-Write a concise markdown report for this autonomous RAG optimization run.
-Include: final result, best config, metric summary, what improved, what failed,
-and recommended next experiments. Be specific and do not overstate evidence.
-
-Run data:
-{json.dumps(payload, indent=2)}
-""".strip()
+    return REPORT_TEMPLATE.format(payload_json=json.dumps(payload, indent=2))
 
 
 def _fallback_report(state, error: str) -> str:

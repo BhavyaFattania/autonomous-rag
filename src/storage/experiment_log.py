@@ -104,8 +104,8 @@ async def recorder_node(state) -> dict:
     elif status in PIPELINE_FAILURE_STATUSES:
         failures += 1
 
-    successful = state.get("successful_patterns", [])
-    failed = state.get("failed_patterns", [])
+    successful = list(state.get("successful_patterns", []))
+    failed = list(state.get("failed_patterns", []))
     summary = _config_summary(config_dict)
 
     if status == "ACCEPTED":

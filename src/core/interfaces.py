@@ -35,6 +35,7 @@ class ILLMClient(Protocol):
         temperature: float | None = 0.1,
         fallback_model_id: str | None = None,
         return_reasoning: bool = False,
+        response_format: str | None = None,
     ) -> str | dict: ...
 
 

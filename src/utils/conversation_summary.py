@@ -13,6 +13,8 @@ Two public APIs:
 
 from __future__ import annotations
 
+from src.prompts.templates import HISTORY_SUMMARY_TEMPLATE
+from src.utils.context_budget import truncate_to_token_budget
 from src.utils.logger import get_logger
 
 log = get_logger("conversation_summary")
@@ -21,31 +23,15 @@ log = get_logger("conversation_summary")
 _SUMMARY_MODEL = "deepseek/deepseek-v4-flash"
 _MAX_SUMMARY_TOKENS = 512
 
-_SUMMARY_PROMPT_TEMPLATE = """\
-You are summarising the history of a RAG hyperparameter optimisation experiment.
-
-{prior_block}Experiment entries to summarise:
-{entries_text}
-
-Write a concise factual bullet-point summary (3-6 bullets) covering:
-- Which retrieval/chunking configs performed well and why
-- Which configs failed and the likely cause
-- Any clear patterns (e.g. "hybrid_alpha > 0.5 consistently hurts recall")
-
-Rules:
-- Do not invent information. Be specific and brief.
-- Each bullet must start with "•"
-- Do not repeat the current best config verbatim — focus on patterns."""
-
 
 def _call_summary_llm_sync_fallback(
     existing_summary: str,
     older_text: str,
-    max_chars: int = 1500,
+    max_tokens: int = _MAX_SUMMARY_TOKENS,
 ) -> str:
-    """Graceful fallback when the LLM call fails: concatenate + truncate."""
+    """Graceful fallback when the LLM call fails: concatenate + truncate at a sentence boundary."""
     raw = (existing_summary + "\n" + older_text).strip()
-    return raw[:max_chars]
+    return truncate_to_token_budget(raw, max_tokens)
 
 
 async def sliding_window_compress(
@@ -86,7 +72,7 @@ async def sliding_window_compress(
         f"Prior summary (already compressed):\n{existing_summary}\n\n" if existing_summary else ""
     )
     entries_text = "\n".join(older)
-    prompt = _SUMMARY_PROMPT_TEMPLATE.format(
+    prompt = HISTORY_SUMMARY_TEMPLATE.format(
         prior_block=prior_block,
         entries_text=entries_text,
     )
@@ -150,7 +136,7 @@ async def sliding_window_compress_messages(
     prior_block = (
         f"Prior summary (already compressed):\n{existing_summary}\n\n" if existing_summary else ""
     )
-    prompt = _SUMMARY_PROMPT_TEMPLATE.format(
+    prompt = HISTORY_SUMMARY_TEMPLATE.format(
         prior_block=prior_block,
         entries_text=older_text,
     )

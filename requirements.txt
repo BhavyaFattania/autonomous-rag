@@ -43,6 +43,7 @@ rich>=13.0.0
 
 # Utilities
 tenacity==9.1.2
+tiktoken>=0.8.0
 
 # Testing & Dev
 pytest==8.3.5

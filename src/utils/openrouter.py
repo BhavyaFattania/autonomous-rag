@@ -80,11 +80,14 @@ class OpenRouterClient:
         temperature: float | None,
         task: str,
         return_reasoning: bool = False,
+        response_format: str | None = None,
     ) -> str | dict:
         if not self._api_key:
             raise OpenRouterNonRetryableError("OPENROUTER_API_KEY not set.")
 
-        payload = _build_payload(model_id, messages, max_tokens, reasoning_effort, temperature)
+        payload = _build_payload(
+            model_id, messages, max_tokens, reasoning_effort, temperature, response_format
+        )
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
@@ -160,6 +163,7 @@ class OpenRouterClient:
         temperature: float | None = 0.1,
         fallback_model_id: str | None = None,
         return_reasoning: bool = False,
+        response_format: str | None = None,
     ) -> str | dict:
         try:
             return await self._call_once(
@@ -170,6 +174,7 @@ class OpenRouterClient:
                 temperature,
                 task,
                 return_reasoning=return_reasoning,
+                response_format=response_format,
             )
         except OpenRouterRateLimitError:
             if fallback_model_id:
@@ -182,6 +187,7 @@ class OpenRouterClient:
                     temperature=temperature,
                     task=f"{task}_fallback",
                     return_reasoning=return_reasoning,
+                    response_format=response_format,
                 )
             raise
 
@@ -210,6 +216,7 @@ def _build_payload(
     max_tokens: int,
     reasoning_effort: str | None,
     temperature: float | None,
+    response_format: str | None = None,
 ) -> dict:
     payload: dict = {
         "model": model_id,
@@ -221,6 +228,8 @@ def _build_payload(
     else:
         if temperature is not None:
             payload["temperature"] = temperature
+    if response_format == "json_object":
+        payload["response_format"] = {"type": "json_object"}
     return payload
 
 
@@ -253,6 +262,7 @@ async def call_openrouter(
     temperature: float | None = 0.1,
     fallback_model_id: str | None = None,
     return_reasoning: bool = False,
+    response_format: str | None = None,
 ) -> str | dict:
     return await _default_client.call(
         model_id,
@@ -263,4 +273,5 @@ async def call_openrouter(
         temperature=temperature,
         fallback_model_id=fallback_model_id,
         return_reasoning=return_reasoning,
+        response_format=response_format,
     )
