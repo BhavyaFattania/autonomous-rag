@@ -13,7 +13,7 @@ from config.settings import (
 )
 from src.scientist.prompt_builder import _truncate_history
 from src.scientist.prompt_builder import build_scientist_prompt as _build_scientist_prompt
-from src.scientist.reflection import _truncate_to_sentence
+from src.utils.context_budget import truncate_to_token_budget as _truncate_to_sentence
 
 # ─── _build_scientist_prompt ─────────────────────────────────────────────────
 
@@ -138,13 +138,13 @@ def test_prompt_ends_with_json_instruction():
 
 def test_truncate_history_empty():
     """Empty history truncates to an empty string, not an error."""
-    assert _truncate_history([], max_chars=100) == ""
+    assert _truncate_history([], max_tokens=100) == ""
 
 
 def test_truncate_history_within_limit():
-    """History already under max_chars is returned unchanged."""
+    """History already under max_tokens is returned unchanged."""
     lines = ["ACCEPTED[1]: abc", "REJECTED[1]: def"]
-    result = _truncate_history(lines, max_chars=1000)
+    result = _truncate_history(lines, max_tokens=1000)
     assert "ACCEPTED[1]: abc" in result
     assert "REJECTED[1]: def" in result
 
@@ -152,7 +152,7 @@ def test_truncate_history_within_limit():
 def test_truncate_history_preserves_most_recent():
     # Most recent lines are at the end; truncation should keep them.
     lines = [f"ACCEPTED[{i}]: line {i}" for i in range(20)]
-    result = _truncate_history(lines, max_chars=80)
+    result = _truncate_history(lines, max_tokens=20)
     # The last line must survive
     assert "ACCEPTED[19]: line 19" in result
     # Early lines must be dropped
@@ -161,28 +161,28 @@ def test_truncate_history_preserves_most_recent():
 
 def test_truncate_history_single_line():
     lines = ["ACCEPTED[1]: short line"]
-    assert _truncate_history(lines, max_chars=10) == "ACCEPTED[1]: short line"
+    assert _truncate_history(lines, max_tokens=10) == "ACCEPTED[1]: short line"
 
 
 # ─── _truncate_to_sentence (reflection) ──────────────────────────────────────
 
 
 def test_truncate_to_sentence_no_truncation_needed():
-    """Text already under max_chars passes through unchanged."""
+    """Text already under max_tokens passes through unchanged."""
     text = "Short text."
-    assert _truncate_to_sentence(text, max_chars=1000) == text
+    assert _truncate_to_sentence(text, max_tokens=1000) == text
 
 
 def test_truncate_to_sentence_at_newline():
     text = "Line one.\nLine two.\n" + "X" * 5000
-    result = _truncate_to_sentence(text, max_chars=25)
+    result = _truncate_to_sentence(text, max_tokens=8)
     assert result.endswith("\n") or result.endswith(".")
     assert "X" not in result
 
 
 def test_truncate_to_sentence_at_period():
     text = "First sentence. Second sentence. " + "Z" * 5000
-    result = _truncate_to_sentence(text, max_chars=40)
+    result = _truncate_to_sentence(text, max_tokens=10)
     assert result.endswith(".")
     assert "Z" not in result
 
@@ -190,5 +190,8 @@ def test_truncate_to_sentence_at_period():
 def test_truncate_to_sentence_fallback():
     # No punctuation in the window — should return raw truncation
     text = "a" * 100
-    result = _truncate_to_sentence(text, max_chars=20)
-    assert len(result) <= 20
+    result = _truncate_to_sentence(text, max_tokens=5)
+    from src.utils.context_budget import count_tokens
+
+    assert count_tokens(result) <= 5
+    assert len(result) < len(text)

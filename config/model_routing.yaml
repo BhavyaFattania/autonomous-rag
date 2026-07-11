@@ -12,7 +12,8 @@ models:
     task: "scientist"
     temperature: null
     reasoning: true
-    base_url: "https://openrouter.ai/api/v1"  
+    response_format: "json_object"
+    base_url: "https://openrouter.ai/api/v1"
     # Response parsing: use data["choices"][0]["message"]["content"] for the JSON answer.
     # Do NOT strip <think> tags — they will not appear in content.
   

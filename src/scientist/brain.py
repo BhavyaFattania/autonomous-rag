@@ -83,6 +83,7 @@ async def scientist_node(state, settings, provider: Provider | None = None) -> d
                 reasoning_effort=scientist_llm.reasoning_effort,
                 temperature=scientist_llm.temperature,
                 return_reasoning=True,
+                response_format=scientist_llm.response_format,
             )
         else:
             raw_response = await call_openrouter(
@@ -94,6 +95,7 @@ async def scientist_node(state, settings, provider: Provider | None = None) -> d
                 temperature=None,
                 return_reasoning=True,
                 fallback_model_id=None,
+                response_format="json_object",
             )
         log.info("scientist_llm_complete", elapsed_sec=round(time.perf_counter() - started, 2))
     except Exception as e:
