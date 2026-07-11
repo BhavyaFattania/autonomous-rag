@@ -19,6 +19,7 @@ models:
   
   ragas_embedding_model:
     model_id: "openai/text-embedding-3-small"
+    task: "ragas_embedding"
     base_url: "https://openrouter.ai/api/v1"  
     
 
@@ -70,6 +71,7 @@ models:
     reasoning_effort: "high"
     max_tokens: 4096
     task: "reflection"
+    temperature: null
     base_url: "https://openrouter.ai/api/v1"  
 
   conversation_summary:
@@ -85,3 +87,4 @@ models:
     max_tokens: 8192
     task: "report_writer"
     base_url: "https://openrouter.ai/api/v1"  
+    temperature: null

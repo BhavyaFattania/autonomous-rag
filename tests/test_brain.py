@@ -49,7 +49,10 @@ BASE_STATE = {
 def _make_prompt(state=None, exploit=False, settings_override=None):
     settings = BASE_SETTINGS if settings_override is None else _make_settings(settings_override)
     st = {**BASE_STATE, **(state or {})}
-    with patch("src.scientist.prompt_builder.Path.read_text", return_value="SYSTEM_INSTRUCTIONS"):
+    with (
+        patch("src.scientist.prompt_builder.Path.read_text", return_value="SYSTEM_INSTRUCTIONS"),
+        patch("src.indexer.collection_manager.list_available_index_configs", return_value=[]),
+    ):
         return _build_scientist_prompt(st, exploit=exploit, settings=settings)
 
 

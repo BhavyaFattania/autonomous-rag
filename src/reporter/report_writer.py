@@ -3,8 +3,13 @@
 import json
 from pathlib import Path
 
+from config.loader import load_model_routing
+
 from src.core.provider import Provider
 from src.utils.openrouter import call_openrouter
+
+model_routing = load_model_routing()
+report_llm = model_routing.report_writer
 
 
 async def report_writer_node(state, settings, provider: Provider | None = None) -> dict:
@@ -21,12 +26,12 @@ async def report_writer_node(state, settings, provider: Provider | None = None) 
         llm = provider.llm_client if provider else None
         if llm:
             report = await llm.call(
-                model_id="deepseek/deepseek-v4-pro",
+                model_id=report_llm.model_id,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=8192,
-                task="report_writer",
-                reasoning_effort="high",
-                temperature=None,
+                max_tokens=report_llm.max_tokens,
+                task=report_llm.task,
+                reasoning_effort=report_llm.reasoning_effort,
+                temperature=report_llm.temperature,
             )
             if isinstance(report, dict):
                 report = report.get("content", "")
@@ -39,6 +44,8 @@ async def report_writer_node(state, settings, provider: Provider | None = None) 
                 reasoning_effort="high",
                 temperature=None,
             )
+            if isinstance(report, dict):
+                report = report.get("content", "")
     except Exception as e:
         report = _fallback_report(state, str(e))
 

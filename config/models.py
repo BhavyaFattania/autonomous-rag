@@ -12,7 +12,7 @@ class ModelConfig(BaseModel):
 
     model_id: str
     reasoning_effort: str | None = None
-    task: str | None = "LLM"
+    task: str
     max_tokens: int = 4096
     temperature: float | None = None
     top_p: float | None = None
@@ -32,3 +32,4 @@ class ModelRouting(BaseModel):
     smoke_tester: ModelConfig
     report_writer: ModelConfig
     ragas_embedding_model: ModelConfig
+    reflection: ModelConfig

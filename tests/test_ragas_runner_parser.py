@@ -119,6 +119,7 @@ def test_ragas_judge_openrouter_kwargs_force_json_without_reasoning():
         model_id="openrouter/test-model",
         response_format="json_object",
         reasoning=False,
+        task="ragas_judge",
     )
 
     assert _build_openrouter_model_kwargs(judge_config) == {

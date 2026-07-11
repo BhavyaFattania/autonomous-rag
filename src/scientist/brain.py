@@ -79,9 +79,9 @@ async def scientist_node(state, settings, provider: Provider | None = None) -> d
                 model_id=scientist_llm.model_id,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=scientist_llm.max_tokens,
-                task="scientist",
+                task=scientist_llm.task,
                 reasoning_effort=scientist_llm.reasoning_effort,
-                temperature=None,
+                temperature=scientist_llm.temperature,
                 return_reasoning=True,
             )
         else:
