@@ -60,11 +60,33 @@ def load_baseline_config() -> dict:
         return yaml.safe_load(f)
 
 
+@lru_cache(maxsize=1)
+def load_openai_pricing() -> dict[str, tuple[float, float]]:
+    """Load openai_pricing.yaml: model_id -> (usd_per_million_input, usd_per_million_output).
+
+    OpenAI's API has no pricing endpoint, so this table is maintained by hand
+    (see the file header) rather than fetched live.
+    """
+    path = _HERE / "openai_pricing.yaml"
+    with open(path) as f:
+        raw = yaml.safe_load(f)
+    return {model_id: tuple(prices) for model_id, prices in raw["models"].items()}
+
+
 def load_env() -> dict[str, str]:
-    """Extract required API keys from environment variables."""
-    return {
-        "OPENROUTER_API_KEY": os.environ["OPENROUTER_API_KEY"],
-    }
+    """Extract API keys from environment variables.
+
+    OPENROUTER_API_KEY is required today because it's still the only
+    provider every other subsystem (embeddings, reranker, Ragas judge)
+    depends on regardless of settings.run.llm_provider. OPENAI_API_KEY is
+    included when present so an "openai" llm_provider can be resolved by
+    src.core.provider_factory.build_provider — it is not yet required
+    unconditionally since nothing else in the pipeline needs it.
+    """
+    env = {"OPENROUTER_API_KEY": os.environ["OPENROUTER_API_KEY"]}
+    if "OPENAI_API_KEY" in os.environ:
+        env["OPENAI_API_KEY"] = os.environ["OPENAI_API_KEY"]
+    return env
 
 
 def invalidate_all() -> None:
@@ -72,6 +94,7 @@ def invalidate_all() -> None:
     load_settings.cache_clear()
     load_model_routing.cache_clear()
     load_baseline_config.cache_clear()
+    load_openai_pricing.cache_clear()
 
 
 def load_all() -> tuple[Settings, ModelRouting, dict, dict[str, str]]:

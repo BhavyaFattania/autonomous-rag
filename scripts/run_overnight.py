@@ -29,7 +29,13 @@ def _ensure_venv():
             sys.exit(subprocess.call(args))
 
 
-_ensure_venv()
+if "pytest" not in sys.modules:
+    # Relaunching into venv/ via subprocess.call(sys.argv) must never fire
+    # during test collection: it would pass pytest's own argv into the
+    # relaunched process. Must still run before the heavy imports below (not
+    # gated behind `if __name__ == "__main__"`), since its whole purpose is
+    # relaunching before those imports are attempted with a bare interpreter.
+    _ensure_venv()
 
 import asyncio
 import signal
@@ -74,23 +80,28 @@ signal.signal(signal.SIGINT, _handle_signal)
 @click.option("--dry-run", is_flag=True, help="Validate environment, print config, exit")
 @click.option("--resume", is_flag=True, help="Resume from last checkpoint")
 def main(max_exp, max_hours, dry_run, resume):
-    from config.loader import load_all
+    from config.loader import load_all, load_settings
     from src.core.provider_factory import build_provider
     from src.utils.function_trace import close_trace, init_trace
     from src.utils.logger import setup_logging
 
-    settings, model_routing, baseline, env = load_all()
     setup_logging()
 
+    if dry_run:
+        # Deliberately does not call load_all(): load_env() unconditionally
+        # requires OPENROUTER_API_KEY today (see its docstring), which would
+        # crash a dry run for someone validating an "openai" setup before
+        # they've set that unrelated key. _validate_environment does its own
+        # provider-aware, non-raising checks instead.
+        settings = load_settings()
+        asyncio.run(_validate_environment(settings))
+        return
+
+    settings, model_routing, baseline, env = load_all()
     provider = build_provider(settings, env)
 
     run_id = str(uuid.uuid4())
     init_trace(run_id)
-
-    if dry_run:
-        _validate_environment()
-        close_trace()
-        return
 
     provider.cost_tracker.initialize(
         hard_ceiling=settings.run.cost_hard_ceiling_usd,
@@ -236,15 +247,47 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         await evaluate_final_best(latest_state, settings, env)
 
 
-def _validate_environment():
+async def _validate_environment(settings):
+    """Provider-aware --dry-run checks: required key present, and for
+    "openai" specifically, that the models this project actually uses
+    (config/openai_pricing.yaml's keys) still exist in OpenAI's live catalog.
+    Never touches config.loader.load_env(), so a missing OPENROUTER_API_KEY
+    can't crash a dry run for someone only using the "openai" provider.
+    """
     import os
 
-    required = ["OPENROUTER_API_KEY"]
-    missing = [k for k in required if not os.environ.get(k)]
-    if missing:
-        console.print(f"[bold red]x Missing environment variables: {missing}[/]")
+    from src.core.provider_factory import required_env_var
+
+    provider_name = settings.run.llm_provider
+    try:
+        required_key = required_env_var(provider_name)
+    except ValueError as e:
+        console.print(f"[bold red]x {e}[/]")
         sys.exit(1)
-    console.print("[bold green]+[/] Environment variables present.")
+
+    if not os.environ.get(required_key):
+        console.print(f"[bold red]x Missing environment variable: {required_key}[/]")
+        sys.exit(1)
+    console.print(f"[bold green]+[/] {required_key} present (provider: {provider_name}).")
+
+    if provider_name == "openai":
+        from config.loader import load_openai_pricing
+        from src.utils.openai_client import OpenAIClient
+
+        necessary_models = sorted(load_openai_pricing().keys())
+        client = OpenAIClient(api_key=os.environ[required_key])
+        try:
+            missing_models = await client.validate_models(necessary_models)
+        except Exception as e:
+            console.print(f"[bold red]x Could not reach OpenAI to validate models: {e}[/]")
+            sys.exit(1)
+        if missing_models:
+            console.print(
+                f"[bold red]x Configured OpenAI models no longer available: {missing_models}[/]"
+            )
+            sys.exit(1)
+        console.print(f"[bold green]+[/] OpenAI models validated: {necessary_models}")
+
     data_path = Path("data/hotpotqa/questions.jsonl")
     if not data_path.exists():
         console.print(f"[bold red]x {data_path} not found. Run: data/hotpotqa/setup_hotpotqa.py[/]")

@@ -48,3 +48,19 @@ def test_build_provider_tolerates_missing_env():
 
     assert isinstance(provider.llm_client, ILLMClient)
     assert provider.env is None
+
+
+def test_build_provider_wires_openai():
+    from src.utils.openai_client import OpenAIClient
+
+    class Settings:
+        class run:
+            cost_hard_ceiling_usd = 10.0
+            cost_warning_threshold_usd = 7.0
+            llm_provider = "openai"
+
+    provider = build_provider(Settings, env={"OPENAI_API_KEY": "sk-test"})
+
+    assert isinstance(provider.llm_client, OpenAIClient)
+    assert isinstance(provider.llm_client, ILLMClient)
+    assert isinstance(provider.cost_tracker, ICostTracker)
