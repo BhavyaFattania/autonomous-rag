@@ -6,6 +6,7 @@ run:
   cost_warning_threshold_usd: 7.00  # Log WARNING but continue.
   consecutive_failure_limit: 5      # Pause loop after N consecutive failures.
   random_seed: 42
+  llm_provider: openrouter          # Which LLM provider backs the DI Provider (see src/core/provider_factory.py).
 
 evaluation:
   baseline_score_override: 0.4       # Start search from a low bar; real configs can establish their own best.

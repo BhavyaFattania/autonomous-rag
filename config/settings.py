@@ -16,6 +16,7 @@ class RunSettings(BaseModel):
     cost_warning_threshold_usd: float = 7.0
     consecutive_failure_limit: int = 5
     random_seed: int = 42
+    llm_provider: str = "openrouter"  # validated against src.core.provider_factory's registry
 
 
 class EvalSettings(BaseModel):

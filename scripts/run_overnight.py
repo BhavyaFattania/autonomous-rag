@@ -75,24 +75,14 @@ signal.signal(signal.SIGINT, _handle_signal)
 @click.option("--resume", is_flag=True, help="Resume from last checkpoint")
 def main(max_exp, max_hours, dry_run, resume):
     from config.loader import load_all
-    from src.core.provider import Provider
-    from src.storage.cost_tracker import CostTracker
+    from src.core.provider_factory import build_provider
     from src.utils.function_trace import close_trace, init_trace
     from src.utils.logger import setup_logging
-    from src.utils.openrouter import OpenRouterClient
 
     settings, model_routing, baseline, env = load_all()
     setup_logging()
 
-    provider = Provider(
-        cost_tracker=CostTracker(
-            hard_ceiling=settings.run.cost_hard_ceiling_usd,
-            warning_threshold=settings.run.cost_warning_threshold_usd,
-        ),
-        llm_client=OpenRouterClient(api_key=env.get("OPENROUTER_API_KEY") if env else None),
-        env=env,
-        settings=settings,
-    )
+    provider = build_provider(settings, env)
 
     run_id = str(uuid.uuid4())
     init_trace(run_id)
