@@ -1,5 +1,7 @@
 """Tests for scripts/run_overnight.py's provider-aware --dry-run validation."""
 
+from pathlib import Path
+
 import pytest
 from scripts.run_overnight import _validate_environment
 
@@ -17,6 +19,14 @@ def _settings_for(provider_name: str):
     return Settings
 
 
+def _assume_hotpotqa_data_present(monkeypatch):
+    """data/hotpotqa/questions.jsonl is gitignored and only ever present
+    locally after running data/hotpotqa/setup_hotpotqa.py — never in a fresh
+    CI checkout. Tests exercising the provider/key/model checks shouldn't
+    also depend on that unrelated, environment-specific file existing."""
+    monkeypatch.setattr(Path, "exists", lambda self: True)
+
+
 @pytest.mark.asyncio
 async def test_openrouter_missing_key_exits(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
@@ -28,6 +38,7 @@ async def test_openrouter_missing_key_exits(monkeypatch):
 @pytest.mark.asyncio
 async def test_openrouter_present_key_passes(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    _assume_hotpotqa_data_present(monkeypatch)
 
     await _validate_environment(_settings_for("openrouter"))
 
@@ -65,6 +76,7 @@ async def test_openai_all_models_present_passes(monkeypatch):
 
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setattr(OpenAIClient, "validate_models", lambda self, required: _fake_missing([]))
+    _assume_hotpotqa_data_present(monkeypatch)
 
     await _validate_environment(_settings_for("openai"))
 
