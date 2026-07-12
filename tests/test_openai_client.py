@@ -25,7 +25,9 @@ def test_compute_cost_unknown_model_is_zero_and_warns(caplog):
     client = OpenAIClient(api_key="sk-test", pricing={"gpt-4o-mini": (0.15, 0.60)})
 
     with caplog.at_level("WARNING"):
-        cost = client.compute_cost("some-future-model", prompt_tokens=1_000_000, completion_tokens=500)
+        cost = client.compute_cost(
+            "some-future-model", prompt_tokens=1_000_000, completion_tokens=500
+        )
 
     assert cost == 0.0
     assert "openai_pricing_missing" in caplog.text

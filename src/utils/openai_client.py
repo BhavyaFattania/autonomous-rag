@@ -89,7 +89,9 @@ class OpenAIClient:
             response = await client.get(f"{self._base_url}/models", headers=self.build_headers())
 
         if response.status_code != 200:
-            raise OpenAIError(f"Failed to list models: HTTP {response.status_code}: {response.text[:300]}")
+            raise OpenAIError(
+                f"Failed to list models: HTTP {response.status_code}: {response.text[:300]}"
+            )
 
         data = response.json()
         return {item["id"] for item in data.get("data", [])}

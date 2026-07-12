@@ -7,7 +7,8 @@ Single seam for provider selection: adding a new provider means writing one
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from src.core.provider import Provider
 from src.storage.cost_tracker import CostTracker
