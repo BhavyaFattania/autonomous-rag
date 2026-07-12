@@ -36,7 +36,17 @@ class ILLMClient(Protocol):
         fallback_model_id: str | None = None,
         return_reasoning: bool = False,
         response_format: str | None = None,
-    ) -> str | dict: ...
+    ) -> str | dict:
+        """Send a chat-completion-style request and return the response.
+
+        `reasoning_effort` and `fallback_model_id` are optional provider hints,
+        not universal semantics: they originate from OpenRouter/OpenAI-o-series
+        capabilities (reasoning-effort tiers, routed fallback models). An
+        implementation for a provider without an equivalent capability MUST
+        accept these parameters and silently ignore them rather than raising —
+        callers are not expected to know which providers support which hints.
+        """
+        ...
 
 
 # ─── Embedding Service ────────────────────────────────────────────────────────
@@ -44,9 +54,38 @@ class ILLMClient(Protocol):
 
 @runtime_checkable
 class IEmbeddingService(Protocol):
+    """Provider-agnostic text embedding. Deliberately excludes any single
+    consuming framework's adapter shape (e.g. LlamaIndex) — see
+    `ILlamaIndexEmbeddingAdapter` for that concern."""
+
     async def embed_texts(self, texts: list[str]) -> list[list[float]]: ...
     async def embed_query(self, query: str) -> list[float]: ...
+
+
+@runtime_checkable
+class ILlamaIndexEmbeddingAdapter(Protocol):
+    """Optional capability: expose this embedding service as a LlamaIndex
+    `BaseEmbedding`-compatible object, for code that must hand embeddings to
+    LlamaIndex APIs (indexers, retrievers). Not every `IEmbeddingService`
+    implementation needs to satisfy this — only ones consumed by LlamaIndex
+    pipeline code."""
+
     def get_llama_index_embedding(self, model_name: str) -> Any: ...
+
+
+# ─── Reranker ─────────────────────────────────────────────────────────────────
+
+
+@runtime_checkable
+class IReranker(Protocol):
+    """Provider-agnostic reranking. Returns `(original_index, relevance_score)`
+    pairs for the top `top_n` documents, sorted by descending relevance.
+    Framework-specific adapters (e.g. LlamaIndex `BaseNodePostprocessor`) wrap
+    this contract rather than replacing it."""
+
+    async def rerank(
+        self, query: str, documents: list[str], top_n: int
+    ) -> list[tuple[int, float]]: ...
 
 
 # ─── Database ─────────────────────────────────────────────────────────────────

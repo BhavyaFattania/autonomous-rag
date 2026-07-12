@@ -5,9 +5,11 @@ from src.core.interfaces import (
     ICostTracker,
     IDatabase,
     IEmbeddingService,
+    ILlamaIndexEmbeddingAdapter,
     ILLMClient,
     IModelRoutingProvider,
     IRagasFactory,
+    IReranker,
 )
 from src.core.provider import Provider
 
@@ -16,6 +18,8 @@ __all__ = [
     "ICostTracker",
     "ILLMClient",
     "IEmbeddingService",
+    "ILlamaIndexEmbeddingAdapter",
+    "IReranker",
     "IDatabase",
     "IChromaClientFactory",
     "IRagasFactory",
