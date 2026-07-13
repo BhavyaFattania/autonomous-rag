@@ -11,10 +11,10 @@ from src.orchestrator.state import WorkflowState
 
 def build_graph(
     settings,
+    provider: Provider,
     checkpointer: BaseCheckpointSaver = None,
     env=None,
     model_routing=None,
-    provider: Provider | None = None,
 ) -> CompiledStateGraph:
     workflow = StateGraph(WorkflowState)
 

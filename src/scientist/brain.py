@@ -16,7 +16,6 @@ from src.scientist.proposal import (
 from src.utils.function_trace import trace_call
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
-from src.utils.openrouter import call_openrouter
 
 log = get_logger("scientist")
 model_routing = load_model_routing()
@@ -38,13 +37,14 @@ def _should_force_reranker_probe(state, settings) -> bool:
 
 @observe(name="scientist_node")
 @trace_call(log_return=False)
-async def scientist_node(state, settings, provider: Provider | None = None) -> dict:
+async def scientist_node(state, settings, provider: Provider) -> dict:
     from src.utils.conversation_summary import sliding_window_compress
 
     history_lines = build_history_lines(state)
     existing_summary = state.get("history_summary", "")
     recent_history, new_history_summary = await sliding_window_compress(
         history_lines,
+        provider=provider,
         recent_k=10,
         existing_summary=existing_summary,
     )
@@ -73,30 +73,16 @@ async def scientist_node(state, settings, provider: Provider | None = None) -> d
     try:
         started = time.perf_counter()
         log.info("scientist_llm_start", exploit=exploit)
-        llm = provider.llm_client if provider else None
-        if llm:
-            raw_response = await llm.call(
-                model_id=scientist_llm.model_id,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=scientist_llm.max_tokens,
-                task=scientist_llm.task,
-                reasoning_effort=scientist_llm.reasoning_effort,
-                temperature=scientist_llm.temperature,
-                return_reasoning=True,
-                response_format=scientist_llm.response_format,
-            )
-        else:
-            raw_response = await call_openrouter(
-                model_id="deepseek/deepseek-v4-pro",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=8192,
-                task="scientist",
-                reasoning_effort="high",
-                temperature=None,
-                return_reasoning=True,
-                fallback_model_id=None,
-                response_format="json_object",
-            )
+        raw_response = await provider.llm_client.call(
+            model_id=scientist_llm.model_id,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=scientist_llm.max_tokens,
+            task=scientist_llm.task,
+            reasoning_effort=scientist_llm.reasoning_effort,
+            temperature=scientist_llm.temperature,
+            return_reasoning=True,
+            response_format=scientist_llm.response_format,
+        )
         log.info("scientist_llm_complete", elapsed_sec=round(time.perf_counter() - started, 2))
     except Exception as e:
         log.error("scientist_llm_failed", error=str(e))

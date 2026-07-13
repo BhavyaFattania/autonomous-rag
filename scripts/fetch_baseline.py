@@ -1,21 +1,22 @@
 import asyncio
 import json
 
-from config.loader import load_baseline_config
+from config.loader import load_all
 from dotenv import load_dotenv
+from src.core.provider_factory import build_provider
 from src.data.question_loader import load_eval_question_items
 from src.evaluator.ragas_runner import run_single_eval
 from src.models.metrics import AggregatedMetrics
 from src.models.rag_config import RAGConfig
 from src.rag_pipeline.pipeline import run_pipeline
-from src.storage.cost_tracker import get_total, initialize
 
 load_dotenv()
 
 
 async def main():
-    initialize(hard_ceiling=10.0, warning_threshold=7.0)
-    config_dict = load_baseline_config()
+    settings, _model_routing, config_dict, env = load_all()
+    provider = build_provider(settings, env)
+    provider.cost_tracker.initialize(hard_ceiling=10.0, warning_threshold=7.0)
     config = RAGConfig(**config_dict)
 
     items = load_eval_question_items(n=5)
@@ -25,7 +26,7 @@ async def main():
     print(f"Running baseline config: {config_dict}")
     runs = []
     for i in range(3):
-        answers, contexts, cost = await run_pipeline(config, questions)
+        answers, contexts, cost = await run_pipeline(config, questions, settings, provider)
         metrics = await run_single_eval(questions, answers, contexts, ground_truths)
         runs.append(metrics)
         print(f"Run {i+1} score: {metrics.weighted_score}")
@@ -36,7 +37,7 @@ async def main():
         json.dump(agg.model_dump(), f, indent=2)
 
     print(f"Final baseline median score: {agg.median_weighted_score}")
-    print(f"Total API cost: ${get_total()}")
+    print(f"Total API cost: ${provider.cost_tracker.get_total()}")
 
 
 if __name__ == "__main__":

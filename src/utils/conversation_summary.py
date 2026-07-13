@@ -13,6 +13,7 @@ Two public APIs:
 
 from __future__ import annotations
 
+from src.core.provider import Provider
 from src.prompts.templates import HISTORY_SUMMARY_TEMPLATE
 from src.utils.context_budget import truncate_to_token_budget
 from src.utils.logger import get_logger
@@ -36,6 +37,7 @@ def _call_summary_llm_sync_fallback(
 
 async def sliding_window_compress(
     entries: list[str],
+    provider: Provider,
     recent_k: int = 10,
     existing_summary: str = "",
     model_id: str = _SUMMARY_MODEL,
@@ -52,9 +54,10 @@ async def sliding_window_compress(
 
     Args:
         entries: Ordered list of history strings (oldest first).
+        provider: DI provider whose llm_client performs the summarisation call.
         recent_k: Number of recent entries to keep verbatim.
         existing_summary: Previously generated summary of even older entries.
-        model_id: OpenRouter model for summarisation (default: flash).
+        model_id: Model for summarisation (default: flash).
 
     Returns:
         ``(recent_entries, summary_text)``
@@ -78,16 +81,14 @@ async def sliding_window_compress(
     )
 
     try:
-        from src.utils.openrouter import call_openrouter
-
-        raw = await call_openrouter(
+        raw = await provider.llm_client.call(
             model_id=model_id,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=_MAX_SUMMARY_TOKENS,
             task="history_summary",
             temperature=0.0,
         )
-        # call_openrouter returns str or {"content": ..., "reasoning": ...}
+        # llm_client.call returns str or {"content": ..., "reasoning": ...}
         new_summary = (raw if isinstance(raw, str) else raw.get("content", "")).strip()  # type: ignore[union-attr]
     except Exception as exc:
         log.warning("history_summary_failed", error=str(exc))
@@ -104,6 +105,7 @@ async def sliding_window_compress(
 
 async def sliding_window_compress_messages(
     messages: list[dict],
+    provider: Provider,
     recent_k: int = 10,
     existing_summary: str = "",
     model_id: str = _SUMMARY_MODEL,
@@ -116,6 +118,7 @@ async def sliding_window_compress_messages(
 
     Args:
         messages: List of ``{"role": ..., "content": ...}`` dicts.
+        provider: DI provider whose llm_client performs the summarisation call.
         recent_k: Number of recent messages to keep verbatim.
         existing_summary: Previously generated summary of even older messages.
         model_id: Model for summarisation.
@@ -142,9 +145,7 @@ async def sliding_window_compress_messages(
     )
 
     try:
-        from src.utils.openrouter import call_openrouter
-
-        raw = await call_openrouter(
+        raw = await provider.llm_client.call(
             model_id=model_id,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=_MAX_SUMMARY_TOKENS,

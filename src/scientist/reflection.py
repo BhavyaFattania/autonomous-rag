@@ -13,7 +13,6 @@ from src.utils.context_budget import truncate_to_token_budget
 from src.utils.function_trace import trace_call
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
-from src.utils.openrouter import call_openrouter
 
 model_routing = load_model_routing()
 reflection_llm = model_routing.reflection
@@ -25,7 +24,7 @@ _MAX_REFLECTION_TOKENS = 1000
 
 @observe(name="reflection_node")
 @trace_call(log_return=False)
-async def reflection_node(state, settings, provider: Provider | None = None) -> dict:
+async def reflection_node(state, settings, provider: Provider) -> dict:
     """Periodically call DeepSeek to synthesize successful/failed patterns; returns empty if not triggered."""
     n = settings.reflection.update_every_n_experiments
     completed = state.get("experiments_completed", 0)
@@ -35,25 +34,14 @@ async def reflection_node(state, settings, provider: Provider | None = None) -> 
 
     prompt = _build_reflection_prompt(state)
     try:
-        llm = provider.llm_client if provider else None
-        if llm:
-            summary = await llm.call(
-                model_id=reflection_llm.model_id,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=reflection_llm.max_tokens,
-                task=reflection_llm.task,
-                reasoning_effort=reflection_llm.reasoning_effort,
-                temperature=reflection_llm.temperature,
-            )
-        else:
-            summary = await call_openrouter(
-                model_id="deepseek/deepseek-v4-pro",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=2048,
-                task="reflection",
-                reasoning_effort="high",
-                temperature=None,
-            )
+        summary = await provider.llm_client.call(
+            model_id=reflection_llm.model_id,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=reflection_llm.max_tokens,
+            task=reflection_llm.task,
+            reasoning_effort=reflection_llm.reasoning_effort,
+            temperature=reflection_llm.temperature,
+        )
     except Exception as e:
         log.warning("reflection_failed", error=str(e))
         return {}

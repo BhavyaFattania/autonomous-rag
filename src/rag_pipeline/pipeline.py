@@ -10,6 +10,7 @@ import json
 import time
 from pathlib import Path
 
+from src.core.provider import Provider
 from src.indexer.collection_manager import get_or_build_collection
 from src.models.rag_config import RAGConfig
 from src.rag_pipeline.generator import generate_answer
@@ -29,17 +30,14 @@ async def run_pipeline(
     config: RAGConfig,
     questions: list[str],
     settings,
+    provider: Provider,
     collection_name: str | None = None,
     env=None,
 ) -> tuple[list[str], list[list[str]], float]:
     collection_name = collection_name or await get_or_build_collection(config, settings, env=env)
     max_concurrency = settings.evaluation.max_concurrent_questions
 
-    cost = 0.0  # Handled globally by openrouter.py, but we could return 0.0 or track delta
-
-    from src.storage.cost_tracker import get_total
-
-    start_cost = get_total()
+    start_cost = provider.cost_tracker.get_total()
 
     started = time.perf_counter()
     contexts = await _get_or_build_contexts(
@@ -63,6 +61,7 @@ async def run_pipeline(
             return await generate_answer(
                 question,
                 context,
+                provider=provider,
                 model_id=config.generator_model,
             )
 
@@ -80,7 +79,7 @@ async def run_pipeline(
         elapsed_sec=round(time.perf_counter() - started, 2),
     )
 
-    end_cost = get_total()
+    end_cost = provider.cost_tracker.get_total()
     cost = end_cost - start_cost
 
     return answers, contexts, cost
