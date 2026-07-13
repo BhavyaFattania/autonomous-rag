@@ -64,3 +64,25 @@ def test_build_provider_wires_openai():
     assert isinstance(provider.llm_client, OpenAIClient)
     assert isinstance(provider.llm_client, ILLMClient)
     assert isinstance(provider.cost_tracker, ICostTracker)
+
+
+def test_build_provider_openrouter_client_shares_provider_cost_tracker():
+    """The bug the audit flagged: without this, the client could silently
+    report cost to a different tracker than the one Provider.cost_tracker
+    exposes (e.g. a stray module-level singleton), decoupling the ceiling
+    check from what real calls actually report."""
+    provider = build_provider(_Settings, env={"OPENROUTER_API_KEY": "sk-test"})
+
+    assert provider.llm_client._cost_tracker is provider.cost_tracker  # type: ignore[attr-defined]
+
+
+def test_build_provider_openai_client_shares_provider_cost_tracker():
+    class Settings:
+        class run:
+            cost_hard_ceiling_usd = 10.0
+            cost_warning_threshold_usd = 7.0
+            llm_provider = "openai"
+
+    provider = build_provider(Settings, env={"OPENAI_API_KEY": "sk-test"})
+
+    assert provider.llm_client._cost_tracker is provider.cost_tracker  # type: ignore[attr-defined]

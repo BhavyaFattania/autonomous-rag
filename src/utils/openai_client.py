@@ -13,6 +13,7 @@ import os
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from src.core.interfaces import ICostTracker
 from src.storage.cost_tracker import add_cost
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
@@ -49,18 +50,31 @@ class OpenAIClient:
         api_key: str | None = None,
         base_url: str = OPENAI_BASE_URL,
         pricing: dict[str, tuple[float, float]] | None = None,
+        cost_tracker: ICostTracker | None = None,
     ):
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self._base_url = base_url
         # Lazily loaded from config/openai_pricing.yaml on first use unless
         # injected (tests / callers with their own pricing source pass this).
         self._pricing = pricing
+        # When given, receives every call's cost directly — this is what
+        # Provider.cost_tracker should be wired to, so cost tracking doesn't
+        # depend on the module-level default tracker in src.storage.cost_tracker
+        # lining up with it by coincidence. Falls back to that singleton (via
+        # add_cost()) when omitted, matching OpenRouterClient's behavior.
+        self._cost_tracker = cost_tracker
 
     def build_headers(self) -> dict:
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
+
+    def _report_cost(self, usd: float) -> None:
+        if self._cost_tracker is not None:
+            self._cost_tracker.add_cost(usd)
+        else:
+            add_cost(usd)
 
     def _get_pricing(self) -> dict[str, tuple[float, float]]:
         if self._pricing is None:
@@ -166,7 +180,7 @@ class OpenAIClient:
             usage.get("prompt_tokens", 0),
             usage.get("completion_tokens", 0),
         )
-        add_cost(cost)
+        self._report_cost(cost)
 
         log.debug(
             "openai_call_complete",

@@ -17,12 +17,20 @@ from src.storage.cost_tracker import CostTracker
 def _build_openrouter_provider(settings: Any, env: dict | None) -> Provider:
     from src.utils.openrouter import OpenRouterClient
 
+    # Built once and handed to both Provider and the client, so the tracker
+    # that enforces the cost ceiling and the tracker that real calls report
+    # to are provably the same object — not two trackers that happen to
+    # agree only because of a module-level singleton elsewhere.
+    cost_tracker = CostTracker(
+        hard_ceiling=settings.run.cost_hard_ceiling_usd,
+        warning_threshold=settings.run.cost_warning_threshold_usd,
+    )
     return Provider(
-        cost_tracker=CostTracker(
-            hard_ceiling=settings.run.cost_hard_ceiling_usd,
-            warning_threshold=settings.run.cost_warning_threshold_usd,
+        cost_tracker=cost_tracker,
+        llm_client=OpenRouterClient(
+            api_key=env.get("OPENROUTER_API_KEY") if env else None,
+            cost_tracker=cost_tracker,
         ),
-        llm_client=OpenRouterClient(api_key=env.get("OPENROUTER_API_KEY") if env else None),
         env=env,
         settings=settings,
     )
@@ -31,12 +39,16 @@ def _build_openrouter_provider(settings: Any, env: dict | None) -> Provider:
 def _build_openai_provider(settings: Any, env: dict | None) -> Provider:
     from src.utils.openai_client import OpenAIClient
 
+    cost_tracker = CostTracker(
+        hard_ceiling=settings.run.cost_hard_ceiling_usd,
+        warning_threshold=settings.run.cost_warning_threshold_usd,
+    )
     return Provider(
-        cost_tracker=CostTracker(
-            hard_ceiling=settings.run.cost_hard_ceiling_usd,
-            warning_threshold=settings.run.cost_warning_threshold_usd,
+        cost_tracker=cost_tracker,
+        llm_client=OpenAIClient(
+            api_key=env.get("OPENAI_API_KEY") if env else None,
+            cost_tracker=cost_tracker,
         ),
-        llm_client=OpenAIClient(api_key=env.get("OPENAI_API_KEY") if env else None),
         env=env,
         settings=settings,
     )

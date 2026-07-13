@@ -12,6 +12,7 @@ import os
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from src.core.interfaces import ICostTracker
 from src.storage.cost_tracker import add_cost
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
@@ -47,10 +48,31 @@ class OpenRouterNonRetryableError(OpenRouterError):
 class OpenRouterClient:
     """HTTP client for OpenRouter API with retry, cost tracking, and model fallback."""
 
-    def __init__(self, api_key: str | None = None, base_url: str = OPENROUTER_BASE_URL):
-        """Initialize with API key and base URL (defaults from environment/constants)."""
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str = OPENROUTER_BASE_URL,
+        cost_tracker: ICostTracker | None = None,
+    ):
+        """Initialize with API key and base URL (defaults from environment/constants).
+
+        `cost_tracker`, when given, receives every call's cost directly —
+        this is what `Provider.cost_tracker` should be wired to, so cost
+        tracking doesn't depend on the module-level default tracker in
+        src.storage.cost_tracker lining up with it by coincidence. Falls back
+        to that module-level singleton (via add_cost()) when omitted, for
+        callers that construct this client without DI (e.g. the module-level
+        `_default_client` below).
+        """
         self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
         self._base_url = base_url
+        self._cost_tracker = cost_tracker
+
+    def _report_cost(self, usd: float) -> None:
+        if self._cost_tracker is not None:
+            self._cost_tracker.add_cost(usd)
+        else:
+            add_cost(usd)
 
     def build_headers(self) -> dict:
         """Build HTTP headers with auth token and referrer info."""
@@ -125,7 +147,7 @@ class OpenRouterClient:
             usage.get("prompt_tokens", 0),
             usage.get("completion_tokens", 0),
         )
-        add_cost(cost)
+        self._report_cost(cost)
 
         log.debug(
             "openrouter_call_complete",
