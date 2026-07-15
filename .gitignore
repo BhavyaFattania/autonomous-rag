@@ -50,3 +50,6 @@ docs/debug_reports
 .DS_Store
 Thumbs.db
 opencode.json
+
+
+graphify-out/cache
