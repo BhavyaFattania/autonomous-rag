@@ -1,0 +1,26 @@
+# Pre-commit hooks — mirror the ruff + black checks CI enforces, so lint and
+# formatting issues surface locally on commit instead of on a red CI run.
+# Hook versions are pinned to match pyproject.toml. Setup: see CONTRIBUTING.md.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        args: [--fix]
+
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.10.0
+    hooks:
+      - id: black
+        name: black (format)
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files

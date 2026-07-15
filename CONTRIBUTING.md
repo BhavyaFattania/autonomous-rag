@@ -11,6 +11,7 @@ Thank you for your interest in contributing! This document covers everything you
   - [Prerequisites](#prerequisites)
   - [Fork & Clone](#fork--clone)
   - [Install Dependencies](#install-dependencies)
+  - [Install Pre-commit Hooks](#install-pre-commit-hooks)
   - [Environment Variables](#environment-variables)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
@@ -70,6 +71,23 @@ poetry install --with dev
 ```
 
 This installs the runtime stack (LlamaIndex, LangGraph, ChromaDB, Ragas, etc.) **and** the dev tools (`pytest`, `black`, `ruff`, `mypy`).
+
+### Install Pre-commit Hooks
+
+The repo ships a [`.pre-commit-config.yaml`](.pre-commit-config.yaml) that runs the same `ruff` and `black` checks CI enforces — so formatting/lint problems are caught locally *before* you push, not after a red CI run. Install the hooks once after cloning:
+
+```bash
+pip install pre-commit     # if you don't have it yet
+pre-commit install
+```
+
+The hooks then run automatically on every `git commit` (only against staged files). To run them across the whole codebase on demand:
+
+```bash
+pre-commit run --all-files
+```
+
+> The hook versions are pinned to match the tool versions in `pyproject.toml`, so local hooks and CI never disagree.
 
 ### Environment Variables
 
