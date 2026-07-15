@@ -94,6 +94,7 @@ class SearchSpaceSettings(BaseModel):
     allowed_chunk_overlaps: list[int] | None = None
     allowed_generator_models: list[str] | None = None
     allowed_rerankers: list[str | None] | None = None
+    allowed_embedding_models: list[str] | None = None
 
 
 class Settings(BaseModel):

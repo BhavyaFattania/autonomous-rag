@@ -52,3 +52,8 @@ reflection:
 
 report:
   use_llm_report: false              # Keep live tests fast; enable for overnight synthesis.
+
+# search_space:                       # Optional. Omit any field (or the whole section) to leave it unrestricted.
+#   allowed_embedding_models: ["openai/text-embedding-3-small", "baai/bge-m3"]  # Options the scientist may propose.
+#   allowed_rerankers: [null, "CohereRerank"]
+#   allowed_generator_models: ["deepseek/deepseek-v4-flash"]
