@@ -49,45 +49,6 @@ class ILLMClient(Protocol):
         ...
 
 
-# ─── Embedding Service ────────────────────────────────────────────────────────
-
-
-@runtime_checkable
-class IEmbeddingService(Protocol):
-    """Provider-agnostic text embedding. Deliberately excludes any single
-    consuming framework's adapter shape (e.g. LlamaIndex) — see
-    `ILlamaIndexEmbeddingAdapter` for that concern."""
-
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]: ...
-    async def embed_query(self, query: str) -> list[float]: ...
-
-
-@runtime_checkable
-class ILlamaIndexEmbeddingAdapter(Protocol):
-    """Optional capability: expose this embedding service as a LlamaIndex
-    `BaseEmbedding`-compatible object, for code that must hand embeddings to
-    LlamaIndex APIs (indexers, retrievers). Not every `IEmbeddingService`
-    implementation needs to satisfy this — only ones consumed by LlamaIndex
-    pipeline code."""
-
-    def get_llama_index_embedding(self, model_name: str) -> Any: ...
-
-
-# ─── Reranker ─────────────────────────────────────────────────────────────────
-
-
-@runtime_checkable
-class IReranker(Protocol):
-    """Provider-agnostic reranking. Returns `(original_index, relevance_score)`
-    pairs for the top `top_n` documents, sorted by descending relevance.
-    Framework-specific adapters (e.g. LlamaIndex `BaseNodePostprocessor`) wrap
-    this contract rather than replacing it."""
-
-    async def rerank(
-        self, query: str, documents: list[str], top_n: int
-    ) -> list[tuple[int, float]]: ...
-
-
 # ─── Database ─────────────────────────────────────────────────────────────────
 
 

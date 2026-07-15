@@ -11,11 +11,9 @@ from src.core.interfaces import (
     IChromaClientFactory,
     ICostTracker,
     IDatabase,
-    IEmbeddingService,
     ILLMClient,
     IModelRoutingProvider,
     IRagasFactory,
-    IReranker,
 )
 
 
@@ -26,8 +24,6 @@ class Provider:
         self,
         cost_tracker: ICostTracker | None = None,
         llm_client: ILLMClient | None = None,
-        embedding_service: IEmbeddingService | None = None,
-        reranker: IReranker | None = None,
         database: IDatabase | None = None,
         chroma_factory: IChromaClientFactory | None = None,
         ragas_factory: IRagasFactory | None = None,
@@ -37,8 +33,6 @@ class Provider:
     ):
         self._cost_tracker = cost_tracker
         self._llm_client = llm_client
-        self._embedding_service = embedding_service
-        self._reranker = reranker
         self._database = database
         self._chroma_factory = chroma_factory
         self._ragas_factory = ragas_factory
@@ -55,16 +49,6 @@ class Provider:
     def llm_client(self) -> ILLMClient:
         assert self._llm_client is not None
         return self._llm_client
-
-    @property
-    def embedding_service(self) -> IEmbeddingService:
-        assert self._embedding_service is not None
-        return self._embedding_service
-
-    @property
-    def reranker(self) -> IReranker:
-        assert self._reranker is not None
-        return self._reranker
 
     @property
     def database(self) -> IDatabase:
