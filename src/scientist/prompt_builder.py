@@ -84,6 +84,7 @@ def build_scientist_prompt(
         ("allowed_chunk_overlaps", "chunk_overlap"),
         ("allowed_generator_models", "generator_model"),
         ("allowed_rerankers", "reranker"),
+        ("allowed_embedding_models", "embedding_model"),
     ]:
         allowed = getattr(search_space, attr)
         if allowed is not None:

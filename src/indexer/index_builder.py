@@ -5,6 +5,7 @@ import chromadb
 from llama_index.core import StorageContext, VectorStoreIndex
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
+from src.core.model_catalog import EMBEDDING_CATALOG
 from src.indexer.collection_cache import (
     build_embed_model,
     effective_corpus_limit,
@@ -16,13 +17,6 @@ from src.models.rag_config import RAGConfig
 from src.utils.logger import get_logger
 
 log = get_logger("indexer")
-
-EMBEDDING_DIMS = {
-    "qwen/qwen3-embedding-8b": 4096,
-    "qwen/qwen3-embedding-4b": 2560,
-    "openai/text-embedding-3-small": 1536,
-    "baai/bge-m3": 1024,
-}
 
 CORPUS_PATH = Path("data/corpus/hotpotqa_paragraphs.jsonl")
 
@@ -62,7 +56,7 @@ async def build_collection(
         CORPUS_PATH.exists()
     ), f"Corpus not found at {CORPUS_PATH}. Run data/hotpotqa/setup_hotpotqa.py first."
 
-    if config.embedding_model not in EMBEDDING_DIMS:
+    if config.embedding_model not in EMBEDDING_CATALOG:
         raise ValueError(f"Unknown embedding model: {config.embedding_model}")
 
     from llama_index.core import Settings

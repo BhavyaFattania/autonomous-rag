@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, field_validator, model_validator
 
+from src.core.model_catalog import EMBEDDING_CATALOG, RERANKER_CATALOG
+
 VALID_CHUNK_SIZES = [256, 512, 768, 1024, 1536, 2048]
 VALID_CHUNK_OVERLAPS = [64, 128, 200, 256, 384]
 VALID_NODE_PARSERS = [
@@ -23,10 +25,8 @@ VALID_RETRIEVERS = [
     "recursive",
     "summary_embedding",
 ]
-VALID_EMBEDDING_MODELS = [
-    "openai/text-embedding-3-small",
-]
-VALID_RERANKERS = [None, "CohereRerank"]
+VALID_EMBEDDING_MODELS = list(EMBEDDING_CATALOG)
+VALID_RERANKERS = [None, *RERANKER_CATALOG]
 VALID_GENERATOR_MODELS = [
     "deepseek/deepseek-v4-flash",
     "deepseek/deepseek-v4-flash:free",

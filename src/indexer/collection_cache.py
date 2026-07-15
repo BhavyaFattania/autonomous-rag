@@ -65,14 +65,10 @@ def load_corpus_as_documents(corpus_path: Path, limit: int = MAX_CORPUS_DOCS):
 
 
 def build_embed_model(config: RAGConfig, env=None):
-    """Instantiate embedding model from config and optional environment variables."""
-    from src.utils.openrouter_embedding import OpenRouterEmbedding
+    """Instantiate embedding model from config via the model catalog factory."""
+    from src.core.model_catalog import build_embedding_model
 
-    api_key = env.get("OPENROUTER_API_KEY") if env else None
-    return OpenRouterEmbedding(
-        model_name=config.embedding_model,
-        api_key=api_key,
-    )
+    return build_embedding_model(config.embedding_model, env)
 
 
 def load_bm25_nodes(collection_name: str) -> list:

@@ -99,6 +99,7 @@ async def build_retriever(
     dense_retriever, bm25_retriever, nodes, storage_context = _build_components(
         config,
         collection_name,
+        env,
     )
 
     if config.retriever == "dense":
@@ -193,11 +194,11 @@ async def build_retriever(
     return _maybe_apply_reranker(retriever, config, env)
 
 
-def _build_components(config: RAGConfig, collection_name: str):
+def _build_components(config: RAGConfig, collection_name: str, env=None):
     chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
-    from src.utils.openrouter_embedding import OpenRouterEmbedding
+    from src.core.model_catalog import build_embedding_model
 
-    embed_model = OpenRouterEmbedding(model_name=config.embedding_model)
+    embed_model = build_embedding_model(config.embedding_model, env)
     chroma_collection = chroma_client.get_collection(collection_name)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     index = VectorStoreIndex.from_vector_store(vector_store, embed_model=embed_model)
@@ -256,26 +257,17 @@ def _build_query_fusion_llm(config: RAGConfig, env=None):
     )
 
 
-try:
-    from src.rag_pipeline.openrouter_reranker import OpenRouterRerank
-except ImportError:
-    OpenRouterRerank = None
-
-
 def _maybe_apply_reranker(retriever, config: RAGConfig, env=None):
-    if config.reranker != "CohereRerank":
+    if config.reranker is None:
         return retriever
 
-    if OpenRouterRerank is None:
-        raise ValueError("OpenRouterRerank dependencies are not installed.")
+    from src.core.model_catalog import build_reranker
 
-    api_key = (env or {}).get("OPENROUTER_API_KEY")
-    reranker = OpenRouterRerank(
-        model="cohere/rerank-v3.5", top_n=config.reranker_top_n, api_key=api_key
-    )
+    assert config.reranker_top_n is not None  # guaranteed by RAGConfig's validator
+    reranker = build_reranker(config.reranker, config.reranker_top_n, env)
     log.info(
-        "retriever_reranker_enabled_openrouter",
-        model="cohere/rerank-v3.5",
+        "retriever_reranker_enabled",
+        reranker=config.reranker,
         top_n=config.reranker_top_n,
     )
     return RerankingRetriever(retriever, reranker)
