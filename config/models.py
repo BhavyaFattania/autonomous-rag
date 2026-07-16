@@ -19,6 +19,10 @@ class ModelConfig(BaseModel):
     response_format: str | None = None
     reasoning: bool | None = None
     base_url: str | None = None
+    # Which src.core.provider_factory provider serves this model — resolves the
+    # API key env var and any provider-specific request quirks (see
+    # src/evaluator/ragas_setup.py's header/extra-body builder registries).
+    provider: str = "openrouter"
 
 
 class ModelRouting(BaseModel):
