@@ -51,7 +51,8 @@ class AggregatedMetrics(BaseModel):
         """Aggregate metrics from multiple runs by computing medians and std dev of weighted scores."""
         import statistics
 
-        assert len(runs) >= 1, "At least 1 run required"
+        if not runs:
+            raise ValueError("At least 1 run required")
 
         def _median(key):
             return statistics.median([getattr(r, key) for r in runs])
