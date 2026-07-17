@@ -22,7 +22,7 @@ chromadb = ">=0.6.0"
 
 # Evaluation
 ragas = "0.2.9"
-datasets = "3.3.2"
+datasets = "5.0.0"
 
 # Orchestration
 langgraph = "*"
