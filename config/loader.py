@@ -24,22 +24,19 @@ def load_settings() -> Settings:
 
     search_space_raw = raw.pop("search_space", None) or {}
 
-    valid_search_keys = {
-        "allowed_node_parsers",
-        "allowed_retrievers",
-        "allowed_chunk_sizes",
-        "allowed_chunk_overlaps",
-        "allowed_generator_models",
-        "allowed_rerankers",
-    }
+    from config.settings import SearchSpaceSettings
+
+    # Derived from the model rather than hand-maintained, so a new
+    # SearchSpaceSettings field is automatically accepted here instead of
+    # silently rejected by a duplicate list that drifted out of sync (as
+    # happened with allowed_embedding_models).
+    valid_search_keys = set(SearchSpaceSettings.model_fields)
     extra = set(search_space_raw) - valid_search_keys
     if extra:
         raise ValueError(f"Unknown search_space keys: {extra}")
 
     settings = Settings(**raw)
     if search_space_raw:
-        from config.settings import SearchSpaceSettings
-
         settings.search_space = SearchSpaceSettings(**search_space_raw)
     return settings
 

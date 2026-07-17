@@ -1,0 +1,8 @@
+search_space:
+  allowed_node_parsers: []
+  allowed_retrievers: []
+  allowed_chunk_sizes: []
+  allowed_chunk_overlaps: []
+  allowed_generator_models: []
+  allowed_rerankers: []
+  allowed_embedding_models: []

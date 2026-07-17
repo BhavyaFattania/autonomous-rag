@@ -129,6 +129,34 @@ def test_candidates_filtering():
         assert cand["chunk_overlap"] == 128
 
 
+def test_load_settings_accepts_every_search_space_field(monkeypatch):
+    """Regression test: config.loader.load_settings()'s key validation must
+    never hand-maintain a list that can drift from SearchSpaceSettings's real
+    fields (allowed_embedding_models was added to the model but omitted from
+    the loader's valid_search_keys set, breaking the documented YAML example)."""
+    from pathlib import Path
+
+    import config.loader as loader_module
+
+    # Project-local temp dir to avoid Windows system temp permission errors
+    # (same pattern as tests/test_deduplicator.py's local_tmp_path fixture).
+    tmp_dir = Path("pytest_temp") / "search_space_loader_test"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    run_settings_path = tmp_dir / "run_settings.yaml"
+    search_space_lines = "\n".join(f"  {field}: []" for field in SearchSpaceSettings.model_fields)
+    run_settings_path.write_text(f"search_space:\n{search_space_lines}\n")
+
+    monkeypatch.setattr(loader_module, "_HERE", tmp_dir)
+    loader_module.load_settings.cache_clear()
+    try:
+        settings = loader_module.load_settings()
+    finally:
+        loader_module.load_settings.cache_clear()
+
+    for field in SearchSpaceSettings.model_fields:
+        assert getattr(settings.search_space, field) == []
+
+
 def test_brain_prompt_incorporates_constraints():
     settings = _make_test_settings(
         search_space={
