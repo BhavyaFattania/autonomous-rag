@@ -21,8 +21,8 @@ llama-index-retrievers-bm25 = ">=0.4.0"
 chromadb = ">=0.6.0"
 
 # Evaluation
-ragas = "0.2.9"
-datasets = "3.3.2"
+ragas = "0.3.2"
+datasets = "5.0.0"
 
 # Orchestration
 langgraph = "*"
@@ -36,7 +36,7 @@ httpx = "0.28.1"
 # Config & validation
 pydantic = "2.11.3"
 pydantic-settings = "2.8.1"
-python-dotenv = "1.1.0"
+python-dotenv = "1.2.2"
 pyyaml = "6.0.2"
 
 # Storage
@@ -54,8 +54,8 @@ tenacity = "9.1.2"
 tiktoken = ">=0.8.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.3.5"
-pytest-asyncio = "0.24.0"
+pytest = "8.4.2"
+pytest-asyncio = "1.4.0"
 pytest-mock = "3.14.0"
 black = "24.10.0"
 ruff = "0.8.6"
