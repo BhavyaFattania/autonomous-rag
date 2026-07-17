@@ -130,6 +130,49 @@ def test_ragas_judge_openrouter_kwargs_force_json_without_reasoning():
     }
 
 
+def test_ragas_judge_defaults_to_openrouter_provider():
+    from config.models import ModelConfig
+
+    judge_config = ModelConfig(model_id="openrouter/test-model", task="ragas_judge")
+
+    assert judge_config.provider == "openrouter"
+
+
+def test_resolve_api_key_uses_provider_specific_env_var():
+    from src.evaluator.ragas_setup import _resolve_api_key
+
+    env = {"OPENROUTER_API_KEY": "or-key", "OPENAI_API_KEY": "oai-key"}
+
+    assert _resolve_api_key("openrouter", env, None) == "or-key"
+    assert _resolve_api_key("openai", env, None) == "oai-key"
+    assert _resolve_api_key("openai", env, "explicit-override") == "explicit-override"
+
+
+def test_resolve_api_key_rejects_unknown_provider():
+    import pytest
+    from src.evaluator.ragas_setup import _resolve_api_key
+
+    with pytest.raises(ValueError, match="Unknown llm_provider"):
+        _resolve_api_key("anthropic", {}, None)
+
+
+def test_ragas_header_and_extra_body_builders_default_to_no_ops_for_openai():
+    from config.models import ModelConfig
+    from src.evaluator.ragas_setup import _EXTRA_BODY_BUILDERS, _HEADER_BUILDERS, _no_extra_body
+
+    judge_config = ModelConfig(
+        model_id="gpt-4o-mini",
+        response_format="json_object",
+        reasoning=False,
+        task="ragas_judge",
+        provider="openai",
+    )
+
+    assert "openai" not in _HEADER_BUILDERS
+    assert _HEADER_BUILDERS.get("openai", lambda: {})() == {}
+    assert _EXTRA_BODY_BUILDERS.get("openai", _no_extra_body)(judge_config) == {}
+
+
 def test_build_ragas_metrics_uses_requested_names():
     metrics = _build_ragas_metrics(
         [
