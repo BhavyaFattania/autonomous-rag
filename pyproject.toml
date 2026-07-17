@@ -36,7 +36,7 @@ httpx = "0.28.1"
 # Config & validation
 pydantic = "2.11.3"
 pydantic-settings = "2.8.1"
-python-dotenv = "1.1.0"
+python-dotenv = "1.2.2"
 pyyaml = "6.0.2"
 
 # Storage
