@@ -1,0 +1,33 @@
+# Dependabot keeps dependencies and CI actions up to date by opening PRs
+# on a weekly schedule. Docs: https://docs.github.com/code-security/dependabot
+version: 2
+updates:
+  # Python dependencies (Poetry — Dependabot reads pyproject.toml under the
+  # "pip" ecosystem).
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+    groups:
+      # Batch minor/patch bumps into a single PR to cut review noise; major
+      # bumps still come as individual PRs.
+      python-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions used in .github/workflows/ (checkout, setup-python, cache).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - "dependencies"
+      - "github-actions"
