@@ -137,7 +137,7 @@ def main(html_path: str, data_filename: str):
     original_size = html_file.stat().st_size
     html_text = html_file.read_text(encoding="utf-8")
 
-    if "src=\"" + data_filename + "\"" in html_text:
+    if 'src="' + data_filename + '"' in html_text:
         click.echo(f"{html_path} already references {data_filename} — nothing to do.")
         return
 
@@ -147,7 +147,10 @@ def main(html_path: str, data_filename: str):
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
-    data_js = "".join(f"const {name} = {json.dumps(extracted[name], separators=(',', ':'))};\n" for name in MARKERS)
+    data_js = "".join(
+        f"const {name} = {json.dumps(extracted[name], separators=(',', ':'))};\n"
+        for name in MARKERS
+    )
 
     data_path = html_file.parent / data_filename
     data_path.write_text(data_js, encoding="utf-8")
