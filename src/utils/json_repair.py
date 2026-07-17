@@ -34,7 +34,8 @@ async def _parse_ragas_output_string_compat(
     callbacks = callbacks or []
     try:
         jsonstr = _normalize_ragas_json(output_string, self.pydantic_object)
-        return PydanticOutputParser.parse(self, jsonstr)
+        parser = PydanticOutputParser(pydantic_object=self.pydantic_object)
+        return parser.invoke(jsonstr)
     except OutputParserException:
         fallback = _fallback_ragas_output(output_string, self.pydantic_object)
         log.warning(

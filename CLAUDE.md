@@ -1,4 +1,4 @@
-# Ruflo — Claude Code Configuration
+# Claude Code Configuration
 
 ## Rules
 
@@ -11,165 +11,112 @@
 - Keep files under 500 lines
 - Validate input at system boundaries
 
-## Agent Comms (SendMessage-First Coordination)
+## Knowledge Graph Navigation (graphify-out/)
 
-Named agents coordinate via `SendMessage`, not polling or shared state.
+This repo has a graphify knowledge graph at `graphify-out/graph.json` /
+`graphify-out/GRAPH_REPORT.md`, built to help Claude and other agents
+navigate the codebase without reading whole files cold.
 
-```
-Lead (you) ←→ architect ←→ developer ←→ tester ←→ reviewer
-              (named agents message each other directly)
-```
+- **Consult the graph before manually reading unfamiliar files.** Before
+  doing an open-ended `Grep`/`Read` sweep to orient in an area you don't
+  already know, check `GRAPH_REPORT.md`'s Community Hubs and God Nodes
+  sections first, or run `graphify query "<question>"` /
+  `graphify explain "<NodeName>"`. Use it to answer "where do I start,"
+  "what's the blast radius of touching X," and "what higher-level workflow
+  does this cluster of functions belong to" — then go read the specific
+  files the graph points at, rather than exploring blind. Still verify
+  anything load-bearing against the live file before acting on it — the
+  graph is a map, not a substitute for reading the code you're about to
+  change (see the staleness caveat below).
+- **After making changes that alter a node's connections — new function
+  calls, new imports, new/removed classes or interfaces, a file added,
+  removed, or substantially restructured — run `graphify <path> --update`**
+  (incremental; only re-extracts changed files) before ending the session,
+  so the graph doesn't silently drift out of sync with what it claims to
+  represent. Small edits that don't change call/import relationships (e.g.
+  fixing a typo, tweaking a log message) don't need this.
+- **The graph can be stale — check before trusting it.** It reflects
+  whatever state existed at the last `--update`. If something it describes
+  (e.g. a Protocol, a function) turns out not to exist on disk, that means
+  the graph is behind, not that the codebase is wrong — treat it the same
+  way you'd treat any other persisted memory: verify against the live file
+  before acting on a claim from it.
+- **`.graphifyignore` at the repo root excludes `.remember/` and
+  `pytest_temp/`.** `.remember/`'s own `.gitignore` (a bare `*`) triggers a
+  known bug in graphify's directory-scoped ignore-pattern handling that
+  causes `detect()`/`--update` to silently see 0 files repo-wide if not
+  excluded first — don't remove that exclusion without re-verifying the
+  underlying graphify bug is fixed. `pytest_temp/` is transient test output,
+  not real repo content.
 
-### Spawning a Coordinated Team
+## Design Principles (derived from codebase audit)
 
-```javascript
-// ALL agents in ONE message, each knows WHO to message next
-Agent({ prompt: "Research the codebase. SendMessage findings to 'architect'.",
-  subagent_type: "researcher", name: "researcher", run_in_background: true })
-Agent({ prompt: "Wait for 'researcher'. Design solution. SendMessage to 'coder'.",
-  subagent_type: "system-architect", name: "architect", run_in_background: true })
-Agent({ prompt: "Wait for 'architect'. Implement it. SendMessage to 'tester'.",
-  subagent_type: "coder", name: "coder", run_in_background: true })
-Agent({ prompt: "Wait for 'coder'. Write tests. SendMessage results to 'reviewer'.",
-  subagent_type: "tester", name: "tester", run_in_background: true })
-Agent({ prompt: "Wait for 'tester'. Review code quality and security.",
-  subagent_type: "reviewer", name: "reviewer", run_in_background: true })
+This codebase has one dominant, self-invented convention for handling
+"pick a concrete implementation from a config value" — a **registry dict of
+`name -> builder callable`**, not an if/elif chain. It appears in
+`src/core/provider_factory.py` (`_PROVIDER_BUILDERS`) and
+`src/core/model_catalog.py` (`EMBEDDING_CATALOG`/`RERANKER_CATALOG` +
+`_EMBEDDING_BUILDERS`/`_RERANKER_BUILDERS`). Follow this convention for any
+new "config value selects a concrete class" decision point — do not write a
+new if/elif chain for this kind of dispatch.
 
-// Kick off the pipeline
-SendMessage({ to: "researcher", summary: "Start", message: "[task context]" })
-```
-
-### Patterns
-
-| Pattern | Flow | Use When |
-|---------|------|----------|
-| **Pipeline** | A → B → C → D | Sequential dependencies (feature dev) |
-| **Fan-out** | Lead → A, B, C → Lead | Independent parallel work (research) |
-| **Supervisor** | Lead ↔ workers | Ongoing coordination (complex refactor) |
-
-### Rules
-
-- ALWAYS name agents — `name: "role"` makes them addressable
-- ALWAYS include comms instructions in prompts — who to message, what to send
-- Spawn ALL agents in ONE message with `run_in_background: true`
-- After spawning: STOP, tell user what's running, wait for results
-- NEVER poll status — agents message back or complete automatically
-
-## Swarm & Routing
-
-### Config
-- **Topology**: hierarchical-mesh (anti-drift)
-- **Max Agents**: 15
-- **Memory**: hybrid
-- **HNSW**: Enabled
-- **Neural**: Enabled
-
-```bash
-npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --strategy specialized
-```
-
-### Agent Routing
-
-| Task | Agents | Topology |
-|------|--------|----------|
-| Bug Fix | researcher, coder, tester | hierarchical |
-| Feature | architect, coder, tester, reviewer | hierarchical |
-| Refactor | architect, coder, reviewer | hierarchical |
-| Performance | perf-engineer, coder | hierarchical |
-| Security | security-architect, auditor | hierarchical |
-
-### When to Swarm
-- **YES**: 3+ files, new features, cross-module refactoring, API changes, security, performance
-- **NO**: single file edits, 1-2 line fixes, docs updates, config changes, questions
-
-### 3-Tier Model Routing
-
-| Tier | Handler | Use Cases |
-|------|---------|-----------|
-| 1 | Agent Booster (WASM) | Simple transforms — skip LLM, use Edit directly |
-| 2 | Haiku | Simple tasks, low complexity |
-| 3 | Sonnet/Opus | Architecture, security, complex reasoning |
-
-## Memory & Learning
-
-### Before Any Task
-```bash
-npx @claude-flow/cli@latest memory search --query "[task keywords]" --namespace patterns
-npx @claude-flow/cli@latest hooks route --task "[task description]"
-```
-
-### After Success
-```bash
-npx @claude-flow/cli@latest memory store --namespace patterns --key "[name]" --value "[what worked]"
-npx @claude-flow/cli@latest hooks post-task --task-id "[id]" --success true --store-results true
-```
-
-### MCP Tools (use `ToolSearch("keyword")` to discover)
-
-| Category | Key Tools |
-|----------|-----------|
-| **Memory** | `memory_store`, `memory_search`, `memory_search_unified` |
-| **Bridge** | `memory_import_claude`, `memory_bridge_status` |
-| **Swarm** | `swarm_init`, `swarm_status`, `swarm_health` |
-| **Agents** | `agent_spawn`, `agent_list`, `agent_status` |
-| **Hooks** | `hooks_route`, `hooks_post-task`, `hooks_worker-dispatch` |
-| **Security** | `aidefence_scan`, `aidefence_is_safe`, `aidefence_has_pii` |
-| **Hive-Mind** | `hive-mind_init`, `hive-mind_consensus`, `hive-mind_spawn` |
-
-### Background Workers
-
-| Worker | When |
-|--------|------|
-| `audit` | After security changes |
-| `optimize` | After performance work |
-| `testgaps` | After adding features |
-| `map` | Every 5+ file changes |
-| `document` | After API changes |
-
-```bash
-npx @claude-flow/cli@latest hooks worker dispatch --trigger audit
-```
-
-## Agents
-
-**Core**: `coder`, `reviewer`, `tester`, `planner`, `researcher`
-**Architecture**: `system-architect`, `backend-dev`, `mobile-dev`
-**Security**: `security-architect`, `security-auditor`
-**Performance**: `performance-engineer`, `perf-analyzer`
-**Coordination**: `hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`
-**GitHub**: `pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`
-
-Any string works as a custom agent type.
+- **Registry-dict over if/elif, always, for this shape of problem.** If
+  you're adding a branch to select a concrete implementation by a string/enum
+  config value (a new parser type, retriever type, reranker, provider, etc.),
+  add a dict entry to an existing registry or create one — do not extend an
+  if/elif chain. Known if/elif chains that are legacy debt, not the model to
+  copy: `src/indexer/parser_registry.py`'s `build_node_parser()`,
+  `src/rag_pipeline/retriever.py`'s `build_retriever()`. Don't add branches to
+  these without first considering converting them to the registry-dict shape.
+- **Never hardcode `OPENROUTER_API_KEY` or OpenRouter-specific request shapes
+  (headers, `extra_body`) directly in a new code path.** Every model/provider
+  selection must resolve through `src.core.model_catalog` (embeddings,
+  rerankers) or `src.core.provider_factory.required_env_var()` (API keys),
+  never a literal `env.get("OPENROUTER_API_KEY")` or a literal
+  `if x == "CohereRerank"` check. This exact bug class (a hand-maintained
+  provider assumption that silently goes stale when a second provider is
+  added) has recurred multiple times — `src/evaluator/ragas_setup.py` (fixed),
+  `src/rag_pipeline/retriever.py`'s `_build_query_fusion_llm()` (not yet
+  fixed), `src/orchestrator/validator.py`'s `CohereRerank`/`OPENROUTER_API_KEY`
+  check (not yet fixed). Grep for `OPENROUTER_API_KEY` before adding any new
+  provider-aware code path — if you find a new bare reference, that's a sign
+  the same bug is about to recur.
+- **Derive validation allowlists from the Pydantic model's own fields, never
+  a hand-maintained duplicate set.** See `config/loader.py`'s
+  `load_settings()` (`set(SearchSpaceSettings.model_fields)`), fixed after
+  `allowed_embedding_models` silently drifted out of a hardcoded
+  `valid_search_keys` set. Any future "validate these raw keys against a
+  known-keys list" code must derive that list from the model, not retype it.
+- **Prefer constructor-injected dependencies (`Provider`, explicit
+  `cost_tracker`/`env` params) over module-level singletons for anything
+  new.** `src/storage/cost_tracker.py`'s `_default_tracker` and
+  `src/utils/openrouter.py`'s `_default_client` are legacy singletons kept
+  only for backward compatibility with old call sites — they are not the
+  pattern to extend. New code should accept dependencies as parameters and
+  flow through `Provider`, matching `OpenAIClient`'s constructor-injection
+  design rather than `OpenRouterClient`'s dual-mode (injected-or-global-
+  fallback) design.
+- **Repository pattern for persistence** (`src/storage/repositories/*.py`) —
+  new SQL/persistence logic belongs in a repository class there, not inline
+  in orchestrator/scientist nodes.
+- **Before writing a second near-duplicate implementation of an existing
+  Protocol** (e.g. a third `ILLMClient` for a new provider), check whether
+  `src/utils/openrouter.py`'s `OpenRouterClient` and
+  `src/utils/openai_client.py`'s `OpenAIClient` have converged enough to be
+  worth factoring into a shared base (retry/backoff shape,
+  `RETRYABLE_STATUS_CODES` split, fallback-model-on-rate-limit logic, and
+  injected-cost-tracker-with-singleton-fallback are duplicated between them
+  today). Don't copy-paste a third ~250-line client without first pulling out
+  that shared skeleton.
 
 ## Build & Test
 
 - ALWAYS run tests after code changes
-- ALWAYS verify build succeeds before committing
+- ALWAYS verify the full check set passes before considering work done
 
 ```bash
-npm run build && npm test
+poetry run pytest -q
+poetry run ruff check .
+poetry run black --check .
+poetry run mypy src
 ```
-
-## CLI Quick Reference
-
-```bash
-npx @claude-flow/cli@latest init --wizard           # Setup
-npx @claude-flow/cli@latest swarm init --v3-mode     # Start swarm
-npx @claude-flow/cli@latest memory search --query "" # Vector search
-npx @claude-flow/cli@latest hooks route --task ""    # Route to agent
-npx @claude-flow/cli@latest doctor --fix             # Diagnostics
-npx @claude-flow/cli@latest security scan            # Security scan
-npx @claude-flow/cli@latest performance benchmark    # Benchmarks
-```
-
-26 commands, 140+ subcommands. Use `--help` on any command for details.
-
-## Setup
-
-```bash
-claude mcp add claude-flow -- npx -y @claude-flow/cli@latest
-npx @claude-flow/cli@latest daemon start
-npx @claude-flow/cli@latest doctor --fix
-```
-
-**Agent tool** handles execution (agents, files, code, git). **MCP tools** handle coordination (swarm, memory, hooks). **CLI** is the same via Bash.
