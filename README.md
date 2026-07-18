@@ -49,7 +49,7 @@ An intelligent, autonomous system designed to iteratively hyper-optimize Retriev
 
 This repo is mapped as an interactive knowledge graph — 1,000+ nodes (functions, classes, config values, docs, and design-rationale notes) connected by 2,200+ relationships (calls, imports, references, and inferred conceptual links), clustered into ~50 communities.
 
-**➡️ [Explore the live graph](https://autonomous-rag.vercel.app/graph.html)** — click a node to see its neighbors, search by name, or filter by community.
+**➡️ [Explore the live graph](https://bhavyafattania.github.io/autonomous-rag/)** — click a node to see its neighbors, search by name, or filter by community.
 
 Use it to get oriented before contributing:
 
