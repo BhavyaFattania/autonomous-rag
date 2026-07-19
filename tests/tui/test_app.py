@@ -47,3 +47,19 @@ async def test_app_processes_events_in_order():
 
         status = app.query_one("#status")
         assert "validator" in str(status.content)
+
+
+@pytest.mark.asyncio
+async def test_app_has_full_keybinding_set():
+    app = RagOptimizerApp(asyncio.Queue())
+    binding_keys = set(app._bindings.key_to_bindings.keys())
+    for expected_key in ("1", "2", "3", "4", "5", "tab", "slash", "r", "b", "space", "q"):
+        assert expected_key in binding_keys, f"missing binding for {expected_key!r}"
+
+
+@pytest.mark.asyncio
+async def test_quit_binding_exits_app():
+    async with RagOptimizerApp(asyncio.Queue()).run_test() as pilot:
+        await pilot.press("q")
+        await pilot.pause()
+        assert pilot.app._exit is True

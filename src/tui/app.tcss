@@ -1,0 +1,27 @@
+Screen {
+    layout: vertical;
+}
+
+PipelineStrip {
+    height: 3;
+    border: solid $accent;
+}
+
+Horizontal {
+    height: 1fr;
+}
+
+ExperimentPanel {
+    width: 2fr;
+    border: solid $primary;
+}
+
+BestConfigPanel, BudgetPanel, ReflectionPanel, HistoryTable {
+    width: 1fr;
+    border: solid $secondary;
+}
+
+LogPanel {
+    height: 8;
+    border: solid $secondary;
+}
