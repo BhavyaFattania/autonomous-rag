@@ -1,4 +1,5 @@
 import pickle
+from collections.abc import Callable
 from pathlib import Path
 
 import chromadb
@@ -19,6 +20,29 @@ from src.utils.logger import get_logger
 log = get_logger("indexer")
 
 CORPUS_PATH = Path("data/corpus/hotpotqa_paragraphs.jsonl")
+
+_EMBED_BATCH_SIZE = 64
+
+
+def _insert_nodes_with_progress(
+    index: VectorStoreIndex,
+    nodes: list,
+    on_progress: Callable[[int, int], None] | None = None,
+    batch_size: int = _EMBED_BATCH_SIZE,
+) -> None:
+    """Embeds and inserts `nodes` into `index` in batches, reporting real
+    (done, total) counts after each batch — this is what makes the indexer's
+    completion percentage genuine rather than a guessed/indeterminate bar."""
+    total = len(nodes)
+    if total == 0:
+        return
+    for start in range(0, total, batch_size):
+        batch = nodes[start : start + batch_size]
+        index.insert_nodes(batch)
+        done = min(start + batch_size, total)
+        log.debug("embedding_progress", done=done, total=total)
+        if on_progress is not None:
+            on_progress(done, total)
 
 
 def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings, env=None):
@@ -51,6 +75,7 @@ async def build_collection(
     chroma_client: chromadb.PersistentClient,
     settings,
     env=None,
+    on_progress: Callable[[int, int], None] | None = None,
 ):
     assert (
         CORPUS_PATH.exists()
@@ -96,10 +121,11 @@ async def build_collection(
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    VectorStoreIndex(
-        nodes,
+    index = VectorStoreIndex(
+        nodes=[],
         storage_context=storage_context,
         embed_model=embed_model,
-        show_progress=True,
+        show_progress=False,
     )
+    _insert_nodes_with_progress(index, nodes, on_progress)
     log.info("collection_built", collection=collection_name)
