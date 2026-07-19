@@ -3,6 +3,9 @@
 Orchestrates index creation, cache hits/misses, and BM25 engine synchronization.
 """
 
+from datetime import UTC, datetime
+
+from src.core.events import ExperimentEvent
 from src.core.provider import Provider
 from src.indexer.collection_cache import (
     bm25_node_count,
@@ -22,6 +25,7 @@ from src.indexer.collection_names import (
 )
 from src.indexer.index_builder import build_bm25_cache_only, build_collection
 from src.models.rag_config import RAGConfig
+from src.storage.cost_tracker import get_total
 from src.utils.function_trace import trace_call
 from src.utils.logger import get_logger
 
@@ -106,7 +110,7 @@ def collection_is_cached(config: RAGConfig) -> bool:
         return False
 
 
-async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
+async def get_or_build_collection(config: RAGConfig, settings, env=None, on_progress=None) -> str:
     """Retrieve cached collection or build from scratch if missing/incomplete; returns collection name."""
     name = _collection_name(config)
     chroma_client = _get_chroma_client()
@@ -162,15 +166,37 @@ async def get_or_build_collection(config: RAGConfig, settings, env=None) -> str:
         )
 
     log.info("building_collection", collection=name)
-    await build_collection(config, name, chroma_client, settings, env)
+    await build_collection(config, name, chroma_client, settings, env, on_progress=on_progress)
     return name
 
 
-async def indexer_node(state, settings, env=None, provider: Provider | None = None) -> dict:
+async def indexer_node(
+    state, settings, env=None, provider: Provider | None = None, event_bus=None
+) -> dict:
     """Graph node: resolve or build collection, return status and updated config with _collection_name."""
     config = RAGConfig(**state["validated_config"])
+    experiment_num = state.get("experiments_completed", 0) + 1
+
+    def on_progress(done: int, total: int) -> None:
+        if event_bus is None:
+            return
+        event_bus.publish(
+            ExperimentEvent(
+                experiment=experiment_num,
+                node="indexer",
+                status="RUNNING",
+                timestamp=datetime.now(UTC),
+                cost_total_usd=get_total(),
+                message="Embedding chunks",
+                progress_current=done,
+                progress_total=total,
+            )
+        )
+
     try:
-        collection_name = await get_or_build_collection(config, settings, env)
+        collection_name = await get_or_build_collection(
+            config, settings, env, on_progress=on_progress
+        )
     except Exception as e:
         import traceback
 
