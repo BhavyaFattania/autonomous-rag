@@ -1,10 +1,18 @@
 Screen {
     layout: vertical;
+    min-width: 100;
+    min-height: 24;
 }
 
 PipelineStrip {
     height: 3;
     border: solid $accent;
+}
+
+#failure-banner {
+    height: 1;
+    color: red;
+    display: none;
 }
 
 Horizontal {
@@ -24,4 +32,8 @@ BestConfigPanel, BudgetPanel, ReflectionPanel, HistoryTable {
 LogPanel {
     height: 8;
     border: solid $secondary;
+}
+
+#run-id {
+    height: 1;
 }
