@@ -242,7 +242,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         if sys.stdout.isatty():
             from src.tui.app import RagOptimizerApp
 
-            tui_app = RagOptimizerApp(bus.subscribe())
+            tui_app = RagOptimizerApp(bus.subscribe(), run_id=run_id)
             tui_task = asyncio.create_task(tui_app.run_async())
         else:
             fallback_queue = bus.subscribe()

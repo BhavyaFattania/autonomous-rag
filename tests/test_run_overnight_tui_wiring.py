@@ -112,3 +112,66 @@ async def test_run_constructs_event_bus_and_publishes_every_tick(monkeypatch, _c
 
 async def _async_result(value):
     return value
+
+
+@pytest.mark.asyncio
+async def test_tui_branch_constructs_app_with_the_run_id(monkeypatch, _cwd_in_pytest_temp):
+    import src.tui.app as tui_app_module
+
+    constructed_kwargs = {}
+
+    class _FakeTuiApp:
+        def __init__(self, events, run_id=""):
+            constructed_kwargs["run_id"] = run_id
+
+        async def run_async(self):
+            return None
+
+        def exit(self):
+            pass
+
+    monkeypatch.setattr(tui_app_module, "RagOptimizerApp", _FakeTuiApp)
+    monkeypatch.setattr(run_overnight.sys.stdout, "isatty", lambda: True)
+
+    ticks = [{"scientist": {"status": "RUNNING", "hypothesis": "h"}}]
+
+    def _fake_build_graph(**kwargs):
+        return _FakeGraph(ticks)
+
+    monkeypatch.setattr(run_overnight, "build_graph", _fake_build_graph)
+
+    class _Settings:
+        class run:
+            cost_hard_ceiling_usd = 10.0
+
+        class evaluation:
+            baseline_score_override = 0.5
+            run_final_best_eval = False
+
+    class _Provider:
+        class cost_tracker:
+            @staticmethod
+            def initialize(**kwargs):
+                pass
+
+    monkeypatch.setattr(
+        run_overnight,
+        "evaluate_baseline",
+        lambda *a, **k: (_async_result((0.5, {}))),
+    )
+
+    try:
+        await run_overnight._run(
+            max_exp=1,
+            max_hours=1.0,
+            resume=False,
+            settings=_Settings(),
+            env=None,
+            provider=_Provider(),
+        )
+    finally:
+        close_trace()
+
+    assert constructed_kwargs[
+        "run_id"
+    ]  # non-empty: _run() generates one via uuid4 when resume=False
