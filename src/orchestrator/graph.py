@@ -12,9 +12,10 @@ from src.orchestrator.state import WorkflowState
 def build_graph(
     settings,
     provider: Provider,
-    checkpointer: BaseCheckpointSaver = None,
+    checkpointer: BaseCheckpointSaver | None = None,
     env=None,
     model_routing=None,
+    event_bus=None,
 ) -> CompiledStateGraph:
     workflow = StateGraph(WorkflowState)
 
@@ -35,7 +36,8 @@ def build_graph(
     workflow.add_node("deduplicator", deduplicator_node)
     workflow.add_node("budget_guard", partial(budget_guard_node, settings=settings))
     workflow.add_node(
-        "indexer", partial(indexer_node, settings=settings, env=env, provider=provider)
+        "indexer",
+        partial(indexer_node, settings=settings, env=env, provider=provider, event_bus=event_bus),
     )
     workflow.add_node("smoke_test", partial(smoke_test_node, settings=settings))
     workflow.add_node(
