@@ -45,6 +45,9 @@ aiosqlite = "0.21.0"
 # Logging
 structlog = "24.4.0"
 
+# Terminal UI
+textual = ">=8.2.0"
+
 # CLI
 click = "8.1.8"
 rich = ">=13.0.0"
