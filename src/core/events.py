@@ -19,6 +19,7 @@ class ExperimentEvent(BaseModel):
     status: str
     timestamp: datetime
     cost_total_usd: float
+    cost_ceiling_usd: float | None = None
     message: str = ""
     hypothesis: str = ""
     reasoning: str = ""

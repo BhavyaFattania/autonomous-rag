@@ -82,7 +82,7 @@ class RagOptimizerApp(App):
 
         if event.node == "budget_guard":
             self.query_one("#budget", BudgetPanel).apply_totals(
-                spent=event.cost_total_usd, ceiling=event.cost_total_usd
+                spent=event.cost_total_usd, ceiling=event.cost_ceiling_usd or 0.0
             )
 
         if event.node == "reflection" and event.reasoning:

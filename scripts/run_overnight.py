@@ -47,6 +47,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import click
 from dotenv import load_dotenv
 from rich.rule import Rule
+from src.core.events import EventBus
+from src.orchestrator.event_adapter import adapt
+from src.orchestrator.graph import build_graph
 from src.orchestrator.overnight_display import (
     console,
     log_event,
@@ -119,7 +122,6 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
     from config.loader import load_baseline_config
     from config.models import ModelRouting
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-    from src.orchestrator.graph import build_graph
     from src.storage.cost_tracker import get_total
     from src.storage.database import Database
     from src.storage.repositories.run_repository import RunRepository
@@ -188,6 +190,8 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
     _ctx = {"exp_num": 0, "node_times": {}}
     latest_state = dict(initial_state)
 
+    bus = EventBus()
+
     async with AsyncSqliteSaver.from_conn_string("experiments.sqlite") as memory:
         graph = build_graph(
             checkpointer=memory,
@@ -195,6 +199,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             env=env,
             model_routing=ModelRouting,
             provider=provider,
+            event_bus=bus,
         )
 
         try:
@@ -233,6 +238,15 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             except Exception as e:
                 console.print(f"[bold red]Error loading checkpoint: {e}[/]")
 
+        fallback_queue = None
+        if sys.stdout.isatty():
+            from src.tui.app import RagOptimizerApp
+
+            tui_app = RagOptimizerApp(bus.subscribe())
+            tui_task = asyncio.create_task(tui_app.run_async())
+        else:
+            fallback_queue = bus.subscribe()
+
         state_to_stream = None if state_exists else initial_state
         async for event in graph.astream(state_to_stream, config=graph_config):
             if _stop_requested:
@@ -241,7 +255,16 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             for output in event.values():
                 if isinstance(output, dict):
                     latest_state.update(output)
-            log_event(event, _ctx, run_start)
+            for normalized_event in adapt(event, _ctx, settings):
+                bus.publish(normalized_event)
+            if fallback_queue is not None:
+                while not fallback_queue.empty():
+                    normalized_event = fallback_queue.get_nowait()
+                    log_event(normalized_event.raw_event, _ctx, run_start)
+
+        if sys.stdout.isatty():
+            tui_app.exit()
+            await tui_task
 
     if settings.evaluation.run_final_best_eval and not _stop_requested:
         await evaluate_final_best(latest_state, settings, env)
