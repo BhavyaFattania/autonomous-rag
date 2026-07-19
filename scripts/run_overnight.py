@@ -238,8 +238,9 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             except Exception as e:
                 console.print(f"[bold red]Error loading checkpoint: {e}[/]")
 
+        is_interactive = sys.stdout.isatty()
         fallback_queue = None
-        if sys.stdout.isatty():
+        if is_interactive:
             from src.tui.app import RagOptimizerApp
 
             tui_app = RagOptimizerApp(bus.subscribe(), run_id=run_id)
@@ -262,7 +263,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
                     normalized_event = fallback_queue.get_nowait()
                     log_event(normalized_event.raw_event, _ctx, run_start)
 
-        if sys.stdout.isatty():
+        if is_interactive:
             tui_app.exit()
             await tui_task
 
