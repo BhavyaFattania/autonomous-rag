@@ -25,9 +25,7 @@ async def smoke_test_node(state, settings) -> dict:
     except TimeoutError:
         return {"status": "FAILED_SMOKE", "failure_reason": "Smoke test timed out after 180s"}
     except Exception as e:
-        import traceback
-
-        traceback.print_exc()
+        log.error("smoke_test_error", error=str(e), exc_info=True)
         return {"status": "FAILED_SMOKE", "failure_reason": f"Pipeline error: {e}"}
 
     for i, context in enumerate(contexts):
