@@ -52,6 +52,8 @@ rich = ">=13.0.0"
 # Utilities
 tenacity = "9.1.2"
 tiktoken = ">=0.8.0"
+fastapi = "^0.139.2"
+uvicorn = {extras = ["standard"], version = "^0.51.0"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.4.2"
