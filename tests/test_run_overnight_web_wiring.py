@@ -1,0 +1,133 @@
+"""Confirms _run() starts the FastAPI web dashboard (via create_app +
+uvicorn) and feeds it the same EventBus/adapt() pipeline as before, without
+asserting on FastAPI's actual HTTP serving (that's covered by tests/web/)
+or on real graph execution (too heavy for a unit test). Replaces
+tests/test_run_overnight_tui_wiring.py, whose entire premise (RagOptimizerApp,
+sys.stdout.isatty() branching) no longer exists."""
+
+import shutil
+from pathlib import Path
+
+import pytest
+import scripts.run_overnight as run_overnight
+from src.core.events import EventBus
+from src.utils.function_trace import close_trace
+
+
+@pytest.fixture
+def _cwd_in_pytest_temp(monkeypatch):
+    # See docs/debug_reports/superpowers/specs/2026-07-21-web-ui-dashboard-plan.md's
+    # Global Constraints: pytest's own tmp_path fixture hits a PermissionError
+    # on this machine.
+    base = Path("pytest_temp").resolve()
+    base.mkdir(exist_ok=True)
+    d = base / "run_overnight_web_wiring_test"
+    d.mkdir(exist_ok=True)
+    monkeypatch.chdir(d)
+    yield
+    shutil.rmtree(d, ignore_errors=True)
+
+
+class _FakeGraph:
+    def __init__(self, ticks):
+        self._ticks = ticks
+
+    async def aget_state(self, config):
+        return None
+
+    async def astream(self, state, config):
+        for tick in self._ticks:
+            yield tick
+
+
+class _FakeUvicornServer:
+    """Stands in for uvicorn.Server: never actually binds a port. serve()
+    just waits until should_exit is set, matching the real Server's
+    documented programmatic-shutdown contract closely enough for this test."""
+
+    def __init__(self, config):
+        self.config = config
+        self.should_exit = False
+
+    async def serve(self):
+        import asyncio
+
+        while not self.should_exit:
+            await asyncio.sleep(0)
+
+
+@pytest.mark.asyncio
+async def test_run_starts_web_dashboard_and_publishes_every_tick(monkeypatch, _cwd_in_pytest_temp):
+    published = []
+
+    class _FakeBus(EventBus):
+        def publish(self, event):
+            published.append(event)
+            super().publish(event)
+
+    fake_bus = _FakeBus()
+    monkeypatch.setattr(run_overnight, "EventBus", lambda: fake_bus)
+    monkeypatch.setattr(
+        run_overnight,
+        "uvicorn",
+        type("_M", (), {"Server": _FakeUvicornServer, "Config": lambda **kw: kw}),
+    )
+
+    created_apps = []
+
+    def _fake_create_app(bus):
+        created_apps.append(bus)
+        return object()  # never actually served, since uvicorn.Server is faked
+
+    monkeypatch.setattr(run_overnight, "create_app", _fake_create_app)
+
+    ticks = [
+        {"scientist": {"status": "RUNNING", "hypothesis": "h"}},
+        {"validator": {"status": "RUNNING"}},
+    ]
+
+    def _fake_build_graph(**kwargs):
+        assert kwargs["event_bus"] is fake_bus
+        return _FakeGraph(ticks)
+
+    monkeypatch.setattr(run_overnight, "build_graph", _fake_build_graph)
+
+    class _Settings:
+        class run:
+            cost_hard_ceiling_usd = 10.0
+
+        class evaluation:
+            baseline_score_override = 0.5
+            run_final_best_eval = False
+
+    class _Provider:
+        class cost_tracker:
+            @staticmethod
+            def initialize(**kwargs):
+                pass
+
+    async def _async_result(value):
+        return value
+
+    monkeypatch.setattr(
+        run_overnight,
+        "evaluate_baseline",
+        lambda *a, **k: (_async_result((0.5, {}))),
+    )
+
+    try:
+        await run_overnight._run(
+            max_exp=1,
+            max_hours=1.0,
+            resume=False,
+            settings=_Settings(),
+            env=None,
+            provider=_Provider(),
+        )
+    finally:
+        close_trace()
+
+    assert created_apps == [fake_bus]
+    assert len(published) == 2
+    assert published[0].node == "scientist"
+    assert published[1].node == "validator"

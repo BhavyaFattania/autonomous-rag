@@ -45,17 +45,15 @@ from datetime import UTC, datetime
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import click
+import uvicorn
 from dotenv import load_dotenv
 from rich.rule import Rule
 from src.core.events import EventBus
 from src.orchestrator.event_adapter import adapt
 from src.orchestrator.graph import build_graph
-from src.orchestrator.overnight_display import (
-    console,
-    log_event,
-    print_banner,
-)
+from src.orchestrator.overnight_display import console, print_banner
 from src.orchestrator.overnight_eval import empty_metrics, evaluate_baseline, evaluate_final_best
+from src.web.server import create_app
 
 load_dotenv()
 
@@ -238,16 +236,13 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             except Exception as e:
                 console.print(f"[bold red]Error loading checkpoint: {e}[/]")
 
-        tui_app = None
-        tui_task = None
-        fallback_queue = None
-        if sys.stdout.isatty():
-            from src.tui.app import RagOptimizerApp
-
-            tui_app = RagOptimizerApp(bus.subscribe(), run_id=run_id)
-            tui_task = asyncio.create_task(tui_app.run_async())
-        else:
-            fallback_queue = bus.subscribe()
+        web_app = create_app(bus)
+        server_config = uvicorn.Config(
+            app=web_app, host="127.0.0.1", port=8000, log_level="warning", loop="asyncio"
+        )
+        server = uvicorn.Server(server_config)
+        server_task = asyncio.create_task(server.serve())
+        console.print("[bold cyan]Dashboard:[/] http://127.0.0.1:8000")
 
         state_to_stream = None if state_exists else initial_state
         async for event in graph.astream(state_to_stream, config=graph_config):
@@ -259,14 +254,9 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
                     latest_state.update(output)
             for normalized_event in adapt(event, _ctx, settings):
                 bus.publish(normalized_event)
-            if fallback_queue is not None:
-                while not fallback_queue.empty():
-                    normalized_event = fallback_queue.get_nowait()
-                    log_event(normalized_event.raw_event, _ctx, run_start)
 
-        if tui_app is not None and tui_task is not None:
-            tui_app.exit()
-            await tui_task
+        server.should_exit = True
+        await server_task
 
     if settings.evaluation.run_final_best_eval and not _stop_requested:
         await evaluate_final_best(latest_state, settings, env)

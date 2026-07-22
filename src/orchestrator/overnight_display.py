@@ -1,13 +1,9 @@
 """Rich terminal UI utilities for live workflow event display and experiment metrics visualization."""
 
-from datetime import UTC, datetime
-
 from rich import box
 from rich.console import Console
 from rich.padding import Padding
-from rich.rule import Rule
 from rich.table import Table
-from rich.text import Text
 
 console = Console()
 
@@ -57,78 +53,6 @@ def print_banner(max_exp: int, max_hours: float, settings):
         )
     )
     console.print()
-
-
-def log_event(event: dict, ctx: dict, run_start: datetime):
-    from src.storage.cost_tracker import get_total
-
-    for node_name, output in event.items():
-        if not isinstance(output, dict):
-            continue
-
-        emoji, style, description = NODE_META.get(node_name, ("--", "white", node_name))
-        status = output.get("status", "?")
-        status_style, status_icon = STATUS_STYLE.get(status, ("white", "?"))
-        total_cost = get_total()
-        elapsed = (datetime.now(UTC) - run_start).total_seconds()
-
-        if node_name == "scientist":
-            ctx["exp_num"] += 1
-            console.print()
-            console.print(
-                Rule(
-                    f"[bold cyan]Experiment #{ctx['exp_num']}[/]  [dim]{fmt_elapsed(elapsed)}[/]",
-                    style="cyan",
-                )
-            )
-
-            hypothesis = output.get("hypothesis", "")
-            if hypothesis:
-                console.print(Padding(f"[bold]Hypothesis:[/] [italic]{hypothesis}[/]", (0, 2)))
-            reasoning = output.get("scientist_reasoning", "")
-            if reasoning:
-                console.print(
-                    Padding(f"[bold dim]Scientist reasoning:[/] [dim]{reasoning}[/]", (0, 2))
-                )
-
-            config = output.get("proposed_config", {})
-            if config:
-                print_config_table(config)
-
-        node_label = Text()
-        node_label.append(f"  {emoji}  ", style=style)
-        node_label.append(f"{node_name:<16}", style=f"bold {style}")
-        node_label.append(f" {status_icon} ", style=status_style)
-        node_label.append(f"{status:<22}", style=status_style)
-        node_label.append(f"  cost ${total_cost:.4f}", style="dim green")
-
-        failure = output.get("failure_reason", "")
-        if failure:
-            node_label.append(f"  warn {failure[:80]}", style="bold red")
-
-        console.print(node_label)
-
-        metrics = output.get("aggregated_metrics", {})
-        if metrics and node_name in ("acceptance", "evaluator"):
-            print_metrics(
-                metrics,
-                output.get("proposed_weighted_score", 0.0),
-                output.get("current_best_weighted_score", 0.0),
-            )
-
-        if node_name == "recorder":
-            completed = output.get("experiments_completed", 0)
-            accepted = output.get("experiments_accepted", 0)
-            failures = output.get("consecutive_failures", 0)
-            repeated = output.get("experiments_repeated", 0)
-            competitive = output.get("experiments_competitive", 0)
-            console.print(
-                f"  [dim]Completed: [white]{completed}[/]  "
-                f"Accepted: [green]{accepted}[/]  "
-                f"Competitive: [cyan]{competitive}[/]  "
-                f"Repeated: [blue]{repeated}[/]  "
-                f"Consecutive failures: [yellow]{failures}[/][/]"
-            )
 
 
 def print_config_table(config: dict):
