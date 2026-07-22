@@ -1,12 +1,26 @@
-"""Plain-Python state derived from ExperimentEvents -- no Textual imports,
-so DashboardState.apply() is unit-testable without a Textual pilot and is
-the seam where a malformed event's blast radius is contained to "one state
-update failed," not "the whole TUI worker died mid-overnight-run."""
+"""Plain-Python state derived from ExperimentEvents -- no Textual or web
+framework imports, so DashboardState.apply() is unit-testable in isolation
+and is the seam where a malformed event's blast radius is contained to
+"one state update failed," not "the whole dashboard worker died mid-run."
+Used by src/web/live.py (the WebSocket broadcaster)."""
 
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from src.core.events import ExperimentEvent
+
+PIPELINE_ORDER = [
+    "scientist",
+    "validator",
+    "deduplicator",
+    "budget_guard",
+    "indexer",
+    "smoke_test",
+    "evaluator",
+    "acceptance",
+    "recorder",
+    "reflection",
+]
 
 _FAILURE_STATUSES = {"BUDGET_EXCEEDED", "INTERRUPTED"}
 

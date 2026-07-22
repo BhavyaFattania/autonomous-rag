@@ -1,11 +1,11 @@
 """Tests for DashboardState.apply() -- the crash-isolation seam that turns a
 raw ExperimentEvent into a plain-Python state object the app can render
-from, testable without a Textual pilot."""
+from, testable without any web/TUI framework."""
 
 from datetime import UTC, datetime
 
+from src.core.dashboard_state import DashboardState
 from src.core.events import ExperimentEvent
-from src.tui.state import DashboardState
 
 
 def _event(**overrides) -> ExperimentEvent:
@@ -131,3 +131,20 @@ def test_last_failure_is_overwritten_by_the_most_recent_failure():
 
     assert state.last_failure.node == "evaluator"
     assert state.last_failure.failure_reason == "second"
+
+
+def test_pipeline_order_has_all_ten_nodes_in_execution_order():
+    from src.core.dashboard_state import PIPELINE_ORDER
+
+    assert PIPELINE_ORDER == [
+        "scientist",
+        "validator",
+        "deduplicator",
+        "budget_guard",
+        "indexer",
+        "smoke_test",
+        "evaluator",
+        "acceptance",
+        "recorder",
+        "reflection",
+    ]

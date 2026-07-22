@@ -13,7 +13,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
 from src.core.events import ExperimentEvent
-from src.tui.state import DashboardState, FailureInfo
+from src.core.dashboard_state import DashboardState, FailureInfo
 from src.tui.widgets.best_config_panel import BestConfigPanel
 from src.tui.widgets.budget_panel import BudgetPanel
 from src.tui.widgets.experiment_panel import ExperimentPanel
