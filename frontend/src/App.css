@@ -8,3 +8,23 @@ body {
 .app {
   min-height: 100vh;
 }
+
+.layout {
+  display: flex;
+}
+
+.mainGrid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.rightRail {
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}

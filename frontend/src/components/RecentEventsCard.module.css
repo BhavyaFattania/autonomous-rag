@@ -1,0 +1,21 @@
+.card {
+  background: #12141c;
+  border: 1px solid #262a35;
+  border-radius: 8px;
+  padding: 1rem;
+  grid-column: span 2;
+}
+
+.card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #8b8fa3;
+}
+
+.log {
+  max-height: 150px;
+  overflow-y: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: #a3a9bf;
+}

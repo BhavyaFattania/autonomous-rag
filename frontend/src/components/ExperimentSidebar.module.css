@@ -1,0 +1,36 @@
+.sidebar {
+  background: #12141c;
+  border-right: 1px solid #262a35;
+  padding: 1rem;
+  width: 220px;
+  overflow-y: auto;
+}
+
+.sidebar h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #8b8fa3;
+}
+
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.25rem;
+  border-radius: 4px;
+}
+
+.sidebar li[data-status="ACCEPTED"] {
+  color: #22c55e;
+}
+
+.sidebar li[data-status="REJECTED"],
+.sidebar li[data-status^="FAILED"] {
+  color: #ef4444;
+}
