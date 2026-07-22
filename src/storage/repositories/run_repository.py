@@ -16,6 +16,48 @@ class RunRepository:
         """Initialize with optional connection; if None, creates connections on-demand."""
         self._db = db
 
+    async def create_run(self, run_id: str, started_at: str) -> None:
+        """Insert a new run row. Idempotent: a resumed run reuses the same
+        run_id, so a second call for the same run must not crash or
+        duplicate the row."""
+        async with db_or_connect(self._db) as db:
+            await db.execute(
+                "INSERT OR IGNORE INTO runs (run_id, started_at) VALUES (?, ?)",
+                (run_id, started_at),
+            )
+
+    async def finish_run(
+        self,
+        run_id: str,
+        finished_at: str,
+        total_cost: float,
+        n_experiments: int,
+        n_accepted: int,
+        best_config: str | None,
+        best_score: float | None,
+        status: str,
+    ) -> None:
+        """Update a run row's terminal fields once the run has stopped."""
+        async with db_or_connect(self._db) as db:
+            await db.execute(
+                """
+                UPDATE runs
+                SET finished_at = ?, total_cost = ?, n_experiments = ?,
+                    n_accepted = ?, best_config = ?, best_score = ?, status = ?
+                WHERE run_id = ?
+                """,
+                (
+                    finished_at,
+                    total_cost,
+                    n_experiments,
+                    n_accepted,
+                    best_config,
+                    best_score,
+                    status,
+                    run_id,
+                ),
+            )
+
     async def find_last_run_id(self) -> str | None:
         """Return the most recent run_id, or None if no runs exist."""
         async with db_or_connect(self._db) as db:

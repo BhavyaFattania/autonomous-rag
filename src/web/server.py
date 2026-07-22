@@ -3,6 +3,7 @@ ConnectionManager (broadcast target for src/web/live.py's event consumer)
 and mounts the built frontend as static files, if present."""
 
 import asyncio
+from contextlib import suppress
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket
@@ -53,7 +54,14 @@ def create_app(event_bus: EventBus) -> FastAPI:
 
     @app.on_event("startup")
     async def _start_event_consumer() -> None:
-        asyncio.create_task(consume_events(app))
+        app.state.event_consumer_task = asyncio.create_task(consume_events(app))
+
+    @app.on_event("shutdown")
+    async def _stop_event_consumer() -> None:
+        task = app.state.event_consumer_task
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
     if _FRONTEND_DIST.exists():
         app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")

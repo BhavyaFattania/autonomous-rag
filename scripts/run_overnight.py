@@ -38,6 +38,7 @@ if "pytest" not in sys.modules:
     _ensure_venv()
 
 import asyncio
+import json
 import signal
 import uuid
 from datetime import UTC, datetime
@@ -140,6 +141,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         run_id = trace_run_id or str(uuid.uuid4())
 
     init_trace(run_id)
+    await RunRepository().create_run(run_id, datetime.now(UTC).isoformat())
 
     baseline = load_baseline_config()
     run_start = datetime.now(UTC)
@@ -257,6 +259,17 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
 
         server.should_exit = True
         await server_task
+
+        await RunRepository().finish_run(
+            run_id,
+            finished_at=datetime.now(UTC).isoformat(),
+            total_cost=latest_state.get("total_cost_usd", 0.0),
+            n_experiments=latest_state.get("experiments_completed", 0),
+            n_accepted=latest_state.get("experiments_accepted", 0),
+            best_config=json.dumps(latest_state.get("current_best_config")),
+            best_score=latest_state.get("current_best_weighted_score"),
+            status="STOPPED" if _stop_requested else "COMPLETED",
+        )
 
     if settings.evaluation.run_final_best_eval and not _stop_requested:
         await evaluate_final_best(latest_state, settings, env)

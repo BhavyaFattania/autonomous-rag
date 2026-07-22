@@ -131,3 +131,82 @@ async def test_run_starts_web_dashboard_and_publishes_every_tick(monkeypatch, _c
     assert len(published) == 2
     assert published[0].node == "scientist"
     assert published[1].node == "validator"
+
+
+@pytest.mark.asyncio
+async def test_run_creates_and_finishes_run_row(monkeypatch, _cwd_in_pytest_temp):
+    from src.storage.database import Database
+    from src.storage.repositories.run_repository import RunRepository
+
+    monkeypatch.setattr(run_overnight, "EventBus", lambda: EventBus())
+    monkeypatch.setattr(
+        run_overnight,
+        "uvicorn",
+        type("_M", (), {"Server": _FakeUvicornServer, "Config": lambda **kw: kw}),
+    )
+    monkeypatch.setattr(run_overnight, "create_app", lambda bus: object())
+
+    ticks = [
+        {
+            "scientist": {
+                "status": "RUNNING",
+                "hypothesis": "h",
+                "experiments_completed": 3,
+                "experiments_accepted": 1,
+                "current_best_config": {"a": 1},
+                "current_best_weighted_score": 0.75,
+                "total_cost_usd": 0.42,
+            }
+        },
+    ]
+
+    def _fake_build_graph(**kwargs):
+        return _FakeGraph(ticks)
+
+    monkeypatch.setattr(run_overnight, "build_graph", _fake_build_graph)
+
+    class _Settings:
+        class run:
+            cost_hard_ceiling_usd = 10.0
+
+        class evaluation:
+            baseline_score_override = 0.5
+            run_final_best_eval = False
+
+    class _Provider:
+        class cost_tracker:
+            @staticmethod
+            def initialize(**kwargs):
+                pass
+
+    async def _async_result(value):
+        return value
+
+    monkeypatch.setattr(
+        run_overnight,
+        "evaluate_baseline",
+        lambda *a, **k: (_async_result((0.5, {}))),
+    )
+
+    try:
+        await run_overnight._run(
+            max_exp=1,
+            max_hours=1.0,
+            resume=False,
+            settings=_Settings(),
+            env=None,
+            provider=_Provider(),
+        )
+    finally:
+        close_trace()
+
+    await Database().init()
+    runs = await RunRepository().list_runs()
+    assert len(runs) == 1
+    run = runs[0]
+    assert run.status == "COMPLETED"
+    assert run.n_experiments == 3
+    assert run.n_accepted == 1
+    assert run.total_cost == 0.42
+    assert run.best_score == 0.75
+    assert run.finished_at is not None
