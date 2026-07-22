@@ -7,6 +7,26 @@ from src.storage.repositories._shared import db_or_connect
 from src.utils.function_trace import trace_call
 
 
+def _row_to_experiment(row) -> Experiment:
+    return Experiment(
+        experiment_id=row[0],
+        experiment_uuid=row[1],
+        run_id=row[2],
+        config_hash=row[3],
+        config_json=row[4],
+        hypothesis=row[5],
+        status=row[6],
+        failure_reason=row[7],
+        metrics_json=row[8],
+        baseline_score=row[9],
+        proposed_score=row[10],
+        cost_usd=row[11],
+        started_at=row[12],
+        finished_at=row[13],
+        duration_sec=row[14],
+    )
+
+
 class ExperimentRepository:
     def __init__(self, db: aiosqlite.Connection | None = None):
         self._db = db
@@ -106,3 +126,34 @@ class ExperimentRepository:
                 exclude,
             )
             return {row[0] for row in await cursor.fetchall()}
+
+    async def find_by_run_id(self, run_id: str) -> list[Experiment]:
+        async with db_or_connect(self._db) as db:
+            cursor = await db.execute(
+                """
+                SELECT experiment_id, experiment_uuid, run_id, config_hash, config_json,
+                       hypothesis, status, failure_reason, metrics_json, baseline_score,
+                       proposed_score, cost_usd, started_at, finished_at, duration_sec
+                FROM experiments
+                WHERE run_id = ?
+                ORDER BY experiment_id DESC
+                """,
+                (run_id,),
+            )
+            rows = await cursor.fetchall()
+            return [_row_to_experiment(row) for row in rows]
+
+    async def find_by_id(self, experiment_id: int) -> Experiment | None:
+        async with db_or_connect(self._db) as db:
+            cursor = await db.execute(
+                """
+                SELECT experiment_id, experiment_uuid, run_id, config_hash, config_json,
+                       hypothesis, status, failure_reason, metrics_json, baseline_score,
+                       proposed_score, cost_usd, started_at, finished_at, duration_sec
+                FROM experiments
+                WHERE experiment_id = ?
+                """,
+                (experiment_id,),
+            )
+            row = await cursor.fetchone()
+            return _row_to_experiment(row) if row else None
