@@ -133,6 +133,48 @@ def test_last_failure_is_overwritten_by_the_most_recent_failure():
     assert state.last_failure.failure_reason == "second"
 
 
+def test_apply_integrates_with_real_adapt_output_for_acceptance_and_recorder():
+    """End-to-end proof that DashboardState.apply() picks up a score from
+    the real event_adapter.adapt() output, not just a hand-built
+    ExperimentEvent with a shape adapt() never actually produces."""
+    from src.orchestrator.event_adapter import adapt
+
+    class _Settings:
+        class run:
+            cost_hard_ceiling_usd = 10.0
+
+    state = DashboardState()
+    ctx: dict = {}
+
+    for adapted in adapt({"scientist": {"status": "RUNNING"}}, ctx, _Settings):
+        state.apply(adapted)
+    for adapted in adapt(
+        {"evaluator": {"status": "RUNNING", "aggregated_metrics": {"median_weighted_score": 0.91}}},
+        ctx,
+        _Settings,
+    ):
+        state.apply(adapted)
+    for adapted in adapt(
+        {
+            "acceptance": {
+                "status": "ACCEPTED",
+                "current_best_config": {"chunk_size": 512},
+                "current_best_weighted_score": 0.91,
+            }
+        },
+        ctx,
+        _Settings,
+    ):
+        state.apply(adapted)
+    for adapted in adapt({"recorder": {"status": "ACCEPTED"}}, ctx, _Settings):
+        state.apply(adapted)
+
+    assert state.best_config == {"chunk_size": 512}
+    assert state.best_score == 0.91
+    assert len(state.history) == 1
+    assert state.history[0].score == 0.91
+
+
 def test_pipeline_order_has_all_ten_nodes_in_execution_order():
     from src.core.dashboard_state import PIPELINE_ORDER
 
