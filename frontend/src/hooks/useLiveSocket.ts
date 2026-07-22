@@ -6,6 +6,7 @@ export function useLiveSocket() {
   const [state, setState] = useState<DashboardState | null>(null);
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,7 +32,7 @@ export function useLiveSocket() {
         setConnected(false);
         // Reconnect after a short delay -- the dashboard should recover
         // automatically if the backend restarts mid-run.
-        setTimeout(connect, 1000);
+        reconnectTimeoutRef.current = window.setTimeout(connect, 1000);
       };
 
       socket.onerror = () => {
@@ -43,6 +44,7 @@ export function useLiveSocket() {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(reconnectTimeoutRef.current);
       socketRef.current?.close();
     };
   }, []);
