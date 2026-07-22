@@ -1,7 +1,12 @@
 import type { DashboardState } from "../types";
 import styles from "./ExperimentSidebar.module.css";
 
-export function ExperimentSidebar({ state }: { state: DashboardState | null }) {
+interface Props {
+  state: DashboardState | null;
+  onViewAll: () => void;
+}
+
+export function ExperimentSidebar({ state, onViewAll }: Props) {
   const rows = [...(state?.history ?? [])].reverse();
 
   return (
@@ -16,6 +21,9 @@ export function ExperimentSidebar({ state }: { state: DashboardState | null }) {
           </li>
         ))}
       </ul>
+      <button className={styles.viewAll} onClick={onViewAll}>
+        View All Experiments
+      </button>
     </aside>
   );
 }

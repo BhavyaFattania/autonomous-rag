@@ -34,3 +34,14 @@
 .sidebar li[data-status^="FAILED"] {
   color: #ef4444;
 }
+
+.viewAll {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: #1a1d26;
+  border: 1px solid #262a35;
+  border-radius: 6px;
+  color: #e6e8ee;
+  cursor: pointer;
+}

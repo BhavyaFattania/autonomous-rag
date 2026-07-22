@@ -1,0 +1,28 @@
+.page {
+  padding: 1.5rem;
+  color: #e6e8ee;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+}
+
+th {
+  text-align: left;
+  color: #8b8fa3;
+  padding: 0.4rem;
+  border-bottom: 1px solid #262a35;
+}
+
+td {
+  padding: 0.4rem;
+  border-bottom: 1px solid #1a1d26;
+  cursor: pointer;
+}
+
+tr[data-selected="true"] {
+  background: #1a1d26;
+}

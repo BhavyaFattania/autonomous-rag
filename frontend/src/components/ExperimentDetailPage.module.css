@@ -1,0 +1,13 @@
+.page {
+  padding: 1.5rem;
+  color: #e6e8ee;
+}
+
+pre {
+  background: #12141c;
+  border: 1px solid #262a35;
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.8rem;
+  overflow-x: auto;
+}
