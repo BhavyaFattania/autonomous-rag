@@ -53,3 +53,7 @@ opencode.json
 
 
 graphify-out/cache
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
