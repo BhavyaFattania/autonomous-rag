@@ -6,6 +6,7 @@ An intelligent, autonomous system designed to iteratively hyper-optimize Retriev
 
 - **Autonomous Experimentation Loop:** Proposes, tests, and evaluates different RAG configurations (chunk size, overlap, retrieval strategies) entirely unattended.
 - **LangGraph Orchestration:** Utilizes a highly robust state machine to handle validation, deduplication, budget guarding, smoke testing, and deep evaluations.
+- **Live Web Dashboard:** A local FastAPI + WebSocket + React dashboard (`http://127.0.0.1:8000`, started automatically alongside every run) shows the pipeline live — current node, hypothesis, config diff vs. best, budget spent, and experiment history — plus a historical view for browsing past runs from `experiments.sqlite`.
 - **Strict Budget Guarding:** Intercepts and monitors LLM (OpenRouter) API costs to prevent runaway billing during long-running optimization sessions.
 - **Resilient Evaluation Threading:** Offloads blocking, synchronous evaluation frameworks (like RAGAS) to background threads using `nest_asyncio` and `ThreadPoolExecutors` for non-blocking I/O operations.
 - **Comprehensive SQLite Storage:** Retains every experiment, caching failures and baseline scores to continuously track progress and avoid redundant executions.
@@ -17,7 +18,8 @@ An intelligent, autonomous system designed to iteratively hyper-optimize Retriev
 - **RAG & Vector Stores:** `llama-index` (modular), `chromadb`
 - **Evaluation:** `ragas`, `datasets`
 - **Database:** SQLite (`aiosqlite`)
-- **Dependency Management:** Poetry
+- **Dashboard:** `fastapi`, `uvicorn[standard]` (backend), Vite + React + TypeScript (frontend, built once and served as static files — no Node process needed at runtime)
+- **Dependency Management:** Poetry (backend), npm (frontend build only)
 
 ## 📦 Getting Started
 
@@ -40,10 +42,19 @@ An intelligent, autonomous system designed to iteratively hyper-optimize Retriev
    # Add any other required environment variables based on pydantic settings
    ```
 
-3. Run the overnight optimization script:
+3. Build the dashboard frontend once (only needed after cloning or after a frontend change — the built files are served as static assets, no Node process runs at runtime):
    ```bash
-   poetry run python run_overnight.py
+   cd frontend
+   npm install
+   npm run build
+   cd ..
    ```
+
+4. Run the overnight optimization script:
+   ```bash
+   poetry run python scripts/run_overnight.py
+   ```
+   This starts a local web dashboard at **http://127.0.0.1:8000** — open it in a browser to watch the run live (pipeline status, hypothesis, config diff, budget, experiment history) and to browse past runs.
 
 ## 🗺️ Codebase Knowledge Graph
 

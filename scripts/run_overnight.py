@@ -47,6 +47,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import click
 import uvicorn
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.runnables import RunnableConfig
 from dotenv import load_dotenv
 from rich.rule import Rule
 from src.core.events import EventBus
@@ -202,15 +204,16 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             event_bus=bus,
         )
 
+        callbacks: list[BaseCallbackHandler] = []
         try:
             from langfuse.langchain import CallbackHandler
 
             langfuse_handler = CallbackHandler()
             callbacks = [langfuse_handler]
         except ImportError:
-            callbacks = []
+            pass
 
-        graph_config = {
+        graph_config: RunnableConfig = {
             "configurable": {"thread_id": run_id},
             "recursion_limit": max(100, (max_exp * 12) + 50),
             "callbacks": callbacks,
@@ -263,11 +266,11 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         await RunRepository().finish_run(
             run_id,
             finished_at=datetime.now(UTC).isoformat(),
-            total_cost=latest_state.get("total_cost_usd", 0.0),
-            n_experiments=latest_state.get("experiments_completed", 0),
-            n_accepted=latest_state.get("experiments_accepted", 0),
+            total_cost=float(latest_state.get("total_cost_usd", 0.0)),
+            n_experiments=int(latest_state.get("experiments_completed", 0)),
+            n_accepted=int(latest_state.get("experiments_accepted", 0)),
             best_config=json.dumps(latest_state.get("current_best_config")),
-            best_score=latest_state.get("current_best_weighted_score"),
+            best_score=float(latest_state.get("current_best_weighted_score", 0.0)),
             status="STOPPED" if _stop_requested else "COMPLETED",
         )
 
