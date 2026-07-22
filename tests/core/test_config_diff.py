@@ -1,7 +1,7 @@
 """Tests for compute_config_diff(), which powers the hero panel's
 'Live Configuration Diff' (chunk_size 768, up from 512, etc)."""
 
-from src.tui.formatting import compute_config_diff
+from src.core.config_diff import compute_config_diff
 
 
 def test_same_value_is_marked_same():

@@ -8,7 +8,7 @@ from textual.reactive import reactive
 from textual.widgets import ProgressBar, Static
 
 from src.core.events import ExperimentEvent
-from src.tui.formatting import compute_config_diff
+from src.core.config_diff import compute_config_diff
 
 
 class ExperimentPanel(Vertical):

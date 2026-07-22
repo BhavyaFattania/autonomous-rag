@@ -1,9 +1,10 @@
-"""Pure display-formatting helpers shared by TUI widgets."""
+"""Pure display-formatting helper for showing a live config against the
+best-known config, shared by the web dashboard's config-diff card."""
 
 
 def compute_config_diff(current: dict, best: dict) -> list[tuple[str, object, str]]:
     """Returns one (field, value, note) triple per field in `current`, so the
-    hero panel can show 'chunk_size 768, up from 512' instead of a bare value."""
+    UI can show 'chunk_size 768, up from 512' instead of a bare value."""
     rows: list[tuple[str, object, str]] = []
     for key, cur_val in current.items():
         best_val = best.get(key)
