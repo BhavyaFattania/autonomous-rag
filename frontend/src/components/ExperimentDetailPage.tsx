@@ -9,10 +9,22 @@ interface Props {
 
 export function ExperimentDetailPage({ experimentId, onBack }: Props) {
   const [experiment, setExperiment] = useState<ExperimentDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchExperiment(experimentId).then(setExperiment);
+    fetchExperiment(experimentId)
+      .then(setExperiment)
+      .catch(() => setError("Failed to load experiment"));
   }, [experimentId]);
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <button onClick={onBack}>← Back to runs</button>
+        <p className={styles.error}>{error}</p>
+      </div>
+    );
+  }
 
   if (!experiment) return null;
 

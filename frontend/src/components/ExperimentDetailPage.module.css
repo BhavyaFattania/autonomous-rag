@@ -11,3 +11,7 @@ pre {
   font-size: 0.8rem;
   overflow-x: auto;
 }
+
+.error {
+  color: #ef4444;
+}

@@ -11,20 +11,27 @@ export function RunsListPage({ onSelectExperiment, onBack }: Props) {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [selectedRun, setSelectedRun] = useState<string | null>(null);
   const [experiments, setExperiments] = useState<ExperimentSummary[]>([]);
+  const [runsError, setRunsError] = useState<string | null>(null);
+  const [experimentsError, setExperimentsError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchRuns().then(setRuns);
+    fetchRuns()
+      .then(setRuns)
+      .catch(() => setRunsError("Failed to load runs"));
   }, []);
 
   useEffect(() => {
     if (!selectedRun) return;
-    fetchRunExperiments(selectedRun).then(setExperiments);
+    fetchRunExperiments(selectedRun)
+      .then(setExperiments)
+      .catch(() => setExperimentsError("Failed to load experiments"));
   }, [selectedRun]);
 
   return (
     <div className={styles.page}>
       <button onClick={onBack}>← Back to live view</button>
       <h2>All Runs</h2>
+      {runsError && <p className={styles.error}>{runsError}</p>}
       <table>
         <thead>
           <tr>
@@ -57,6 +64,7 @@ export function RunsListPage({ onSelectExperiment, onBack }: Props) {
       {selectedRun && (
         <>
           <h3>Experiments in {selectedRun}</h3>
+          {experimentsError && <p className={styles.error}>{experimentsError}</p>}
           <table>
             <thead>
               <tr>
