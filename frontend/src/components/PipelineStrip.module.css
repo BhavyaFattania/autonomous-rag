@@ -1,0 +1,58 @@
+.strip {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: #12141c;
+  overflow-x: auto;
+}
+
+.nodeWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #2a2f3c;
+  min-width: 90px;
+  color: #8b8fa3;
+}
+
+.node[data-active="true"] {
+  border-color: #3b82f6;
+  color: #e6e8ee;
+}
+
+.node[data-status="ACCEPTED"],
+.node[data-status="COMPETITIVE"] {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.node[data-status^="FAILED"],
+.node[data-status="REJECTED"],
+.node[data-status="BUDGET_EXCEEDED"] {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.nodeName {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.nodeStatus {
+  font-size: 0.65rem;
+}
+
+.connector {
+  width: 1.5rem;
+  height: 1px;
+  background: #2a2f3c;
+  margin: 0 0.25rem;
+}

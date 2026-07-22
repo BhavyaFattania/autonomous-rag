@@ -1,0 +1,67 @@
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: #0f1117;
+  border-bottom: 1px solid #262a35;
+  color: #e6e8ee;
+}
+
+.title h1 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 0.75rem;
+  color: #8b8fa3;
+}
+
+.currentExperiment {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.experimentNumber {
+  font-weight: 600;
+}
+
+.statusBadge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: #1f2937;
+  color: #22c55e;
+}
+
+.stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.statLabel {
+  font-size: 0.7rem;
+  color: #8b8fa3;
+}
+
+.statValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.connectionIndicator {
+  font-size: 0.75rem;
+  color: #8b8fa3;
+}
+
+.connectionIndicator[data-connected="true"] {
+  color: #22c55e;
+}
