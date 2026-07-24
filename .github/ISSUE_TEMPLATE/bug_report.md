@@ -1,38 +1,35 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Report a problem with the optimizer, dashboard, or evaluation pipeline
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
 
 **Describe the bug**
-A clear and concise description of what the bug is.
+A clear and concise description of what went wrong.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**Steps to reproduce**
+Commands you ran and the config you used, e.g.:
+1. `poetry run python scripts/run_overnight.py --max-exp 5 --max-hours 1`
+2. Config used: `config/run_settings.yaml` (paste relevant fields, or attach the file)
+3. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**Expected vs. actual behaviour**
+What you expected to happen, and what actually happened.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Environment**
+- OS: [e.g. Windows 11, Ubuntu 22.04]
+- Python version: `python --version`
+- `llm_provider` in use (`openrouter` / `openai`):
+- Relevant dependency versions (from `poetry show`, if suspected version-related):
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+**Run/experiment ID (if applicable)**
+If the bug happened during an overnight run, the `run_id` or `experiment_id` from the dashboard or `experiments.sqlite` helps a lot.
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+**Logs or tracebacks**
+Paste the relevant log output or traceback. **Redact any API keys first.**
 
 **Additional context**
-Add any other context about the problem here.
+Anything else that seems relevant (corpus used, recent config changes, etc.).
