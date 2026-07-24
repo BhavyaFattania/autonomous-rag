@@ -28,6 +28,15 @@ class _FakeBus:
         self.published.append(event)
 
 
+class _FakeCostTracker:
+    def get_total(self) -> float:
+        return 0.42
+
+
+class _FakeProvider:
+    cost_tracker = _FakeCostTracker()
+
+
 @pytest.mark.asyncio
 async def test_indexer_node_publishes_progress_events(monkeypatch):
     async def _fake_get_or_build_collection(config, settings, env=None, on_progress=None):
@@ -38,13 +47,12 @@ async def test_indexer_node_publishes_progress_events(monkeypatch):
     monkeypatch.setattr(
         collection_manager, "get_or_build_collection", _fake_get_or_build_collection
     )
-    monkeypatch.setattr(collection_manager, "get_total", lambda: 0.42)
 
     bus = _FakeBus()
     state = {"validated_config": dict(_VALID_CONFIG), "experiments_completed": 6}
 
     result = await collection_manager.indexer_node(
-        state, settings=object(), env=None, provider=None, event_bus=bus
+        state, settings=object(), env=None, provider=_FakeProvider(), event_bus=bus
     )
 
     assert result["status"] == "RUNNING"

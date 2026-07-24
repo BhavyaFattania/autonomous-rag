@@ -5,6 +5,13 @@ from src.models.rag_config import RAGConfig
 
 def validator_node(state, settings, env=None) -> dict:
     """Check proposed config against allowed values, parser/retriever availability, and budget constraints."""
+    if state.get("status") == "BUDGET_EXCEEDED":
+        # scientist_node hit the hard ceiling. state["proposed_config"] is
+        # stale (LangGraph carries the previous tick's value forward since
+        # this tick's update omitted it) -- re-validating it would silently
+        # overwrite BUDGET_EXCEEDED with RUNNING/FAILED_VALIDATION. Pass the
+        # halt straight through instead.
+        return {"status": "BUDGET_EXCEEDED", "failure_reason": state.get("failure_reason", "")}
     try:
         config = RAGConfig(**state["proposed_config"])
 

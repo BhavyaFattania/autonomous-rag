@@ -9,7 +9,6 @@ import json
 import uuid
 from datetime import UTC, datetime
 
-from src.storage.cost_tracker import get_total
 from src.storage.database import Database
 from src.storage.models import Experiment
 from src.storage.repositories.config_hash_repository import ConfigHashRepository
@@ -40,7 +39,7 @@ def _config_summary(config: dict) -> str:
     )
 
 
-async def recorder_node(state) -> dict:
+async def recorder_node(state, provider) -> dict:
     """Persist experiment result to database and update run statistics."""
     experiment_uuid = state.get("experiment_uuid") or str(uuid.uuid4())
     config_source = state.get("validated_config") or state.get("proposed_config", {})
@@ -130,7 +129,7 @@ async def recorder_node(state) -> dict:
         "consecutive_failures": failures,
         "experiments_repeated": repeated,
         "experiments_competitive": experiments_competitive,
-        "total_cost_usd": get_total(),
+        "total_cost_usd": provider.cost_tracker.get_total(),
         "successful_patterns": successful,
         "failed_patterns": failed,
     }

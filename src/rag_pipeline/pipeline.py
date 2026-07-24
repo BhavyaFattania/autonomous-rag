@@ -91,9 +91,10 @@ async def retrieve_contexts(
     settings,
     collection_name: str | None = None,
     env=None,
+    provider: Provider | None = None,
 ) -> tuple[list[list[str]], float]:
     results, cost = await retrieve_results(
-        config, questions, settings, collection_name=collection_name, env=env
+        config, questions, settings, collection_name=collection_name, env=env, provider=provider
     )
     return _results_to_contexts(results), cost
 
@@ -104,12 +105,15 @@ async def retrieve_results(
     settings,
     collection_name: str | None = None,
     env=None,
+    provider: Provider | None = None,
 ) -> tuple[list[list[dict]], float]:
-    from src.storage.cost_tracker import get_total
-
+    """`provider` supplies the live cost total via `provider.cost_tracker`,
+    the same instance every real LLM call reports cost to (see
+    provider_factory.py). `None` reports a cost delta of 0.0 -- matches
+    run_pipeline()'s use of provider.cost_tracker.get_total() above."""
     collection_name = collection_name or await get_or_build_collection(config, settings, env=env)
     max_concurrency = settings.evaluation.max_concurrent_questions
-    start_cost = get_total()
+    start_cost = provider.cost_tracker.get_total() if provider is not None else 0.0
     started = time.perf_counter()
     results = await _get_or_build_results(
         config=config,
@@ -124,7 +128,8 @@ async def retrieve_results(
         questions=len(questions),
         elapsed_sec=round(time.perf_counter() - started, 2),
     )
-    return results, get_total() - start_cost
+    end_cost = provider.cost_tracker.get_total() if provider is not None else 0.0
+    return results, end_cost - start_cost
 
 
 @observe(name="get_or_build_contexts")

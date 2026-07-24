@@ -8,7 +8,7 @@ from src.utils.logger import get_logger
 log = get_logger("smoke_test")
 
 
-async def smoke_test_node(state, settings) -> dict:
+async def smoke_test_node(state, settings, provider=None) -> dict:
     """Verify retrieval runs without crashing and returns non-empty contexts."""
     from src.models.rag_config import RAGConfig
     from src.rag_pipeline.pipeline import retrieve_contexts
@@ -19,7 +19,9 @@ async def smoke_test_node(state, settings) -> dict:
 
     try:
         contexts, cost = await asyncio.wait_for(
-            retrieve_contexts(config, questions, settings, collection_name=collection_name),
+            retrieve_contexts(
+                config, questions, settings, collection_name=collection_name, provider=provider
+            ),
             timeout=180.0,
         )
     except TimeoutError:

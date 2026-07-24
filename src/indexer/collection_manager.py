@@ -25,7 +25,7 @@ from src.indexer.collection_names import (
 )
 from src.indexer.index_builder import build_bm25_cache_only, build_collection
 from src.models.rag_config import RAGConfig
-from src.storage.cost_tracker import get_total
+from src.storage.cost_tracker import BudgetExceededError
 from src.utils.function_trace import trace_call
 from src.utils.logger import get_logger
 
@@ -180,13 +180,14 @@ async def indexer_node(
     def on_progress(done: int, total: int) -> None:
         if event_bus is None:
             return
+        cost_total = provider.cost_tracker.get_total() if provider is not None else 0.0
         event_bus.publish(
             ExperimentEvent(
                 experiment=experiment_num,
                 node="indexer",
                 status="RUNNING",
                 timestamp=datetime.now(UTC),
-                cost_total_usd=get_total(),
+                cost_total_usd=cost_total,
                 message="Embedding chunks",
                 progress_current=done,
                 progress_total=total,
@@ -197,6 +198,13 @@ async def indexer_node(
         collection_name = await get_or_build_collection(
             config, settings, env, on_progress=on_progress
         )
+    except BudgetExceededError as e:
+        # Must not be absorbed into FAILED_API_ERROR: that status only trips
+        # the separate consecutive_failures counter and lets the run
+        # continue, instead of halting via _after_recorder's dedicated
+        # BUDGET_EXCEEDED check.
+        log.critical("indexer_budget_exceeded", error=str(e))
+        return {"status": "BUDGET_EXCEEDED", "failure_reason": str(e)}
     except Exception as e:
         import traceback
 

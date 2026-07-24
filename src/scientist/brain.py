@@ -13,6 +13,7 @@ from src.scientist.proposal import (
     reranker_probe_proposal,
     structured_exploration_proposal,
 )
+from src.storage.cost_tracker import BudgetExceededError
 from src.utils.function_trace import trace_call
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
@@ -84,6 +85,16 @@ async def scientist_node(state, settings, provider: Provider) -> dict:
             response_format=scientist_llm.response_format,
         )
         log.info("scientist_llm_complete", elapsed_sec=round(time.perf_counter() - started, 2))
+    except BudgetExceededError as e:
+        # Must not be absorbed into a generic fallback proposal: that would
+        # let the run continue past the hard ceiling instead of halting via
+        # _after_recorder's BUDGET_EXCEEDED check.
+        log.critical("scientist_budget_exceeded", error=str(e))
+        return {
+            "status": "BUDGET_EXCEEDED",
+            "failure_reason": str(e),
+            "history_summary": new_history_summary,
+        }
     except Exception as e:
         log.error("scientist_llm_failed", error=str(e))
         fallback = await fallback_proposal(state, f"Scientist API call failed: {e}", settings)

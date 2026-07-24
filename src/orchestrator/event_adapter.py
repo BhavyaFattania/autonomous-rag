@@ -7,10 +7,9 @@ from datetime import UTC, datetime
 
 from src.core.events import ExperimentEvent
 from src.orchestrator.overnight_display import NODE_META
-from src.storage.cost_tracker import get_total
 
 
-def adapt(event: dict, ctx: dict, settings) -> list[ExperimentEvent]:
+def adapt(event: dict, ctx: dict, settings, provider=None) -> list[ExperimentEvent]:
     """Mutates ctx["exp_num"] on a new scientist tick, mirroring the counting
     behavior of overnight_display.log_event(). Callers share one `ctx` dict
     across an entire run.
@@ -19,8 +18,14 @@ def adapt(event: dict, ctx: dict, settings) -> list[ExperimentEvent]:
     tagged with the experiment it belongs to, and uses that cache to backfill
     a score onto the acceptance/recorder ticks -- neither node's own output
     carries aggregated_metrics, but DashboardState.apply() only reads scores
-    off of those two nodes' events."""
+    off of those two nodes' events.
+
+    `provider` supplies the live cost total via `provider.cost_tracker`, the
+    same instance every real LLM call reports cost to (see
+    provider_factory.py) -- not the deprecated src.storage.cost_tracker
+    module singleton. `None` (e.g. in tests) reports 0.0."""
     events: list[ExperimentEvent] = []
+    cost_total = provider.cost_tracker.get_total() if provider is not None else 0.0
     for node_name, output in event.items():
         if not isinstance(output, dict):
             continue
@@ -66,7 +71,7 @@ def adapt(event: dict, ctx: dict, settings) -> list[ExperimentEvent]:
                 node=node_name,
                 status=output.get("status", "?"),
                 timestamp=datetime.now(UTC),
-                cost_total_usd=get_total(),
+                cost_total_usd=cost_total,
                 cost_ceiling_usd=settings.run.cost_hard_ceiling_usd,
                 message=description,
                 hypothesis=output.get("hypothesis", ""),

@@ -1,9 +1,7 @@
 """Cost-based execution guard that halts the workflow if budget ceiling is exceeded."""
 
-from src.storage.cost_tracker import get_total
 
-
-def budget_guard_node(state, settings) -> dict:
+def budget_guard_node(state, settings, provider) -> dict:
     """
     Decides whether to continue running based on total cost.
 
@@ -11,9 +9,13 @@ def budget_guard_node(state, settings) -> dict:
 
     If exceeded → status: BUDGET_EXCEEDED (ends execution)
     If OK → status: RUNNING (continue)
+
+    Reads `provider.cost_tracker` -- the same instance every real LLM call
+    reports cost to (see provider_factory.py) -- not the deprecated
+    src.storage.cost_tracker module singleton, which nothing updates.
     """
     try:
-        total = get_total()
+        total = provider.cost_tracker.get_total()
     except Exception as exc:
         # If cost tracking is unavailable, err on the side of caution
         # (pretend the ceiling is slightly lower or just log and continue).

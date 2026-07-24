@@ -5,12 +5,13 @@ from src.evaluator.ragas_runner import run_single_eval
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
 from src.models.rag_config import RAGConfig
 from src.rag_pipeline.pipeline import retrieve_results
+from src.storage.cost_tracker import BudgetExceededError
 from src.utils.logger import get_logger
 
 log = get_logger("evaluator")
 
 
-async def evaluator_node(state, settings, env=None, model_routing=None) -> dict:
+async def evaluator_node(state, settings, env=None, model_routing=None, provider=None) -> dict:
     eval_settings = settings.evaluation
     config = RAGConfig(**state["validated_config"])
     collection_name = state["validated_config"].get("_collection_name")
@@ -65,7 +66,12 @@ async def evaluator_node(state, settings, env=None, model_routing=None) -> dict:
         try:
             results, run_cost = await asyncio.wait_for(
                 retrieve_results(
-                    config, questions, settings, collection_name=collection_name, env=env
+                    config,
+                    questions,
+                    settings,
+                    collection_name=collection_name,
+                    env=env,
+                    provider=provider,
                 ),
                 timeout=eval_settings.max_runtime_sec_per_eval,
             )
@@ -95,6 +101,17 @@ async def evaluator_node(state, settings, env=None, model_routing=None) -> dict:
             return {
                 "status": "FAILED_TIMEOUT",
                 "failure_reason": f"Eval run {run_num} timed out after {eval_settings.max_runtime_sec_per_eval}s",
+                "experiment_cost_usd": cost_this_node,
+            }
+        except BudgetExceededError as e:
+            # Must not be absorbed into FAILED_API_ERROR: that status only
+            # trips the separate consecutive_failures counter and lets the
+            # run continue, instead of halting via _after_recorder's
+            # dedicated BUDGET_EXCEEDED check.
+            log.critical("eval_run_budget_exceeded", run=run_num, error=str(e))
+            return {
+                "status": "BUDGET_EXCEEDED",
+                "failure_reason": str(e),
                 "experiment_cost_usd": cost_this_node,
             }
         except Exception as e:

@@ -106,6 +106,10 @@ async def test_run_starts_web_dashboard_and_publishes_every_tick(monkeypatch, _c
             def initialize(**kwargs):
                 pass
 
+            @staticmethod
+            def get_total():
+                return 0.0
+
     async def _async_result(value):
         return value
 
@@ -178,6 +182,10 @@ async def test_run_creates_and_finishes_run_row(monkeypatch, _cwd_in_pytest_temp
             @staticmethod
             def initialize(**kwargs):
                 pass
+
+            @staticmethod
+            def get_total():
+                return 0.0
 
     async def _async_result(value):
         return value

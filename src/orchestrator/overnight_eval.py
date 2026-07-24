@@ -32,7 +32,9 @@ def empty_metrics() -> dict:
     }
 
 
-async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, dict]:
+async def evaluate_baseline(
+    baseline: dict, settings, env=None, provider=None
+) -> tuple[float, dict]:
     """Evaluate baseline config, cache result, and return weighted score + metrics."""
     console.print(Rule("[bold cyan]Phase 0 baseline evaluation[/]"))
     eval_settings = settings.evaluation
@@ -71,7 +73,7 @@ async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, 
 
     for run_num in range(1, n_runs + 1):
         results, _ = await asyncio.wait_for(
-            retrieve_results(config, questions, settings=settings, env=env),
+            retrieve_results(config, questions, settings=settings, env=env, provider=provider),
             timeout=eval_settings.max_runtime_sec_per_eval,
         )
         contexts = [[item.get("text", "") for item in items] for items in results]
@@ -116,7 +118,7 @@ async def evaluate_baseline(baseline: dict, settings, env=None) -> tuple[float, 
     return aggregated.median_weighted_score, best_metrics
 
 
-async def evaluate_final_best(state: dict, settings, env=None) -> None:
+async def evaluate_final_best(state: dict, settings, env=None, provider=None) -> None:
     """Evaluate best config found during search with full RAGAS metrics."""
     best_config = state.get("current_best_config") or state.get("baseline_config")
     if not best_config:
@@ -137,7 +139,7 @@ async def evaluate_final_best(state: dict, settings, env=None) -> None:
     runs = []
     for run_num in range(1, n_runs + 1):
         results, _ = await asyncio.wait_for(
-            retrieve_results(config, questions, settings=settings, env=env),
+            retrieve_results(config, questions, settings=settings, env=env, provider=provider),
             timeout=eval_settings.max_runtime_sec_per_eval,
         )
         contexts = [[item.get("text", "") for item in items] for items in results]

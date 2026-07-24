@@ -47,9 +47,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import click
 import uvicorn
+from dotenv import load_dotenv
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.runnables import RunnableConfig
-from dotenv import load_dotenv
 from rich.rule import Rule
 from src.core.events import EventBus
 from src.orchestrator.event_adapter import adapt
@@ -123,7 +123,6 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
     from config.loader import load_baseline_config
     from config.models import ModelRouting
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-    from src.storage.cost_tracker import get_total
     from src.storage.database import Database
     from src.storage.repositories.run_repository import RunRepository
     from src.utils.function_trace import init_trace
@@ -154,7 +153,9 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         console.print(Rule("[bold cyan]Phase 0 baseline override[/]"))
         console.print(f"[bold yellow]Starting baseline score overridden to {baseline_score:.4f}[/]")
     else:
-        baseline_score, baseline_metrics = await evaluate_baseline(baseline, settings, env)
+        baseline_score, baseline_metrics = await evaluate_baseline(
+            baseline, settings, env, provider
+        )
 
     initial_state = {
         "run_id": run_id,
@@ -175,7 +176,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         "status": "PENDING",
         "failure_reason": "",
         "experiment_cost_usd": 0.0,
-        "total_cost_usd": get_total(),
+        "total_cost_usd": provider.cost_tracker.get_total(),
         "experiments_completed": 0,
         "experiments_accepted": 0,
         "consecutive_failures": 0,
@@ -257,7 +258,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             for output in event.values():
                 if isinstance(output, dict):
                     latest_state.update(output)
-            for normalized_event in adapt(event, _ctx, settings):
+            for normalized_event in adapt(event, _ctx, settings, provider=provider):
                 bus.publish(normalized_event)
 
         server.should_exit = True
@@ -275,7 +276,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         )
 
     if settings.evaluation.run_final_best_eval and not _stop_requested:
-        await evaluate_final_best(latest_state, settings, env)
+        await evaluate_final_best(latest_state, settings, env, provider)
 
 
 async def _validate_environment(settings):

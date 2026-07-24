@@ -8,16 +8,26 @@ class _Settings:
         cost_hard_ceiling_usd = 10.0
 
 
+class _FakeCostTracker:
+    def __init__(self, total: float):
+        self._total = total
+
+    def get_total(self) -> float:
+        return self._total
+
+
+class _FakeProvider:
+    def __init__(self, total: float):
+        self.cost_tracker = _FakeCostTracker(total)
+
+
 def test_adapt_ignores_non_dict_values():
     ctx = {"exp_num": 0}
     result = adapt({"__interrupt__": ()}, ctx, _Settings)
     assert result == []
 
 
-def test_adapt_increments_exp_num_only_on_scientist(monkeypatch):
-    import src.orchestrator.event_adapter as event_adapter
-
-    monkeypatch.setattr(event_adapter, "get_total", lambda: 0.0)
+def test_adapt_increments_exp_num_only_on_scientist():
     ctx = {"exp_num": 3}
 
     result = adapt({"validator": {"status": "RUNNING"}}, ctx, _Settings)
@@ -30,24 +40,27 @@ def test_adapt_increments_exp_num_only_on_scientist(monkeypatch):
     assert result[0].hypothesis == "h"
 
 
-def test_adapt_defaults_exp_num_to_zero_when_absent(monkeypatch):
-    import src.orchestrator.event_adapter as event_adapter
-
-    monkeypatch.setattr(event_adapter, "get_total", lambda: 0.0)
+def test_adapt_defaults_exp_num_to_zero_when_absent():
     ctx = {}
 
     result = adapt({"validator": {"status": "RUNNING"}}, ctx, _Settings)
     assert result[0].experiment == 0
 
 
-def test_adapt_carries_raw_event_for_legacy_fallback(monkeypatch):
-    import src.orchestrator.event_adapter as event_adapter
-
-    monkeypatch.setattr(event_adapter, "get_total", lambda: 0.42)
+def test_adapt_defaults_cost_total_to_zero_without_provider():
     ctx = {"exp_num": 1}
     output = {"status": "ACCEPTED", "aggregated_metrics": {"median_weighted_score": 0.8}}
 
     [event] = adapt({"acceptance": output}, ctx, _Settings)
+
+    assert event.cost_total_usd == 0.0
+
+
+def test_adapt_carries_raw_event_for_legacy_fallback():
+    ctx = {"exp_num": 1}
+    output = {"status": "ACCEPTED", "aggregated_metrics": {"median_weighted_score": 0.8}}
+
+    [event] = adapt({"acceptance": output}, ctx, _Settings, provider=_FakeProvider(0.42))
 
     assert event.raw_event == {"acceptance": output}
     assert event.metrics == {"median_weighted_score": 0.8}
@@ -55,10 +68,7 @@ def test_adapt_carries_raw_event_for_legacy_fallback(monkeypatch):
     assert event.cost_total_usd == 0.42
 
 
-def test_adapt_prefers_proposed_config_falls_back_to_validated_config(monkeypatch):
-    import src.orchestrator.event_adapter as event_adapter
-
-    monkeypatch.setattr(event_adapter, "get_total", lambda: 0.0)
+def test_adapt_prefers_proposed_config_falls_back_to_validated_config():
     ctx = {"exp_num": 1}
 
     [event] = adapt(
@@ -79,10 +89,7 @@ def test_adapt_prefers_proposed_config_falls_back_to_validated_config(monkeypatc
     assert event.config == {}
 
 
-def test_adapt_uses_node_meta_description_as_message(monkeypatch):
-    import src.orchestrator.event_adapter as event_adapter
-
-    monkeypatch.setattr(event_adapter, "get_total", lambda: 0.0)
+def test_adapt_uses_node_meta_description_as_message():
     ctx = {"exp_num": 1}
 
     [event] = adapt({"indexer": {"status": "RUNNING"}}, ctx, _Settings)
@@ -92,7 +99,7 @@ def test_adapt_uses_node_meta_description_as_message(monkeypatch):
     assert event.message == "some_unknown_node"
 
 
-def test_adapt_backfills_acceptance_and_recorder_scores_from_real_node_shapes(monkeypatch):
+def test_adapt_backfills_acceptance_and_recorder_scores_from_real_node_shapes():
     """Reproduces the real LangGraph tick shapes for a full experiment cycle:
     scientist -> ... -> evaluator (produces aggregated_metrics on a RUNNING
     tick) -> acceptance (ACCEPTED, only has current_best_config/
@@ -100,9 +107,6 @@ def test_adapt_backfills_acceptance_and_recorder_scores_from_real_node_shapes(mo
     acceptance and recorder ticks must end up with a populated
     metrics["median_weighted_score"], since DashboardState.apply() only reads
     scores off of those two node's events."""
-    import src.orchestrator.event_adapter as event_adapter
-
-    monkeypatch.setattr(event_adapter, "get_total", lambda: 0.0)
     ctx = {}
 
     adapt(
@@ -141,13 +145,10 @@ def test_adapt_backfills_acceptance_and_recorder_scores_from_real_node_shapes(mo
     assert recorder_event.config == {"chunk_size": 512, "top_k": 5}
 
 
-def test_adapt_recorder_does_not_leak_stale_score_from_earlier_experiment(monkeypatch):
+def test_adapt_recorder_does_not_leak_stale_score_from_earlier_experiment():
     """An experiment that fails before reaching the evaluator (e.g. at
     smoke_test) must not have its recorder tick inherit the PREVIOUS
     experiment's evaluator score."""
-    import src.orchestrator.event_adapter as event_adapter
-
-    monkeypatch.setattr(event_adapter, "get_total", lambda: 0.0)
     ctx = {}
 
     adapt({"scientist": {"status": "RUNNING"}}, ctx, _Settings)
