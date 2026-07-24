@@ -1,0 +1,28 @@
+.nav {
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 var(--space-5);
+  background: var(--ink-900);
+  border-bottom: 1px solid var(--line-700);
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.6rem 0.25rem;
+  margin: 0 var(--space-2);
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text-hi);
+}
+
+.tab[data-active="true"] {
+  color: var(--text-hi);
+  border-bottom-color: var(--signal-violet);
+}

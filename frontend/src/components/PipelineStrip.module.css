@@ -1,58 +1,130 @@
 .strip {
   display: flex;
   align-items: center;
-  padding: 1rem 1.5rem;
-  background: #12141c;
+  padding: var(--space-4) var(--space-5);
+  background: var(--ink-900);
+  border-bottom: 1px solid var(--line-700);
   overflow-x: auto;
 }
 
 .nodeWrapper {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .node {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #2a2f3c;
-  min-width: 90px;
-  color: #8b8fa3;
+  gap: 0.3rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-700);
+  background: var(--panel-800);
+  min-width: 96px;
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.node:disabled {
+  cursor: default;
+}
+
+.node:hover:not(:disabled) {
+  border-color: var(--signal-violet);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-600);
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(143, 123, 255, 0.25);
+  border-top-color: var(--signal-violet);
+  animation: spin 0.8s linear infinite;
 }
 
 .node[data-active="true"] {
-  border-color: #3b82f6;
-  color: #e6e8ee;
+  border-color: var(--signal-violet);
+  color: var(--text-hi);
+  box-shadow: 0 0 0 3px var(--signal-violet-bg), 0 0 20px -4px rgba(143, 123, 255, 0.5);
 }
 
 .node[data-status="ACCEPTED"],
 .node[data-status="COMPETITIVE"] {
-  border-color: #22c55e;
-  color: #22c55e;
+  border-color: rgba(52, 224, 161, 0.4);
+  color: var(--signal-green);
+}
+
+.node[data-status="ACCEPTED"] .dot,
+.node[data-status="COMPETITIVE"] .dot {
+  background: var(--signal-green);
 }
 
 .node[data-status^="FAILED"],
 .node[data-status="REJECTED"],
 .node[data-status="BUDGET_EXCEEDED"] {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: rgba(255, 93, 108, 0.4);
+  color: var(--signal-red);
 }
 
 .nodeName {
-  font-size: 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: capitalize;
+  color: inherit;
 }
 
 .nodeStatus {
-  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
 }
 
 .connector {
-  width: 1.5rem;
+  position: relative;
+  width: 2rem;
   height: 1px;
-  background: #2a2f3c;
-  margin: 0 0.25rem;
+  margin: 0 0.35rem;
+  background: var(--line-700);
+  overflow: hidden;
+}
+
+.connectorFill {
+  position: absolute;
+  inset: 0;
+  background: var(--signal-violet);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.connector[data-charged="true"] .connectorFill {
+  transform: scaleX(1);
+  background: rgba(52, 224, 161, 0.6);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

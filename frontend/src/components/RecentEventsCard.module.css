@@ -1,21 +1,60 @@
 .card {
-  background: #12141c;
-  border: 1px solid #262a35;
-  border-radius: 8px;
-  padding: 1rem;
+  background: var(--panel-800);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
   grid-column: span 2;
+  box-shadow: var(--shadow-panel);
+}
+
+@media (max-width: 900px) {
+  .card {
+    grid-column: span 1;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
 }
 
 .card h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  color: #8b8fa3;
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.trend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.trendLabel {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .log {
   max-height: 150px;
   overflow-y: auto;
-  font-family: ui-monospace, monospace;
-  font-size: 0.75rem;
-  color: #a3a9bf;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-mid);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.logLine {
+  white-space: pre-wrap;
+  word-break: break-word;
 }

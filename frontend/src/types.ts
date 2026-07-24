@@ -22,6 +22,7 @@ export interface ExperimentRow {
   status: string;
   score: number;
   cost: number;
+  experiment_uuid: string;
 }
 
 // Mirrors src/web/schemas.py's FailureInfoSchema
@@ -36,6 +37,7 @@ export interface FailureInfo {
 export interface DashboardState {
   node_states: Record<string, string>;
   active_node: string | null;
+  current_experiment_uuid: string | null;
   best_config: Record<string, unknown>;
   best_score: number;
   budget_spent: number;

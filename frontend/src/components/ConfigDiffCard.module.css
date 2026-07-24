@@ -1,14 +1,18 @@
 .card {
-  background: #12141c;
-  border: 1px solid #262a35;
-  border-radius: 8px;
-  padding: 1rem;
+  background: var(--panel-800);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-panel);
 }
 
 .card h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  color: #8b8fa3;
+  margin: 0 0 var(--space-2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 
 table {
@@ -18,13 +22,35 @@ table {
 }
 
 td {
-  padding: 0.2rem 0;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--panel-700);
 }
 
-td[data-note^="↑"] {
-  color: #22c55e;
+tr:last-child td {
+  border-bottom: none;
 }
 
-td[data-note^="↓"] {
-  color: #ef4444;
+.field {
+  color: var(--text-mid);
+}
+
+.value {
+  font-family: var(--font-mono);
+  color: var(--text-hi);
+  text-align: right;
+}
+
+.note {
+  font-family: var(--font-mono);
+  width: 3.5rem;
+  text-align: right;
+  color: var(--text-dim);
+}
+
+.note[data-note^="↑"] {
+  color: var(--signal-green);
+}
+
+.note[data-note^="↓"] {
+  color: var(--signal-red);
 }

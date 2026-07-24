@@ -29,7 +29,9 @@ export function RunsListPage({ onSelectExperiment, onBack }: Props) {
 
   return (
     <div className={styles.page}>
-      <button onClick={onBack}>← Back to live view</button>
+      <button className={styles.back} onClick={onBack}>
+        ← Back to live view
+      </button>
       <h2>All Runs</h2>
       {runsError && <p className={styles.error}>{runsError}</p>}
       <table>
@@ -50,12 +52,12 @@ export function RunsListPage({ onSelectExperiment, onBack }: Props) {
               onClick={() => setSelectedRun(run.run_id)}
               data-selected={run.run_id === selectedRun}
             >
-              <td>{run.run_id}</td>
+              <td className={styles.mono}>{run.run_id}</td>
               <td>{new Date(run.started_at).toLocaleString()}</td>
-              <td>{run.n_experiments}</td>
-              <td>{run.n_accepted}</td>
-              <td>{run.best_score?.toFixed(3) ?? "--"}</td>
-              <td>${run.total_cost.toFixed(2)}</td>
+              <td className={styles.mono}>{run.n_experiments}</td>
+              <td className={styles.mono}>{run.n_accepted}</td>
+              <td className={styles.mono}>{run.best_score?.toFixed(3) ?? "--"}</td>
+              <td className={styles.mono}>${run.total_cost.toFixed(2)}</td>
             </tr>
           ))}
         </tbody>
@@ -78,11 +80,11 @@ export function RunsListPage({ onSelectExperiment, onBack }: Props) {
             <tbody>
               {experiments.map((exp) => (
                 <tr key={exp.experiment_id} onClick={() => onSelectExperiment(exp.experiment_id)}>
-                  <td>{exp.experiment_id}</td>
-                  <td>{exp.status}</td>
+                  <td className={styles.mono}>{exp.experiment_id}</td>
+                  <td>{exp.status.toLowerCase()}</td>
                   <td>{exp.hypothesis}</td>
-                  <td>{exp.proposed_score.toFixed(3)}</td>
-                  <td>${exp.cost_usd.toFixed(3)}</td>
+                  <td className={styles.mono}>{exp.proposed_score.toFixed(3)}</td>
+                  <td className={styles.mono}>${exp.cost_usd.toFixed(3)}</td>
                 </tr>
               ))}
             </tbody>

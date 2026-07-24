@@ -4,7 +4,7 @@ import styles from "./ScientistThoughtCard.module.css";
 export function ScientistThoughtCard({ event }: { event: LiveEvent | null }) {
   if (!event?.reasoning) return null;
   return (
-    <div className={styles.card}>
+    <div className={styles.card} data-variant="violet">
       <h3>Scientist Thought</h3>
       <p>{event.reasoning}</p>
     </div>

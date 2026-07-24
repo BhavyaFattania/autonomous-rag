@@ -2,66 +2,190 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.5rem;
-  background: #0f1117;
-  border-bottom: 1px solid #262a35;
-  color: #e6e8ee;
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--ink-900);
+  border-bottom: 1px solid var(--line-700);
+}
+
+@media (max-width: 720px) {
+  .topBar {
+    justify-content: flex-start;
+  }
+
+  .currentExperiment,
+  .stats {
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+
+  .stats {
+    gap: var(--space-4);
+  }
+
+  .stat {
+    align-items: flex-start;
+  }
+
+  .connectionIndicator {
+    order: -1;
+    margin-left: auto;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.mark {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  color: var(--signal-violet);
 }
 
 .title h1 {
-  font-size: 1.1rem;
-  margin: 0;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .subtitle {
-  font-size: 0.75rem;
-  color: #8b8fa3;
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
 }
 
 .currentExperiment {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-3);
 }
 
 .experimentNumber {
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-mid);
 }
 
 .statusBadge {
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  background: #1f2937;
-  color: #22c55e;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--signal-green-bg);
+  color: var(--signal-green);
+  border: 1px solid rgba(52, 224, 161, 0.3);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px currentColor;
+  opacity: 0.9;
+}
+
+.statusBadge[data-status="RUNNING"] .statusDot {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.statusBadge[data-status="REJECTED"],
+.statusBadge[data-status^="FAILED"],
+.statusBadge[data-status="BUDGET_EXCEEDED"] {
+  background: var(--signal-red-bg);
+  color: var(--signal-red);
+  border-color: rgba(255, 93, 108, 0.3);
+}
+
+.statusBadge[data-status="ACCEPTED"],
+.statusBadge[data-status="COMPETITIVE"] {
+  background: var(--signal-amber-bg);
+  color: var(--signal-amber);
+  border-color: rgba(245, 182, 76, 0.3);
 }
 
 .stats {
   display: flex;
-  gap: 1.5rem;
+  gap: var(--space-5);
 }
 
 .stat {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 0.15rem;
 }
 
 .statLabel {
-  font-size: 0.7rem;
-  color: #8b8fa3;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .statValue {
+  font-family: var(--font-mono);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--text-hi);
+}
+
+.statValue[data-accent="amber"] {
+  color: var(--signal-amber);
+}
+
+.statSuffix {
+  color: var(--text-dim);
+  font-weight: 400;
 }
 
 .connectionIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.75rem;
-  color: #8b8fa3;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
 }
 
 .connectionIndicator[data-connected="true"] {
-  color: #22c55e;
+  color: var(--signal-green);
+}
+
+.connectionIndicator[data-connected="true"] .liveDot {
+  background: var(--signal-green);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px transparent;
+    opacity: 0.6;
+  }
 }

@@ -4,7 +4,7 @@ import styles from "./SidePanel.module.css";
 export function CurrentConfigPanel({ event }: { event: LiveEvent | null }) {
   const config = event?.config ?? {};
   return (
-    <div className={styles.panel}>
+    <div className={styles.panel} data-variant="violet">
       <h3>Current Configuration</h3>
       <dl>
         {Object.entries(config).map(([key, value]) => (

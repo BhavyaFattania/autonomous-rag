@@ -20,7 +20,9 @@ export function ExperimentDetailPage({ experimentId, onBack }: Props) {
   if (error) {
     return (
       <div className={styles.page}>
-        <button onClick={onBack}>← Back to runs</button>
+        <button className={styles.back} onClick={onBack}>
+          ← Back to runs
+        </button>
         <p className={styles.error}>{error}</p>
       </div>
     );
@@ -33,11 +35,14 @@ export function ExperimentDetailPage({ experimentId, onBack }: Props) {
 
   return (
     <div className={styles.page}>
-      <button onClick={onBack}>← Back to runs</button>
+      <button className={styles.back} onClick={onBack}>
+        ← Back to runs
+      </button>
       <h2>
-        Experiment #{experiment.experiment_id} — {experiment.status}
+        Experiment #{experiment.experiment_id}{" "}
+        <span className={styles.status}>{experiment.status.toLowerCase()}</span>
       </h2>
-      <p>{experiment.hypothesis}</p>
+      <p className={styles.hypothesis}>{experiment.hypothesis}</p>
 
       <h3>Config</h3>
       <pre>{JSON.stringify(config, null, 2)}</pre>

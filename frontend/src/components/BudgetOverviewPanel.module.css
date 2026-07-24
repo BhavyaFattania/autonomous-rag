@@ -1,32 +1,52 @@
 .panel {
-  background: #12141c;
-  border: 1px solid #262a35;
-  border-radius: 8px;
-  padding: 1rem;
+  background: var(--panel-800);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-panel);
 }
 
 .panel h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  color: #8b8fa3;
+  margin: 0 0 var(--space-3);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 
 .barTrack {
-  height: 8px;
-  border-radius: 4px;
-  background: #0f1117;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel-700);
   overflow: hidden;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-3);
 }
 
 .barFill {
   height: 100%;
-  background: #22c55e;
+  border-radius: 999px;
+  background: var(--signal-green);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.barFill[data-level="amber"] {
+  background: var(--signal-amber);
+}
+
+.barFill[data-level="red"] {
+  background: var(--signal-red);
 }
 
 .row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
-  padding: 0.15rem 0;
+  font-size: 0.78rem;
+  padding: 0.2rem 0;
+  color: var(--text-mid);
+}
+
+.value {
+  font-family: var(--font-mono);
+  color: var(--text-hi);
 }

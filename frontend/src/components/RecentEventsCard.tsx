@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import type { LiveEvent } from "../types";
+import type { DashboardState, LiveEvent } from "../types";
+import { Sparkline } from "./Sparkline";
 import styles from "./RecentEventsCard.module.css";
 
 const MAX_LINES = 100;
 
-export function RecentEventsCard({ event }: { event: LiveEvent | null }) {
+interface Props {
+  event: LiveEvent | null;
+  state: DashboardState | null;
+}
+
+export function RecentEventsCard({ event, state }: Props) {
   const [lines, setLines] = useState<string[]>([]);
   const lastEventRef = useRef<LiveEvent | null>(null);
 
@@ -16,12 +22,24 @@ export function RecentEventsCard({ event }: { event: LiveEvent | null }) {
     setLines((prev) => [...prev, `${time} ${event.node} ${event.message}${suffix}`].slice(-MAX_LINES));
   }, [event]);
 
+  const scores = (state?.history ?? []).map((row) => row.score);
+
   return (
     <div className={styles.card}>
-      <h3>Recent Events</h3>
+      <div className={styles.header}>
+        <h3>Recent Events</h3>
+        {scores.length >= 2 && (
+          <div className={styles.trend}>
+            <span className={styles.trendLabel}>Score Trend</span>
+            <Sparkline values={scores} color="var(--signal-violet)" />
+          </div>
+        )}
+      </div>
       <div className={styles.log}>
         {lines.map((line, i) => (
-          <div key={i}>{line}</div>
+          <div key={i} className={styles.logLine}>
+            {line}
+          </div>
         ))}
       </div>
     </div>

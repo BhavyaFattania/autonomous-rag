@@ -18,9 +18,11 @@ export function ConfigDiffCard({ event, state }: Props) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.field}>
-              <td>{row.field}</td>
-              <td>{String(row.value)}</td>
-              <td data-note={row.note}>{row.note}</td>
+              <td className={styles.field}>{row.field}</td>
+              <td className={styles.value}>{String(row.value)}</td>
+              <td className={styles.note} data-note={row.note}>
+                {row.note}
+              </td>
             </tr>
           ))}
         </tbody>

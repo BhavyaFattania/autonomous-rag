@@ -1,0 +1,113 @@
+.page {
+  padding: var(--space-5);
+  background: var(--ink-950);
+  min-height: 100vh;
+  color: var(--text-hi);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.select {
+  background: var(--panel-800);
+  border: 1px solid var(--line-700);
+  color: var(--text-hi);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  background: var(--panel-800);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.table th {
+  text-align: left;
+  color: var(--text-dim);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.68rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--line-700);
+}
+
+.table td {
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--panel-700);
+  color: var(--text-mid);
+  cursor: pointer;
+}
+
+.table tr:hover td {
+  background: var(--panel-700);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  color: var(--text-hi);
+}
+
+.message {
+  max-width: 40ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+td[data-status="ACCEPTED"],
+td[data-status="COMPETITIVE"] {
+  color: var(--signal-green);
+}
+
+td[data-status="REJECTED"],
+td[data-status^="FAILED"],
+td[data-status="BUDGET_EXCEEDED"] {
+  color: var(--signal-red);
+}
+
+td[data-status="RUNNING"] {
+  color: var(--signal-violet);
+}
+
+.loadMore {
+  display: block;
+  margin: var(--space-4) auto 0;
+  background: transparent;
+  border: 1px solid var(--line-700);
+  color: var(--text-mid);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.loadMore:hover:not(:disabled) {
+  border-color: var(--signal-violet);
+  color: var(--text-hi);
+}
+
+.loadMore:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  color: var(--signal-red);
+}
+
+.empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
