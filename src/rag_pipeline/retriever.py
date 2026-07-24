@@ -24,6 +24,7 @@ from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
+from src.core.provider_factory import required_env_var
 from src.indexer.collection_cache import load_bm25_engine, load_bm25_nodes
 from src.indexer.collection_names import CHROMA_PATH
 from src.indexer.collection_names import collection_name as _idx_collection_name
@@ -120,6 +121,7 @@ async def build_retriever(
             dense_retriever,
             bm25_retriever,
             FUSION_MODES.SIMPLE,
+            settings,
             env,
         )
         log.info("retriever_mode", mode="query_fusion_simple", collection=collection_name)
@@ -131,6 +133,7 @@ async def build_retriever(
             dense_retriever,
             bm25_retriever,
             FUSION_MODES.RECIPROCAL_RANK,
+            settings,
             env,
         )
         log.info("retriever_mode", mode="query_fusion_rrf", collection=collection_name)
@@ -223,10 +226,10 @@ def _build_components(config: RAGConfig, collection_name: str, env=None):
     return dense_retriever, bm25_retriever, nodes, storage_context
 
 
-def _build_query_fusion(config, dense_retriever, bm25_retriever, mode, env=None):
+def _build_query_fusion(config, dense_retriever, bm25_retriever, mode, settings, env=None):
     return QueryFusionRetriever(
         [dense_retriever, bm25_retriever],
-        llm=_build_query_fusion_llm(config, env),
+        llm=_build_query_fusion_llm(config, settings, env),
         mode=mode,
         similarity_top_k=config.top_k,
         num_queries=config.fusion_num_queries or 1,
@@ -235,7 +238,26 @@ def _build_query_fusion(config, dense_retriever, bm25_retriever, mode, env=None)
     )
 
 
-def _build_query_fusion_llm(config: RAGConfig, env=None):
+# api_base per provider for the query-fusion sub-query-generation LLM. `None`
+# means "use the llama-index OpenAI() class's own default (OpenAI's API)".
+# Mirrors provider_factory.py's _PROVIDER_REQUIRED_ENV_VAR registry shape so a
+# future provider is one entry here, not a new hardcoded branch.
+_QUERY_FUSION_BASE_URLS: dict[str, str | None] = {
+    "openrouter": "https://openrouter.ai/api/v1",
+    "openai": None,
+}
+
+
+def _build_query_fusion_headers(provider_name: str, api_key: str | None) -> dict:
+    """OpenRouter needs branding headers; other providers need none."""
+    if provider_name == "openrouter":
+        from src.utils.openrouter import build_openrouter_headers
+
+        return build_openrouter_headers(api_key)
+    return {}
+
+
+def _build_query_fusion_llm(config: RAGConfig, settings, env=None):
     if (config.fusion_num_queries or 1) <= 1:
         from llama_index.core.llms import MockLLM
 
@@ -243,17 +265,17 @@ def _build_query_fusion_llm(config: RAGConfig, env=None):
 
     from llama_index.llms.openai import OpenAI
 
-    from src.utils.openrouter import build_openrouter_headers
-
-    api_key = (env or {}).get("OPENROUTER_API_KEY")
+    provider_name = settings.run.llm_provider
+    api_key = (env or {}).get(required_env_var(provider_name))
+    base_url = _QUERY_FUSION_BASE_URLS.get(provider_name)
 
     return OpenAI(
         model=config.generator_model,
         api_key=api_key,
-        api_base="https://openrouter.ai/api/v1",
         temperature=0.1,
         max_tokens=256,
-        default_headers=build_openrouter_headers(api_key),
+        default_headers=_build_query_fusion_headers(provider_name, api_key),
+        **({"api_base": base_url} if base_url else {}),
     )
 
 

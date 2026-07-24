@@ -1,5 +1,5 @@
 import pytest
-from config.settings import EvalSettings, Settings
+from config.settings import EvalSettings, RunSettings, Settings
 from src.models.rag_config import RAGConfig
 from src.orchestrator.validator import validator_node
 from src.rag_pipeline.retriever import _build_query_fusion_llm
@@ -53,7 +53,29 @@ def test_query_fusion_gets_default_mode_and_num_queries():
 def test_query_fusion_single_query_uses_mock_llm():
     config = RAGConfig(**_base(retriever="query_fusion_rrf"))
 
-    assert _build_query_fusion_llm(config).__class__.__name__ == "MockLLM"
+    # fusion_num_queries == 1 short-circuits to MockLLM before `settings` is
+    # ever read, so None is fine here.
+    assert _build_query_fusion_llm(config, settings=None).__class__.__name__ == "MockLLM"
+
+
+def test_query_fusion_multi_query_respects_llm_provider_not_hardcoded_openrouter():
+    """Regression test: _build_query_fusion_llm() previously always read
+    OPENROUTER_API_KEY and hardcoded OpenRouter's base URL, regardless of
+    settings.run.llm_provider. It must resolve the key/base_url from the
+    configured provider instead."""
+    config = RAGConfig(**_base(retriever="query_fusion_rrf", fusion_num_queries=3))
+
+    settings = Settings(run=RunSettings(llm_provider="openai"))
+    llm = _build_query_fusion_llm(config, settings, env={"OPENAI_API_KEY": "sk-openai-test"})
+    assert llm.api_key == "sk-openai-test"
+    assert llm.api_base != "https://openrouter.ai/api/v1"
+
+    settings = Settings(run=RunSettings(llm_provider="openrouter"))
+    llm = _build_query_fusion_llm(
+        config, settings, env={"OPENROUTER_API_KEY": "sk-openrouter-test"}
+    )
+    assert llm.api_key == "sk-openrouter-test"
+    assert llm.api_base == "https://openrouter.ai/api/v1"
 
 
 def test_summary_embedding_remains_configurable_but_guarded_by_validator():
