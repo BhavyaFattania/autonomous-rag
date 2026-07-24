@@ -135,8 +135,7 @@ autonomous-rag/
 │   ├── storage/         # SQLite repositories (experiments, config hashes)
 │   └── utils/           # Shared utilities
 ├── tests/               # Pytest test suite
-├── pyproject.toml       # Poetry config, tool settings
-├── requirements.txt     # Pip-compatible dependency list
+├── pyproject.toml       # Poetry config, tool settings -- the sole dependency manifest
 └── .github/workflows/   # CI pipeline (GitHub Actions)
 ```
 

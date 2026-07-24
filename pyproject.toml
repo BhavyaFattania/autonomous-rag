@@ -23,12 +23,18 @@ chromadb = ">=0.6.0"
 # Evaluation
 ragas = "0.3.2"
 datasets = "5.0.0"
+ranx = ">=0.3.20"
 
 # Orchestration
 langgraph = "*"
 langgraph-checkpoint-sqlite = "*"
 langchain-core = "*"
 langchain-openai = "*"
+
+# Optional observability (src/utils/langfuse_compat.py and scripts/run_overnight.py
+# both degrade gracefully via try/except ImportError when this isn't installed).
+# Install with: poetry install --extras tracing
+langfuse = { version = "*", optional = true }
 
 # HTTP
 httpx = "0.28.1"
@@ -54,6 +60,9 @@ tenacity = "9.1.2"
 tiktoken = ">=0.8.0"
 fastapi = "^0.139.2"
 uvicorn = {extras = ["standard"], version = "^0.51.0"}
+
+[tool.poetry.extras]
+tracing = ["langfuse"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.4.2"
