@@ -1,5 +1,7 @@
 """Validates proposed RAG configs against developer-defined search space constraints."""
 
+from src.core.model_catalog import RERANKER_CATALOG
+from src.core.provider_factory import required_env_var
 from src.models.rag_config import RAGConfig
 
 
@@ -79,9 +81,11 @@ def validator_node(state, settings, env=None) -> dict:
                 raise ValueError(
                     "Config requires a new index build, but allow_new_index_builds=false"
                 )
-        if config.reranker == "CohereRerank":
-            if not (env or {}).get("OPENROUTER_API_KEY"):
-                raise ValueError("OPENROUTER_API_KEY must be set when reranker is CohereRerank")
+        if config.reranker is not None:
+            reranker_provider = RERANKER_CATALOG[config.reranker]["provider"]
+            env_var = required_env_var(reranker_provider)
+            if not (env or {}).get(env_var):
+                raise ValueError(f"{env_var} must be set when reranker is {config.reranker!r}")
         return {"validated_config": config.model_dump(), "status": "RUNNING"}
     except Exception as e:
         return {

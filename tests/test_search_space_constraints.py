@@ -104,6 +104,56 @@ def test_validator_enforces_search_space():
     )
 
 
+def test_validator_derives_required_env_var_from_reranker_catalog_not_hardcoded():
+    """Regression test: validator_node() previously hardcoded
+    `if config.reranker == "CohereRerank": ... OPENROUTER_API_KEY` -- a bare
+    string comparison that would silently stop working if CohereRerank's
+    provider ever changed, since nothing derived the check from
+    model_catalog.RERANKER_CATALOG. Prove it's now catalog-driven by
+    pointing CohereRerank at a different provider and confirming the
+    validator asks for THAT provider's key, not a hardcoded OpenRouter one."""
+    import src.core.model_catalog as model_catalog
+
+    settings = _make_test_settings()
+    state = {
+        "proposed_config": {
+            "node_parser": "sentence",
+            "retriever": "dense",
+            "chunk_size": 512,
+            "chunk_overlap": 128,
+            "top_k": 5,
+            "hybrid_alpha": 1.0,
+            "embedding_model": "openai/text-embedding-3-small",
+            "generator_model": "deepseek/deepseek-v4-flash",
+            "reranker": "CohereRerank",
+            "reranker_top_n": 5,
+        }
+    }
+
+    original_provider = model_catalog.RERANKER_CATALOG["CohereRerank"]["provider"]
+    try:
+        # Still catalog's real "openrouter" provider: OPENROUTER_API_KEY required.
+        result = validator_node(state, settings=settings, env={})
+        assert result["status"] == "FAILED_VALIDATION"
+        assert "OPENROUTER_API_KEY" in result["failure_reason"]
+
+        result = validator_node(state, settings=settings, env={"OPENROUTER_API_KEY": "sk-test"})
+        assert result["status"] == "RUNNING"
+
+        # Repoint the catalog at "openai" -- the check must follow, proving it
+        # isn't a literal OPENROUTER_API_KEY string anywhere in validator.py.
+        model_catalog.RERANKER_CATALOG["CohereRerank"]["provider"] = "openai"
+
+        result = validator_node(state, settings=settings, env={"OPENROUTER_API_KEY": "sk-test"})
+        assert result["status"] == "FAILED_VALIDATION"
+        assert "OPENAI_API_KEY" in result["failure_reason"]
+
+        result = validator_node(state, settings=settings, env={"OPENAI_API_KEY": "sk-test"})
+        assert result["status"] == "RUNNING"
+    finally:
+        model_catalog.RERANKER_CATALOG["CohereRerank"]["provider"] = original_provider
+
+
 def test_candidates_filtering():
     settings = _make_test_settings(
         search_space={

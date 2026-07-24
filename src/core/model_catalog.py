@@ -18,7 +18,14 @@ EMBEDDING_CATALOG: dict[str, dict[str, Any]] = {
 }
 
 RERANKER_CATALOG: dict[str, dict[str, Any]] = {
-    "CohereRerank": {"provider": "openrouter", "model_id": "cohere/rerank-v3.5"},
+    "CohereRerank": {
+        "provider": "openrouter",
+        "model_id": "cohere/rerank-v3.5",
+        # Full-suite RAGAS audits are skipped for this reranker: Cohere's
+        # rerank endpoint has tight rate limits that a full-suite audit run
+        # reliably trips. See eval_node.py's use of this flag.
+        "skip_ragas_full_suite": True,
+    },
 }
 
 

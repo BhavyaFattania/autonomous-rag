@@ -1,5 +1,6 @@
 import asyncio
 
+from src.core.model_catalog import RERANKER_CATALOG
 from src.data.question_loader import load_eval_question_items
 from src.evaluator.ragas_runner import run_single_eval
 from src.models.metrics import AggregatedMetrics, SingleRunMetrics
@@ -55,9 +56,11 @@ async def evaluator_node(state, settings, env=None, model_routing=None, provider
     if eval_settings.ragas_audit_policy == "competitive":
         tolerance = eval_settings.ragas_audit_score_tolerance
         ragas_min_fast_score = state.get("current_best_weighted_score", 0.0) - tolerance
-    if use_full_suite and config.reranker == "CohereRerank":
+    if use_full_suite and RERANKER_CATALOG.get(config.reranker, {}).get("skip_ragas_full_suite"):
         log.warning(
-            "ragas_audit_skipped_for_cohere_full_suite", experiment_number=experiment_number
+            "ragas_audit_skipped_for_full_suite",
+            reranker=config.reranker,
+            experiment_number=experiment_number,
         )
         run_ragas = False
         ragas_min_fast_score = None
