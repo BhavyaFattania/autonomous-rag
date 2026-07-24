@@ -31,3 +31,20 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+
+  # Frontend dashboard dependencies (React, Vite, TypeScript, oxlint).
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      frontend-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
