@@ -91,14 +91,25 @@ pre-commit run --all-files
 
 ### Environment Variables
 
-Copy the example `.env` or create your own in the project root:
+Copy the example file and fill in real keys:
 
-```env
-OPENAI_API_KEY=your_openai_key
-OPENROUTER_API_KEY=your_openrouter_key
+```bash
+cp .env.example .env
 ```
 
+See `.env.example` for which keys are required vs. optional.
+
 > **Note:** Never commit `.env` files. They are already listed in `.gitignore`.
+
+### Evaluation Data
+
+Full pipeline runs (not unit tests) need the HotpotQA evaluation corpus, which is gitignored and not shipped with the repo. Download it once:
+
+```bash
+poetry run python data/hotpotqa/setup_hotpotqa.py
+```
+
+Skipping this makes the first real run fail deep inside baseline evaluation with an unclear error; `scripts/run_overnight.py --dry-run` will point it out if you skip this step.
 
 ---
 

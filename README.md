@@ -35,14 +35,19 @@ An intelligent, autonomous system designed to iteratively hyper-optimize Retriev
    poetry install
    ```
 
-2. Set up your environment variables by creating a `.env` file in the root directory:
-   ```env
-   OPENAI_API_KEY=your_openai_key
-   OPENROUTER_API_KEY=your_openrouter_key
-   # Add any other required environment variables based on pydantic settings
+2. Set up your environment variables by copying the example file and filling in real keys:
+   ```bash
+   cp .env.example .env
    ```
+   See `.env.example` for which keys are required vs. optional (depends on `settings.run.llm_provider`).
 
-3. Build the dashboard frontend once (only needed after cloning or after a frontend change — the built files are served as static assets, no Node process runs at runtime):
+3. Download the HotpotQA evaluation corpus (one-time; `data/` is gitignored so this doesn't ship with the repo):
+   ```bash
+   poetry run python data/hotpotqa/setup_hotpotqa.py
+   ```
+   Without this step, the first real run fails deep inside baseline evaluation with an unclear error. `scripts/run_overnight.py --dry-run` will also point this out if skipped.
+
+4. Build the dashboard frontend once (only needed after cloning or after a frontend change — the built files are served as static assets, no Node process runs at runtime):
    ```bash
    cd frontend
    npm install
@@ -50,7 +55,7 @@ An intelligent, autonomous system designed to iteratively hyper-optimize Retriev
    cd ..
    ```
 
-4. Run the overnight optimization script:
+5. Run the overnight optimization script:
    ```bash
    poetry run python scripts/run_overnight.py
    ```
