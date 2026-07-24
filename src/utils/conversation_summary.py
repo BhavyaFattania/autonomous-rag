@@ -89,7 +89,7 @@ async def sliding_window_compress(
             temperature=0.0,
         )
         # llm_client.call returns str or {"content": ..., "reasoning": ...}
-        new_summary = (raw if isinstance(raw, str) else raw.get("content", "")).strip()  # type: ignore[union-attr]
+        new_summary = (raw if isinstance(raw, str) else raw.get("content", "")).strip()
     except Exception as exc:
         log.warning("history_summary_failed", error=str(exc))
         new_summary = _call_summary_llm_sync_fallback(existing_summary, entries_text)
@@ -152,7 +152,7 @@ async def sliding_window_compress_messages(
             task="history_summary",
             temperature=0.0,
         )
-        new_summary = (raw if isinstance(raw, str) else raw.get("content", "")).strip()  # type: ignore[union-attr]
+        new_summary = (raw if isinstance(raw, str) else raw.get("content", "")).strip()
     except Exception as exc:
         log.warning("history_summary_failed_messages", error=str(exc))
         new_summary = _call_summary_llm_sync_fallback(existing_summary, older_text)

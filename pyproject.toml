@@ -71,6 +71,7 @@ pytest-mock = "3.14.0"
 black = "24.10.0"
 ruff = "0.8.6"
 mypy = "1.13.0"
+types-pyyaml = "^6.0.12.20260724"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

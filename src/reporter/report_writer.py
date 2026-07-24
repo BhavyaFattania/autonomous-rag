@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import cast
 
 from config.loader import load_model_routing
 
@@ -36,7 +37,7 @@ async def report_writer_node(state, settings, provider: Provider) -> dict:
     except Exception as e:
         report = _fallback_report(state, str(e))
 
-    report_path.write_text(report.strip() + "\n", encoding="utf-8")
+    report_path.write_text(cast(str, report).strip() + "\n", encoding="utf-8")
     return {}
 
 

@@ -57,7 +57,9 @@ def load_corpus_as_documents(corpus_path: Path, limit: int = MAX_CORPUS_DOCS):
     docs = []
     for line in corpus_path.read_text(encoding="utf-8").strip().splitlines():
         item = json.loads(line)
-        docs.append(Document(text=item["text"], metadata={"title": item["title"]}))
+        # metadata is a real Document field (confirmed at runtime); mypy just
+        # can't see it through llama_index's pydantic bridge __init__.
+        docs.append(Document(text=item["text"], metadata={"title": item["title"]}))  # type: ignore[call-arg]
         if len(docs) >= limit:
             break
     log.info("corpus_loaded", docs=len(docs), capped=(len(docs) == limit), limit=limit)

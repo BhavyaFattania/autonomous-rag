@@ -13,6 +13,7 @@ from collections.abc import Callable
 from config.models import ModelRouting
 from langchain_core.outputs import LLMResult
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from pydantic import SecretStr
 from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
     ContextUtilization,
@@ -64,7 +65,7 @@ def build_ragas_llm(
     llm = ChatOpenAI(
         model=judge_config.model_id,
         base_url=judge_config.base_url,
-        api_key=resolved_key,
+        api_key=SecretStr(resolved_key),
         temperature=judge_config.temperature,
         max_completion_tokens=judge_config.max_tokens,
         model_kwargs=model_kwargs,
@@ -85,7 +86,7 @@ def build_ragas_embeddings(
     return OpenAIEmbeddings(
         model=embedding_model.model_id,
         base_url=embedding_model.base_url,
-        api_key=resolved_key,
+        api_key=SecretStr(resolved_key),
         default_headers=_HEADER_BUILDERS.get(provider, _no_headers)(),
     )
 

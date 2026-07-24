@@ -64,8 +64,10 @@ def _build_semantic(config: RAGConfig, embed_model=None):
 
 
 def _build_semantic_double(config: RAGConfig, embed_model=None):
+    # embed_model is accepted (not used) for signature parity with the other
+    # builders in _NODE_PARSER_BUILDERS: from_defaults() has no embed_model
+    # param -- it splits on a spaCy-based language config, not embeddings.
     return SemanticDoubleMergingSplitterNodeParser.from_defaults(
-        embed_model=embed_model,
         initial_threshold=(config.semantic_threshold or 95) / 100,
         appending_threshold=0.8,
         merging_threshold=0.8,

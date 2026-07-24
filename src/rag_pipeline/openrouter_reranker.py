@@ -12,7 +12,7 @@ from src.utils.openrouter import build_openrouter_headers
 log = get_logger("openrouter_reranker")
 
 
-def is_openrouter_rate_limit_error(exception: Exception) -> bool:
+def is_openrouter_rate_limit_error(exception: BaseException) -> bool:
     msg = str(exception).lower()
     return "429" in msg or "too_many_requests" in msg or "rate limit" in msg
 

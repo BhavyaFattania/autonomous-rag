@@ -2,7 +2,7 @@ import pickle
 from collections.abc import Callable
 from pathlib import Path
 
-import chromadb
+from chromadb.api import ClientAPI
 from llama_index.core import StorageContext, VectorStoreIndex
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
@@ -72,7 +72,7 @@ def build_bm25_cache_only(config: RAGConfig, collection_name: str, settings, env
 async def build_collection(
     config: RAGConfig,
     collection_name: str,
-    chroma_client: chromadb.PersistentClient,
+    chroma_client: ClientAPI,
     settings,
     env=None,
     on_progress: Callable[[int, int], None] | None = None,

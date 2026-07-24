@@ -56,7 +56,11 @@ async def evaluator_node(state, settings, env=None, model_routing=None, provider
     if eval_settings.ragas_audit_policy == "competitive":
         tolerance = eval_settings.ragas_audit_score_tolerance
         ragas_min_fast_score = state.get("current_best_weighted_score", 0.0) - tolerance
-    if use_full_suite and RERANKER_CATALOG.get(config.reranker, {}).get("skip_ragas_full_suite"):
+    if (
+        use_full_suite
+        and config.reranker
+        and RERANKER_CATALOG.get(config.reranker, {}).get("skip_ragas_full_suite")
+    ):
         log.warning(
             "ragas_audit_skipped_for_full_suite",
             reranker=config.reranker,

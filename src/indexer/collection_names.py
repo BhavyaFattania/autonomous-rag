@@ -6,6 +6,7 @@ Generates deterministic collection names from configs and paths for persistent c
 from pathlib import Path
 
 import chromadb
+from chromadb.api import ClientAPI
 
 from src.indexer.parser_registry import parser_slug
 from src.models.rag_config import RAGConfig
@@ -32,6 +33,6 @@ def bm25_engine_path(name: str) -> Path:
     return BM25_PATH / f"{name}_engine.pkl"
 
 
-def get_chroma_client(path: str | Path | None = None) -> chromadb.PersistentClient:
+def get_chroma_client(path: str | Path | None = None) -> ClientAPI:
     resolved = str(path) if path else str(CHROMA_PATH)
     return chromadb.PersistentClient(path=resolved)

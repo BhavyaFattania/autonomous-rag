@@ -6,6 +6,7 @@ import re
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompt_values import StringPromptValue
+from pydantic import BaseModel
 from ragas.llms import LangchainLLMWrapper
 from ragas.prompt.pydantic_prompt import RagasOutputParser
 from ragas.prompt.utils import extract_json
@@ -46,7 +47,7 @@ async def _parse_ragas_output_string_compat(
         return self.pydantic_object(**fallback)
 
 
-def _normalize_ragas_json(output_string: str, output_model: type) -> str:
+def _normalize_ragas_json(output_string: str, output_model: type[BaseModel]) -> str:
     parsed = None
     parsed_jsonstr = output_string.strip()
     for jsonstr in [output_string.strip(), extract_json(output_string).strip()]:
@@ -102,7 +103,7 @@ def _unwrap_text_wrapped_json(jsonstr: str) -> str:
     return jsonstr
 
 
-def _fallback_ragas_output(output_string: str, output_model: type) -> dict:
+def _fallback_ragas_output(output_string: str, output_model: type[BaseModel]) -> dict:
     output_string = _strip_json_bang_artifacts(output_string)
     fields = set(output_model.model_fields)
     if {"reason", "verdict"}.issubset(fields):

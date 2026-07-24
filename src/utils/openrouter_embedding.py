@@ -27,7 +27,11 @@ class OpenRouterEmbedding(BaseEmbedding):
         """Initialize with model_name and optional API credentials (fallback to env vars)."""
         api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
         api_base = api_base or "https://openrouter.ai/api/v1"
-        super().__init__(
+        # api_key/api_base are fields this subclass adds on top of BaseEmbedding;
+        # pydantic resolves them at runtime via the model's own generated
+        # __init__, but mypy (no pydantic plugin here) only sees the parent
+        # class's signature for a super().__init__() call.
+        super().__init__(  # type: ignore[call-arg]
             model_name=model_name,
             api_key=api_key,
             api_base=api_base,

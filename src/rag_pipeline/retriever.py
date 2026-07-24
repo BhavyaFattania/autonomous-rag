@@ -330,10 +330,10 @@ def _build_query_fusion_llm(config: RAGConfig, settings, env=None):
     return OpenAI(
         model=config.generator_model,
         api_key=api_key,
+        api_base=base_url,
         temperature=0.1,
         max_tokens=256,
         default_headers=_build_query_fusion_headers(provider_name, api_key),
-        **({"api_base": base_url} if base_url else {}),
     )
 
 

@@ -28,4 +28,4 @@ async def generate_answer(
         temperature=0.1,
         fallback_model_id="deepseek/deepseek-v4-flash" if model_id.endswith(":free") else None,
     )
-    return answer
+    return answer if isinstance(answer, str) else answer.get("content", "")
