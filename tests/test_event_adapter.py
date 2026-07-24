@@ -145,6 +145,34 @@ def test_adapt_backfills_acceptance_and_recorder_scores_from_real_node_shapes():
     assert recorder_event.config == {"chunk_size": 512, "top_k": 5}
 
 
+def test_adapt_stamps_experiment_uuid_from_scientist_onto_every_later_tick():
+    ctx = {}
+
+    [scientist_event] = adapt(
+        {"scientist": {"status": "RUNNING", "experiment_uuid": "uuid-1"}}, ctx, _Settings
+    )
+    assert scientist_event.experiment_uuid == "uuid-1"
+
+    [validator_event] = adapt({"validator": {"status": "RUNNING"}}, ctx, _Settings)
+    assert validator_event.experiment_uuid == "uuid-1"
+
+    [recorder_event] = adapt({"recorder": {"status": "ACCEPTED"}}, ctx, _Settings)
+    assert recorder_event.experiment_uuid == "uuid-1"
+
+    [next_scientist_event] = adapt(
+        {"scientist": {"status": "RUNNING", "experiment_uuid": "uuid-2"}}, ctx, _Settings
+    )
+    assert next_scientist_event.experiment_uuid == "uuid-2"
+
+
+def test_adapt_defaults_experiment_uuid_to_empty_before_first_scientist_tick():
+    ctx = {}
+
+    [event] = adapt({"validator": {"status": "RUNNING"}}, ctx, _Settings)
+
+    assert event.experiment_uuid == ""
+
+
 def test_adapt_recorder_does_not_leak_stale_score_from_earlier_experiment():
     """An experiment that fails before reaching the evaluator (e.g. at
     smoke_test) must not have its recorder tick inherit the PREVIOUS

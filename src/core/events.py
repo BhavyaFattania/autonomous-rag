@@ -15,6 +15,7 @@ class ExperimentEvent(BaseModel):
     sub-progress update (e.g. indexer embedding batches) between ticks."""
 
     experiment: int
+    experiment_uuid: str = ""
     node: str
     status: str
     timestamp: datetime

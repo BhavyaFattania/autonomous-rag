@@ -20,6 +20,13 @@ def adapt(event: dict, ctx: dict, settings, provider=None) -> list[ExperimentEve
     carries aggregated_metrics, but DashboardState.apply() only reads scores
     off of those two nodes' events.
 
+    Similarly caches ctx["current_experiment_uuid"] on the scientist tick
+    (the only node that mints a fresh experiment_uuid) and stamps it onto
+    every subsequent event for that attempt -- downstream nodes never
+    re-return experiment_uuid in their own partial state dict, but it's the
+    durable key experiments.experiment_uuid is later recorded under, so
+    every tick of one attempt must carry it for node-level history lookups.
+
     `provider` supplies the live cost total via `provider.cost_tracker`, the
     same instance every real LLM call reports cost to (see
     provider_factory.py) -- not the deprecated src.storage.cost_tracker
@@ -32,8 +39,11 @@ def adapt(event: dict, ctx: dict, settings, provider=None) -> list[ExperimentEve
 
         if node_name == "scientist":
             ctx["exp_num"] = ctx.get("exp_num", 0) + 1
+            if output.get("experiment_uuid"):
+                ctx["current_experiment_uuid"] = output["experiment_uuid"]
 
         exp_num = ctx.get("exp_num", 0)
+        experiment_uuid = ctx.get("current_experiment_uuid", "")
         aggregated_metrics = output.get("aggregated_metrics", {})
         if aggregated_metrics:
             ctx["last_eval_metrics"] = aggregated_metrics
@@ -68,6 +78,7 @@ def adapt(event: dict, ctx: dict, settings, provider=None) -> list[ExperimentEve
         events.append(
             ExperimentEvent(
                 experiment=exp_num,
+                experiment_uuid=experiment_uuid,
                 node=node_name,
                 status=output.get("status", "?"),
                 timestamp=datetime.now(UTC),

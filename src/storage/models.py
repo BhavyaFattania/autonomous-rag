@@ -44,6 +44,32 @@ class HistoricalRecord:
 
 
 @dataclass
+class NodeEvent:
+    """One durably-logged pipeline node tick, keyed by the experiment_uuid
+    minted once per attempt by scientist_node -- the join key that lets a
+    tick be looked up whether the experiment is still running or from a
+    past, restarted run."""
+
+    run_id: str
+    experiment_uuid: str
+    experiment_seq: int
+    node: str
+    status: str
+    timestamp: str
+    cost_total_usd: float = 0.0
+    message: str = ""
+    hypothesis: str = ""
+    reasoning: str = ""
+    config_json: str | None = None
+    metrics_json: str | None = None
+    failure_reason: str = ""
+    progress_current: int | None = None
+    progress_total: int | None = None
+    raw_event_json: str | None = None
+    id: int | None = None
+
+
+@dataclass
 class Run:
     """Single optimization run encompassing multiple experiment trials."""
 

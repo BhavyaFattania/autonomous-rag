@@ -41,6 +41,7 @@ import asyncio
 import json
 import signal
 import uuid
+from contextlib import suppress
 from datetime import UTC, datetime
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -56,6 +57,7 @@ from src.orchestrator.event_adapter import adapt
 from src.orchestrator.graph import build_graph
 from src.orchestrator.overnight_display import console, print_banner
 from src.orchestrator.overnight_eval import empty_metrics, evaluate_baseline, evaluate_final_best
+from src.storage.event_log import persist_events
 from src.web.server import create_app
 
 load_dotenv()
@@ -248,6 +250,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         )
         server = uvicorn.Server(server_config)
         server_task = asyncio.create_task(server.serve())
+        event_log_task = asyncio.create_task(persist_events(bus, run_id))
         console.print("[bold cyan]Dashboard:[/] http://127.0.0.1:8000")
 
         state_to_stream = None if state_exists else initial_state
@@ -263,6 +266,9 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
 
         server.should_exit = True
         await server_task
+        event_log_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await event_log_task
 
         await RunRepository().finish_run(
             run_id,

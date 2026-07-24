@@ -31,9 +31,17 @@ class Database:
             await db.execute(self.CREATE_EXPERIMENTS_TABLE)
             await db.execute(self.CREATE_CONFIG_HASHES_TABLE)
             await db.execute(self.CREATE_RUNS_TABLE)
+            await db.execute(self.CREATE_NODE_EVENTS_TABLE)
             await db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_config_hashes_hash "
                 "ON config_hashes (config_hash)"
+            )
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_node_events_experiment_uuid "
+                "ON node_events (experiment_uuid)"
+            )
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_node_events_run_id ON node_events (run_id)"
             )
             await db.execute(
                 """
@@ -91,5 +99,27 @@ class Database:
         best_config   TEXT,
         best_score    REAL,
         status        TEXT
+    )
+    """
+
+    CREATE_NODE_EVENTS_TABLE = """
+    CREATE TABLE IF NOT EXISTS node_events (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id            TEXT NOT NULL,
+        experiment_uuid   TEXT NOT NULL,
+        experiment_seq    INTEGER NOT NULL,
+        node              TEXT NOT NULL,
+        status            TEXT NOT NULL,
+        timestamp         TEXT NOT NULL,
+        cost_total_usd    REAL NOT NULL DEFAULT 0.0,
+        message           TEXT,
+        hypothesis        TEXT,
+        reasoning         TEXT,
+        config_json       TEXT,
+        metrics_json      TEXT,
+        failure_reason    TEXT,
+        progress_current  INTEGER,
+        progress_total    INTEGER,
+        raw_event_json    TEXT
     )
     """
