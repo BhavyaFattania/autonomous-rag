@@ -3,6 +3,9 @@
 Maps parser type + config to parser instances and deterministic cache keys.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 from llama_index.core.node_parser import (
     HierarchicalNodeParser,
     SemanticDoubleMergingSplitterNodeParser,
@@ -30,46 +33,72 @@ def parser_slug(config: RAGConfig) -> str:
     return "_".join(parts)
 
 
+def _build_sentence(config: RAGConfig, embed_model=None):
+    return SentenceSplitter(
+        chunk_size=config.chunk_size,
+        chunk_overlap=config.chunk_overlap,
+    )
+
+
+def _build_token(config: RAGConfig, embed_model=None):
+    return TokenTextSplitter(
+        chunk_size=config.chunk_size,
+        chunk_overlap=config.chunk_overlap,
+    )
+
+
+def _build_sentence_window(config: RAGConfig, embed_model=None):
+    return SentenceWindowNodeParser.from_defaults(
+        window_size=config.window_size or 3,
+        window_metadata_key="window",
+        original_text_metadata_key="original_text",
+    )
+
+
+def _build_semantic(config: RAGConfig, embed_model=None):
+    return SemanticSplitterNodeParser.from_defaults(
+        embed_model=embed_model,
+        breakpoint_percentile_threshold=config.semantic_threshold or 95,
+        buffer_size=config.semantic_buffer_size or 1,
+    )
+
+
+def _build_semantic_double(config: RAGConfig, embed_model=None):
+    return SemanticDoubleMergingSplitterNodeParser.from_defaults(
+        embed_model=embed_model,
+        initial_threshold=(config.semantic_threshold or 95) / 100,
+        appending_threshold=0.8,
+        merging_threshold=0.8,
+        max_chunk_size=config.chunk_size,
+        merging_range=config.semantic_buffer_size or 1,
+    )
+
+
+def _build_hierarchical(config: RAGConfig, embed_model=None):
+    chunk_sizes = _hierarchical_chunk_sizes(config.chunk_size)
+    return HierarchicalNodeParser.from_defaults(
+        chunk_sizes=chunk_sizes,
+        chunk_overlap=config.chunk_overlap,
+    )
+
+
+_PARSER_BUILDERS: dict[str, Callable[[RAGConfig, Any], Any]] = {
+    "sentence": _build_sentence,
+    "token": _build_token,
+    "sentence_window": _build_sentence_window,
+    "semantic": _build_semantic,
+    "semantic_double": _build_semantic_double,
+    "hierarchical": _build_hierarchical,
+}
+
+
 def build_node_parser(config: RAGConfig, embed_model=None):
     """Factory: instantiate node parser based on config type and parameters."""
-    if config.node_parser == "sentence":
-        return SentenceSplitter(
-            chunk_size=config.chunk_size,
-            chunk_overlap=config.chunk_overlap,
-        )
-    if config.node_parser == "token":
-        return TokenTextSplitter(
-            chunk_size=config.chunk_size,
-            chunk_overlap=config.chunk_overlap,
-        )
-    if config.node_parser == "sentence_window":
-        return SentenceWindowNodeParser.from_defaults(
-            window_size=config.window_size or 3,
-            window_metadata_key="window",
-            original_text_metadata_key="original_text",
-        )
-    if config.node_parser == "semantic":
-        return SemanticSplitterNodeParser.from_defaults(
-            embed_model=embed_model,
-            breakpoint_percentile_threshold=config.semantic_threshold or 95,
-            buffer_size=config.semantic_buffer_size or 1,
-        )
-    if config.node_parser == "semantic_double":
-        return SemanticDoubleMergingSplitterNodeParser.from_defaults(
-            embed_model=embed_model,
-            initial_threshold=(config.semantic_threshold or 95) / 100,
-            appending_threshold=0.8,
-            merging_threshold=0.8,
-            max_chunk_size=config.chunk_size,
-            merging_range=config.semantic_buffer_size or 1,
-        )
-    if config.node_parser == "hierarchical":
-        chunk_sizes = _hierarchical_chunk_sizes(config.chunk_size)
-        return HierarchicalNodeParser.from_defaults(
-            chunk_sizes=chunk_sizes,
-            chunk_overlap=config.chunk_overlap,
-        )
-    raise ValueError(f"Unknown node_parser: {config.node_parser}")
+    try:
+        builder = _PARSER_BUILDERS[config.node_parser]
+    except KeyError:
+        raise ValueError(f"Unknown node_parser: {config.node_parser}") from None
+    return builder(config, embed_model)
 
 
 def _hierarchical_chunk_sizes(leaf_size: int) -> list[int]:

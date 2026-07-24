@@ -8,6 +8,9 @@ hybrid_alpha controls weighted reciprocal-rank fusion:
 """
 
 import asyncio
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 import chromadb
 from llama_index.core import StorageContext, SummaryIndex, VectorStoreIndex
@@ -92,6 +95,136 @@ class RerankingRetriever(BaseRetriever):
         return self.reranker.postprocess_nodes(nodes, query_bundle=query_bundle)
 
 
+@dataclass
+class _RetrieverContext:
+    """Bundle of everything a per-mode builder might need. Individual builders
+    use whichever fields their mode requires and ignore the rest -- lets every
+    entry in _RETRIEVER_BUILDERS share one call signature despite the modes
+    needing heterogeneous inputs (dense-only, nodes+storage_context, etc.)."""
+
+    config: RAGConfig
+    settings: Any
+    collection_name: str
+    dense_retriever: Any
+    bm25_retriever: Any
+    nodes: list
+    storage_context: StorageContext
+    env: dict | None
+
+
+def _build_dense_mode(ctx: _RetrieverContext):
+    log.info("retriever_mode", mode="dense", collection=ctx.collection_name)
+    return ctx.dense_retriever
+
+
+def _build_sentence_window_dense_mode(ctx: _RetrieverContext):
+    log.info("retriever_mode", mode="sentence_window_dense", collection=ctx.collection_name)
+    return ctx.dense_retriever
+
+
+def _build_bm25_mode(ctx: _RetrieverContext):
+    log.info("retriever_mode", mode="bm25", collection=ctx.collection_name)
+    return ctx.bm25_retriever
+
+
+def _build_query_fusion_simple_mode(ctx: _RetrieverContext):
+    retriever = _build_query_fusion(
+        ctx.config,
+        ctx.dense_retriever,
+        ctx.bm25_retriever,
+        FUSION_MODES.SIMPLE,
+        ctx.settings,
+        ctx.env,
+    )
+    log.info("retriever_mode", mode="query_fusion_simple", collection=ctx.collection_name)
+    return retriever
+
+
+def _build_query_fusion_rrf_mode(ctx: _RetrieverContext):
+    retriever = _build_query_fusion(
+        ctx.config,
+        ctx.dense_retriever,
+        ctx.bm25_retriever,
+        FUSION_MODES.RECIPROCAL_RANK,
+        ctx.settings,
+        ctx.env,
+    )
+    log.info("retriever_mode", mode="query_fusion_rrf", collection=ctx.collection_name)
+    return retriever
+
+
+def _build_auto_merging_mode(ctx: _RetrieverContext):
+    retriever = AutoMergingRetriever(
+        ctx.dense_retriever,
+        storage_context=ctx.storage_context,
+        simple_ratio_thresh=0.5,
+    )
+    log.info("retriever_mode", mode="auto_merging", collection=ctx.collection_name)
+    return retriever
+
+
+def _build_recursive_mode(ctx: _RetrieverContext):
+    retriever = RecursiveRetriever(
+        root_id="dense",
+        retriever_dict={"dense": ctx.dense_retriever},
+        node_dict={node.node_id: node for node in ctx.nodes},
+    )
+    log.info("retriever_mode", mode="recursive", collection=ctx.collection_name)
+    return retriever
+
+
+def _build_summary_embedding_mode(ctx: _RetrieverContext):
+    if not ctx.settings.evaluation.allow_summary_embedding_retriever:
+        raise ValueError(
+            "summary_embedding is disabled for live search because it builds "
+            "a SummaryIndex over all nodes at retrieval time."
+        )
+    summary_index = SummaryIndex(ctx.nodes)
+    retriever = SummaryIndexEmbeddingRetriever(
+        summary_index,
+        similarity_top_k=ctx.config.top_k,
+    )
+    log.info("retriever_mode", mode="summary_embedding", collection=ctx.collection_name)
+    return retriever
+
+
+def _build_weighted_hybrid_rrf_mode(ctx: _RetrieverContext):
+    config = ctx.config
+    if config.hybrid_alpha == 1.0:
+        log.info("retriever_mode", mode="dense_via_weighted_hybrid", collection=ctx.collection_name)
+        return ctx.dense_retriever
+    if config.hybrid_alpha == 0.0:
+        log.info("retriever_mode", mode="bm25_via_weighted_hybrid", collection=ctx.collection_name)
+        return ctx.bm25_retriever
+
+    log.info(
+        "retriever_mode",
+        mode="weighted_hybrid_rrf",
+        collection=ctx.collection_name,
+        alpha=config.hybrid_alpha,
+        bm25_nodes=len(ctx.nodes),
+    )
+    return WeightedHybridRetriever(
+        dense_retriever=ctx.dense_retriever,
+        bm25_retriever=ctx.bm25_retriever,
+        alpha=config.hybrid_alpha,
+        top_k=config.top_k,
+    )
+
+
+_RETRIEVER_BUILDERS: dict[str, Callable[[_RetrieverContext], BaseRetriever]] = {
+    "dense": _build_dense_mode,
+    "sentence_window_dense": _build_sentence_window_dense_mode,
+    "bm25": _build_bm25_mode,
+    "query_fusion_simple": _build_query_fusion_simple_mode,
+    "query_fusion_rrf": _build_query_fusion_rrf_mode,
+    "auto_merging": _build_auto_merging_mode,
+    "recursive": _build_recursive_mode,
+    "summary_embedding": _build_summary_embedding_mode,
+    "weighted_hybrid_rrf": _build_weighted_hybrid_rrf_mode,
+}
+
+
 async def build_retriever(
     config: RAGConfig, settings, collection_name: str | None = None, env=None
 ):
@@ -103,97 +236,22 @@ async def build_retriever(
         env,
     )
 
-    if config.retriever == "dense":
-        log.info("retriever_mode", mode="dense", collection=collection_name)
-        return _maybe_apply_reranker(dense_retriever, config, env)
+    try:
+        builder = _RETRIEVER_BUILDERS[config.retriever]
+    except KeyError:
+        raise ValueError(f"Unknown retriever: {config.retriever}") from None
 
-    if config.retriever == "sentence_window_dense":
-        log.info("retriever_mode", mode="sentence_window_dense", collection=collection_name)
-        return _maybe_apply_reranker(dense_retriever, config, env)
-
-    if config.retriever == "bm25":
-        log.info("retriever_mode", mode="bm25", collection=collection_name)
-        return _maybe_apply_reranker(bm25_retriever, config, env)
-
-    if config.retriever == "query_fusion_simple":
-        retriever = _build_query_fusion(
-            config,
-            dense_retriever,
-            bm25_retriever,
-            FUSION_MODES.SIMPLE,
-            settings,
-            env,
-        )
-        log.info("retriever_mode", mode="query_fusion_simple", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config, env)
-
-    if config.retriever == "query_fusion_rrf":
-        retriever = _build_query_fusion(
-            config,
-            dense_retriever,
-            bm25_retriever,
-            FUSION_MODES.RECIPROCAL_RANK,
-            settings,
-            env,
-        )
-        log.info("retriever_mode", mode="query_fusion_rrf", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config, env)
-
-    if config.retriever == "auto_merging":
-        retriever = AutoMergingRetriever(
-            dense_retriever,
-            storage_context=storage_context,
-            simple_ratio_thresh=0.5,
-        )
-        log.info("retriever_mode", mode="auto_merging", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config, env)
-
-    if config.retriever == "recursive":
-        retriever = RecursiveRetriever(
-            root_id="dense",
-            retriever_dict={"dense": dense_retriever},
-            node_dict={node.node_id: node for node in nodes},
-        )
-        log.info("retriever_mode", mode="recursive", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config, env)
-
-    if config.retriever == "summary_embedding":
-        if not settings.evaluation.allow_summary_embedding_retriever:
-            raise ValueError(
-                "summary_embedding is disabled for live search because it builds "
-                "a SummaryIndex over all nodes at retrieval time."
-            )
-        summary_index = SummaryIndex(nodes)
-        retriever = SummaryIndexEmbeddingRetriever(
-            summary_index,
-            similarity_top_k=config.top_k,
-        )
-        log.info("retriever_mode", mode="summary_embedding", collection=collection_name)
-        return _maybe_apply_reranker(retriever, config, env)
-
-    if config.retriever != "weighted_hybrid_rrf":
-        raise ValueError(f"Unknown retriever: {config.retriever}")
-
-    if config.hybrid_alpha == 1.0:
-        log.info("retriever_mode", mode="dense_via_weighted_hybrid", collection=collection_name)
-        return _maybe_apply_reranker(dense_retriever, config, env)
-    if config.hybrid_alpha == 0.0:
-        log.info("retriever_mode", mode="bm25_via_weighted_hybrid", collection=collection_name)
-        return _maybe_apply_reranker(bm25_retriever, config, env)
-
-    log.info(
-        "retriever_mode",
-        mode="weighted_hybrid_rrf",
-        collection=collection_name,
-        alpha=config.hybrid_alpha,
-        bm25_nodes=len(nodes),
-    )
-    retriever = WeightedHybridRetriever(
+    ctx = _RetrieverContext(
+        config=config,
+        settings=settings,
+        collection_name=collection_name,
         dense_retriever=dense_retriever,
         bm25_retriever=bm25_retriever,
-        alpha=config.hybrid_alpha,
-        top_k=config.top_k,
+        nodes=nodes,
+        storage_context=storage_context,
+        env=env,
     )
+    retriever = builder(ctx)
     return _maybe_apply_reranker(retriever, config, env)
 
 
