@@ -28,6 +28,7 @@ class Database:
             await db.execute("PRAGMA synchronous=NORMAL;")
             await db.execute("PRAGMA temp_store=MEMORY;")
             await db.execute("PRAGMA foreign_keys=ON;")
+            await db.execute("PRAGMA busy_timeout=10000;")
             await db.execute(self.CREATE_EXPERIMENTS_TABLE)
             await db.execute(self.CREATE_CONFIG_HASHES_TABLE)
             await db.execute(self.CREATE_RUNS_TABLE)
@@ -58,6 +59,7 @@ class Database:
     async def connect(self):
         """Context manager for async database connection."""
         async with aiosqlite.connect(self.path) as db:
+            await db.execute("PRAGMA busy_timeout=10000;")
             yield db
 
     CREATE_EXPERIMENTS_TABLE = """
