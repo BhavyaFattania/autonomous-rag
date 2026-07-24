@@ -175,6 +175,25 @@ def test_apply_integrates_with_real_adapt_output_for_acceptance_and_recorder():
     assert state.history[0].score == 0.91
 
 
+def test_apply_tracks_current_experiment_uuid_across_ticks():
+    state = DashboardState()
+    state.apply(_event(node="scientist", status="RUNNING", experiment_uuid="uuid-1"))
+    assert state.current_experiment_uuid == "uuid-1"
+
+    state.apply(_event(node="validator", status="RUNNING"))
+    assert state.current_experiment_uuid == "uuid-1"
+
+    state.apply(_event(node="scientist", status="RUNNING", experiment_uuid="uuid-2"))
+    assert state.current_experiment_uuid == "uuid-2"
+
+
+def test_apply_stamps_experiment_uuid_onto_history_row():
+    state = DashboardState()
+    state.apply(_event(node="recorder", status="ACCEPTED", experiment=5, experiment_uuid="uuid-5"))
+
+    assert state.history[0].experiment_uuid == "uuid-5"
+
+
 def test_pipeline_order_has_all_ten_nodes_in_execution_order():
     from src.core.dashboard_state import PIPELINE_ORDER
 

@@ -1,5 +1,6 @@
 """Tests for the REST history API: GET /api/runs, GET /api/runs/{id}/experiments,
-GET /api/experiments/{id}."""
+GET /api/experiments/{id}, GET /api/runs/{id}/events, and
+GET /api/experiments/by-uuid/{uuid}/events."""
 
 import asyncio
 import os
@@ -10,8 +11,9 @@ import pytest
 from fastapi.testclient import TestClient
 from src.core.events import EventBus
 from src.storage.database import Database
-from src.storage.models import Experiment
+from src.storage.models import Experiment, NodeEvent
 from src.storage.repositories.experiment_repository import ExperimentRepository
+from src.storage.repositories.node_event_repository import NodeEventRepository
 from src.web.server import create_app
 
 
@@ -115,3 +117,87 @@ def test_get_experiment_endpoint_404s_for_unknown_id(temp_db):
         response = client.get("/api/experiments/999999")
 
     assert response.status_code == 404
+
+
+async def _seed_node_events(path: str) -> None:
+    db = Database(path)
+    await db.init()
+    await NodeEventRepository().insert(
+        NodeEvent(
+            run_id="run-1",
+            experiment_uuid="uuid-1",
+            experiment_seq=1,
+            node="scientist",
+            status="RUNNING",
+            timestamp="2026-07-24T00:00:00+00:00",
+            hypothesis="larger chunks help",
+        )
+    )
+    await NodeEventRepository().insert(
+        NodeEvent(
+            run_id="run-1",
+            experiment_uuid="uuid-1",
+            experiment_seq=1,
+            node="validator",
+            status="RUNNING",
+            timestamp="2026-07-24T00:00:01+00:00",
+        )
+    )
+    await NodeEventRepository().insert(
+        NodeEvent(
+            run_id="run-2",
+            experiment_uuid="uuid-2",
+            experiment_seq=1,
+            node="scientist",
+            status="RUNNING",
+            timestamp="2026-07-24T00:00:02+00:00",
+        )
+    )
+
+
+def test_get_experiment_events_endpoint_returns_ordered_timeline(temp_db):
+    _run(_seed_node_events(temp_db))
+    app = create_app(EventBus())
+
+    with TestClient(app) as client:
+        response = client.get("/api/experiments/by-uuid/uuid-1/events")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [event["node"] for event in body] == ["scientist", "validator"]
+    assert body[0]["hypothesis"] == "larger chunks help"
+
+
+def test_get_experiment_events_endpoint_returns_empty_list_for_unknown_uuid(temp_db):
+    _run(_seed_node_events(temp_db))
+    app = create_app(EventBus())
+
+    with TestClient(app) as client:
+        response = client.get("/api/experiments/by-uuid/no-such-uuid/events")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_run_events_endpoint_filters_by_run_and_returns_newest_first(temp_db):
+    _run(_seed_node_events(temp_db))
+    app = create_app(EventBus())
+
+    with TestClient(app) as client:
+        response = client.get("/api/runs/run-1/events")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [event["node"] for event in body] == ["validator", "scientist"]
+
+
+def test_list_run_events_endpoint_filters_by_node(temp_db):
+    _run(_seed_node_events(temp_db))
+    app = create_app(EventBus())
+
+    with TestClient(app) as client:
+        response = client.get("/api/runs/run-1/events", params={"node": "validator"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [event["node"] for event in body] == ["validator"]

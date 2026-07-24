@@ -39,12 +39,14 @@ class ExperimentRow:
     status: str
     score: float
     cost: float
+    experiment_uuid: str = ""
 
 
 @dataclass
 class DashboardState:
     node_states: dict = field(default_factory=dict)
     active_node: str | None = None
+    current_experiment_uuid: str | None = None
     best_config: dict = field(default_factory=dict)
     best_score: float = 0.0
     budget_spent: float = 0.0
@@ -55,6 +57,8 @@ class DashboardState:
     def apply(self, event: ExperimentEvent) -> None:
         self.node_states[event.node] = event.status
         self.active_node = event.node
+        if event.experiment_uuid:
+            self.current_experiment_uuid = event.experiment_uuid
 
         weighted_score = event.metrics.get("median_weighted_score")
         if event.status == "ACCEPTED" and weighted_score is not None:
@@ -72,6 +76,7 @@ class DashboardState:
                     status=event.status,
                     score=weighted_score or 0.0,
                     cost=event.cost_total_usd,
+                    experiment_uuid=event.experiment_uuid,
                 )
             )
 

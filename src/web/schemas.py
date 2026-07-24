@@ -14,6 +14,7 @@ class ExperimentRowSchema(BaseModel):
     status: str
     score: float
     cost: float
+    experiment_uuid: str = ""
 
 
 class FailureInfoSchema(BaseModel):
@@ -26,6 +27,7 @@ class FailureInfoSchema(BaseModel):
 class DashboardStateSchema(BaseModel):
     node_states: dict[str, str]
     active_node: str | None
+    current_experiment_uuid: str | None
     best_config: dict
     best_score: float
     budget_spent: float
@@ -39,6 +41,7 @@ class DashboardStateSchema(BaseModel):
         return cls(
             node_states=state.node_states,
             active_node=state.active_node,
+            current_experiment_uuid=state.current_experiment_uuid,
             best_config=state.best_config,
             best_score=state.best_score,
             budget_spent=state.budget_spent,
@@ -49,6 +52,7 @@ class DashboardStateSchema(BaseModel):
                     status=row.status,
                     score=row.score,
                     cost=row.cost,
+                    experiment_uuid=row.experiment_uuid,
                 )
                 for row in state.history
             ],
