@@ -39,6 +39,21 @@ To prevent `ragas` from blocking the main asyncio event loop, the `Evaluator` no
 
 Because `ragas` makes its own internal async calls, we apply `nest_asyncio` within the background thread. This allows the background thread to safely spin up a new event loop and run nested asynchronous API calls to OpenRouter without causing `RuntimeError: This event loop is already running`.
 
+## 🖥️ Frontend Dashboard
+
+Every run starts a local FastAPI + WebSocket server (`src/web/`) alongside the LangGraph loop, serving a React/TypeScript dashboard at `http://127.0.0.1:8000`. It shows the run live (current node, hypothesis, config diff vs. best, budget, experiment history) and lets you browse past runs from `experiments.sqlite`.
+
+**Backend** (`src/web/`):
+- `server.py` — FastAPI app factory (`create_app()`), owns the `ConnectionManager` that fans out broadcasts to every connected WebSocket client.
+- `live.py` — `/ws/live` WebSocket endpoint. On app startup, subscribes to the run's `EventBus` (`src/core/events.py`) and streams every `ExperimentEvent` to connected clients as it's published.
+- `history.py` — REST endpoints (`/api/runs`, `/api/runs/{run_id}/experiments`, etc.) for browsing historical runs, backed by `src/storage/repositories/`.
+
+**Data flow**: `src/orchestrator/event_adapter.py`'s `adapt()` translates each raw LangGraph `astream()` tick into normalized `ExperimentEvent`s, which get published onto the `EventBus` and broadcast over the WebSocket. `src/core/dashboard_state.py`'s `DashboardState.apply()` is the pure, framework-free function that turns a stream of `ExperimentEvent`s into the plain-Python state the frontend renders — test it directly rather than through the WebSocket when adding new dashboard fields.
+
+**Frontend** (`frontend/`, Vite + React + TypeScript): built once via `npm install && npm run build` and served as static files — no Node process runs at runtime. Re-run the build after any frontend change; CI (`.github/workflows/ci.yml`'s `frontend` job) lints (`oxlint`) and builds it on every PR.
+
+If you add a new field to `ExperimentEvent` or `DashboardState`, update the corresponding Pydantic schema in `src/web/schemas.py` (or equivalent) so it round-trips over the WebSocket, and the matching TypeScript type on the frontend.
+
 ## 📈 Extending the LangGraph
 
 The orchestration loop is designed to be highly modular.

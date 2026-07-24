@@ -34,7 +34,8 @@ flowchart TD
     InitCost --> Checkpoint[Connect SQLite Checkpointer]
     Checkpoint --> EvalBaseline[Evaluate Baseline / Load Cache]
     EvalBaseline --> InitState[Initialize WorkflowState Dict]
-    InitState --> RunGraph[Start LangGraph State Machine]
+    InitState --> StartDashboard[Start Web Dashboard]
+    StartDashboard --> RunGraph[Start LangGraph State Machine]
 ```
 
 ### Step A: CLI and Settings Parsing
@@ -56,6 +57,10 @@ flowchart TD
   2. It generates a hash of this baseline config. If it finds a match in `data/eval_cache/`, it retrieves the cached score to save money.
   3. If cache-missed, it runs a full evaluation against the HotpotQA test questions using `_evaluate_baseline()`.
   4. It returns a `weighted_score` (representing how accurately it retrieved gold paragraphs) and saves it as the starting score.
+
+### Step E: Web Dashboard Bootstrap
+* **Why:** So you can watch the run live instead of tailing a log file — current node, hypothesis, config diff vs. best, budget spent, and experiment history.
+* **How:** Before entering the LangGraph loop, `_run()` creates an `EventBus` (`src/core/events.py`) and passes it into `create_app()` (`src/web/server.py`), which starts a `uvicorn.Server` bound to `127.0.0.1:8000` as a background asyncio task. The dashboard URL is printed to the console. On each LangGraph `astream()` tick, `src/orchestrator/event_adapter.py`'s `adapt()` translates the raw tick into one or more `ExperimentEvent`s, which get published onto the `EventBus`; the `/ws/live` WebSocket endpoint (`src/web/live.py`) is subscribed to that bus and streams every event to the connected browser tab in real time. The same `experiments.sqlite` also backs a historical view (`src/web/history.py`'s REST endpoints) for browsing past runs after the fact.
 
 ---
 
