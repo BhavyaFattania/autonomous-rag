@@ -66,7 +66,7 @@ async def test_reflection_node_zero_experiments(settings, mock_provider):
     result = await reflection_node(state, settings, mock_provider)
 
     assert result == {}
-    mock_provider.llm_client.call.assert_not_called()
+    mock_provider.llm_client.call.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -77,12 +77,12 @@ async def test_reflection_node_not_nth_experiment(settings, mock_provider):
     result = await reflection_node(state, settings, mock_provider)
 
     assert result == {}
-    mock_provider.llm_client.call.assert_not_called()
+    mock_provider.llm_client.call.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_reflection_node_success(settings, mock_provider):
-    """Calls LLM and truncates result to the 1000-token budget on success."""
+    """Calls LLM and truncates the result to the configured token budget on success."""
     state = {**BASE_STATE, "experiments_completed": 5}
 
     # We pass a very long string to test the truncation boundary
@@ -95,7 +95,7 @@ async def test_reflection_node_success(settings, mock_provider):
     summary = result["reflection_summary"]
 
     assert count_tokens(summary) <= _MAX_REFLECTION_TOKENS
-    mock_provider.llm_client.call.assert_called_once()
+    mock_provider.llm_client.call.assert_awaited_once()
 
     # Check that it actually passed the prompt in messages
     call_kwargs = mock_provider.llm_client.call.call_args.kwargs
@@ -114,7 +114,7 @@ async def test_reflection_node_llm_exception(settings, mock_provider):
     result = await reflection_node(state, settings, mock_provider)
 
     assert result == {}
-    mock_provider.llm_client.call.assert_called_once()
+    mock_provider.llm_client.call.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -126,4 +126,4 @@ async def test_reflection_node_non_string_response(settings, mock_provider):
     result = await reflection_node(state, settings, mock_provider)
 
     assert result == {}
-    mock_provider.llm_client.call.assert_called_once()
+    mock_provider.llm_client.call.assert_awaited_once()
