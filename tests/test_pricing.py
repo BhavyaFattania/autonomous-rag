@@ -1,3 +1,5 @@
+import logging
+
 from src.core.pricing import compute_cost
 
 
@@ -8,5 +10,11 @@ def test_openrouter_cost_uses_model_pricing_table():
 
 
 def test_unknown_model_is_zero_cost(caplog):
-    cost = compute_cost("openrouter", "made-up/model", 1000, 1000)
+    with caplog.at_level(logging.WARNING):
+        cost = compute_cost("openrouter", "made-up/model", 1000, 1000)
     assert cost == 0.0
+    # Verify the warning was logged
+    assert any(
+        "pricing_missing" in record.getMessage() or "pricing_missing" in str(record.msg)
+        for record in caplog.records
+    ), "Expected warning with 'pricing_missing' was not logged"

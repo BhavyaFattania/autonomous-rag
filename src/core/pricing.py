@@ -2,21 +2,34 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from src.utils.logger import get_logger
 
 log = get_logger("pricing")
 
 
+def _load_openrouter_pricing() -> dict[str, tuple[float, float]]:
+    from src.utils.openrouter import MODEL_PRICING
+
+    return MODEL_PRICING
+
+
+def _load_openai_pricing() -> dict[str, tuple[float, float]]:
+    from config.loader import load_openai_pricing
+
+    return load_openai_pricing()
+
+
+_PRICING_LOADERS: dict[str, Callable[[], dict[str, tuple[float, float]]]] = {
+    "openrouter": _load_openrouter_pricing,
+    "openai": _load_openai_pricing,
+}
+
+
 def _pricing_for(provider: str) -> dict[str, tuple[float, float]]:
-    if provider == "openrouter":
-        from src.utils.openrouter import MODEL_PRICING
-
-        return MODEL_PRICING
-    if provider == "openai":
-        from config.loader import load_openai_pricing
-
-        return load_openai_pricing()
-    return {}
+    loader = _PRICING_LOADERS.get(provider)
+    return loader() if loader else {}
 
 
 def compute_cost(provider: str, model_id: str, prompt_tokens: int, completion_tokens: int) -> float:
