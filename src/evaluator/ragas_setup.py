@@ -12,7 +12,7 @@ from collections.abc import Callable
 
 from config.models import ModelRouting
 from langchain_core.outputs import LLMResult
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from pydantic import SecretStr
 from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
@@ -23,6 +23,8 @@ from ragas.metrics import (
     faithfulness,
 )
 
+from src.core.cost_callback import CostTrackingCallback
+from src.core.langchain_llm_client import build_chat_model
 from src.core.provider_factory import required_env_var
 from src.utils.json_repair import install_ragas_output_parser_compat_patch
 from src.utils.logger import get_logger
@@ -45,15 +47,20 @@ def _resolve_api_key(provider: str, env: dict | None, api_key: str | None) -> st
     return resolved
 
 
+def _role_config(model_config_or_routing, role: str):
+    return getattr(model_config_or_routing, role, model_config_or_routing)
+
+
 def build_ragas_llm(
-    model_routing=ModelRouting, env=None, api_key: str | None = None
+    model_config_or_routing=ModelRouting,
+    env=None,
+    api_key: str | None = None,
+    cost_tracker=None,
 ) -> LangchainLLMWrapper:
     """Build a RAGAS-compatible LLM wrapper for the judge's configured provider."""
     install_ragas_output_parser_compat_patch()
-    judge_config = model_routing.ragas_judge
+    judge_config = _role_config(model_config_or_routing, "ragas_judge")
     provider = judge_config.provider
-    model_kwargs = _build_openrouter_model_kwargs(judge_config)
-    extra_body = _EXTRA_BODY_BUILDERS.get(provider, _no_extra_body)(judge_config)
     resolved_key = _resolve_api_key(provider, env, api_key)
     log.info(
         "ragas_judge_configured",
@@ -62,32 +69,41 @@ def build_ragas_llm(
         response_format=judge_config.response_format,
         include_reasoning=judge_config.reasoning,
     )
-    llm = ChatOpenAI(
-        model=judge_config.model_id,
+    llm = build_chat_model(
+        provider=provider,
+        model_id=judge_config.model_id,
+        api_key=resolved_key,
         base_url=judge_config.base_url,
-        api_key=SecretStr(resolved_key),
+        default_headers=_judge_branding_headers(provider, resolved_key),
+        max_tokens=judge_config.max_tokens,
+        reasoning_effort=judge_config.reasoning_effort,
         temperature=judge_config.temperature,
-        max_completion_tokens=judge_config.max_tokens,
-        model_kwargs=model_kwargs,
-        extra_body=extra_body,
-        default_headers=_HEADER_BUILDERS.get(provider, _no_headers)(),
+        response_format=judge_config.response_format,
+        callbacks=[CostTrackingCallback(cost_tracker, provider)] if cost_tracker else [],
     )
 
     return LangchainLLMWrapper(llm, is_finished_parser=_ragas_generation_finished)
 
 
+def _judge_branding_headers(provider: str, api_key: str) -> dict:
+    """Branding headers only; build_chat_model derives Authorization from api_key."""
+    headers = _build_default_headers(provider, api_key)
+    headers.pop("Authorization", None)
+    return headers
+
+
 def build_ragas_embeddings(
-    model_routing=ModelRouting, env=None, api_key: str | None = None
+    model_config_or_routing=ModelRouting, env=None, api_key: str | None = None
 ) -> OpenAIEmbeddings:
     """Build OpenAI-compatible embeddings for RAGAS metric calculation."""
-    embedding_model = model_routing.ragas_embedding_model
+    embedding_model = _role_config(model_config_or_routing, "ragas_embedding_model")
     provider = embedding_model.provider
     resolved_key = _resolve_api_key(provider, env, api_key)
     return OpenAIEmbeddings(
         model=embedding_model.model_id,
         base_url=embedding_model.base_url,
         api_key=SecretStr(resolved_key),
-        default_headers=_HEADER_BUILDERS.get(provider, _no_headers)(),
+        default_headers=_build_default_headers(provider, resolved_key),
     )
 
 
@@ -112,7 +128,16 @@ def _no_extra_body(judge_config) -> dict:
     return {}
 
 
-def _no_headers() -> dict:
+def _build_default_headers(provider: str, api_key: str) -> dict:
+    """Build provider-specific headers from the key resolved for this request.
+
+    This must not fall back to OpenRouterClient's import-time singleton: when
+    the key comes from `.env`, that singleton is created before load_dotenv().
+    """
+    return _HEADER_BUILDERS.get(provider, _no_headers)(api_key)
+
+
+def _no_headers(api_key: str | None = None) -> dict:
     """Default headers for providers that need no OpenRouter-style branding headers."""
     return {}
 
@@ -121,7 +146,7 @@ def _no_headers() -> dict:
 # headers, its nested `reasoning` exclusion shape). Providers without an
 # entry here — including future ones — get the plain OpenAI-spec defaults
 # above; add an entry only when a provider actually needs different behavior.
-_HEADER_BUILDERS: dict[str, Callable[[], dict]] = {
+_HEADER_BUILDERS: dict[str, Callable[[str | None], dict]] = {
     "openrouter": build_openrouter_headers,
 }
 _EXTRA_BODY_BUILDERS: dict[str, Callable] = {
