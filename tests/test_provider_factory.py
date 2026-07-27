@@ -98,6 +98,25 @@ def test_build_provider_exposes_configured_model_roles():
     assert provider.get_model_config("scientist").model_id == "openrouter/scientist"
 
 
+def test_openrouter_headers_do_not_leak_os_environ_key(monkeypatch):
+    """The bug the audit flagged: build_openrouter_headers("") falls back to
+    the module-level _default_client singleton, whose key is read from the
+    real os.environ — leaking a real key into default_headers even when the
+    injected env has none, and desyncing it from the client's own api_key
+    (which correctly stays ""). ChatOpenAI merges default_headers OVER its
+    own api_key-derived Authorization, so a leaked Authorization header here
+    would actually be used on the wire."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "REAL-OS-ENV-KEY")
+
+    # injected env deliberately has NO key
+    provider = build_provider(_Settings, env={})
+    client = provider.llm_client
+
+    assert client._api_key == ""  # type: ignore[attr-defined]
+    assert "Authorization" not in client._default_headers  # type: ignore[attr-defined]
+    assert client._default_headers.get("X-Title")  # type: ignore[attr-defined]  # branding header still present
+
+
 def test_build_provider_openai_client_shares_provider_cost_tracker():
     class Settings:
         class run:

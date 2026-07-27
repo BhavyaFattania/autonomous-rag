@@ -58,13 +58,25 @@ class ProviderSpec:
     env_var: str
 
 
+def _openrouter_default_headers(api_key: str) -> dict:
+    """OpenRouter branding headers only. ChatOpenAI derives Authorization from
+    the resolved api_key, so we must NOT include an Authorization header here:
+    build_openrouter_headers() falls back to the module-level singleton (which
+    reads os.environ) when api_key is empty, which would leak a real key past
+    the injected-env boundary and desync it from the client's own api_key.
+    """
+    headers = build_openrouter_headers(api_key)
+    headers.pop("Authorization", None)
+    return headers
+
+
 # Single seam for provider selection: adding a new provider means adding one
 # entry here, without touching call sites of `build_provider` or
 # `required_env_var`.
 _PROVIDER_SPECS: dict[str, ProviderSpec] = {
     "openrouter": ProviderSpec(
         base_url=OPENROUTER_BASE_URL,
-        headers=build_openrouter_headers,
+        headers=_openrouter_default_headers,
         env_var="OPENROUTER_API_KEY",
     ),
     "openai": ProviderSpec(
