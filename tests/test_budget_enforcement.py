@@ -25,11 +25,9 @@ class _Settings:
 
 @pytest.fixture(autouse=True)
 def _reset_singleton_tracker():
-    """The deprecated module singleton is intentionally left untouched by
-    the fix (still used as _report_cost()'s fallback in openrouter.py/
-    openai_client.py when no tracker is injected) -- reset it around each
-    test so a stray value can't accidentally make a real-tracker assertion
-    pass for the wrong reason."""
+    """The deprecated module singleton is intentionally left untouched --
+    reset it around each test so a stray value can't accidentally make a
+    real-tracker assertion pass for the wrong reason."""
     singleton_initialize(hard_ceiling=10.0, warning_threshold=7.0)
     yield
     singleton_initialize(hard_ceiling=10.0, warning_threshold=7.0)
@@ -98,9 +96,14 @@ async def test_scientist_node_reports_budget_exceeded_not_a_fallback_proposal():
         async def call(self, **kwargs):
             raise BudgetExceededError("Cost $10.50 exceeds ceiling $10.00. Stopping.")
 
+    class _MockRoutingProvider:
+        def get_config(self, role: str):
+            return MagicMock()
+
     provider = Provider(
         cost_tracker=CostTracker(hard_ceiling=10.0, warning_threshold=7.0),
         llm_client=_BudgetExceededLLMClient(),
+        model_routing_provider=_MockRoutingProvider(),
     )
 
     state = {

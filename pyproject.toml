@@ -29,7 +29,7 @@ ranx = ">=0.3.20"
 langgraph = "*"
 langgraph-checkpoint-sqlite = "*"
 langchain-core = "*"
-langchain-openai = "*"
+langchain-openai = "0.3.35"
 
 # Optional observability (src/utils/langfuse_compat.py and scripts/run_overnight.py
 # both degrade gracefully via try/except ImportError when this isn't installed).
