@@ -30,6 +30,7 @@ class Provider:
         model_routing_provider: IModelRoutingProvider | None = None,
         env: dict | None = None,
         settings: Any | None = None,
+        pricing: dict[str, tuple[float, float]] | None = None,
     ):
         self._cost_tracker = cost_tracker
         self._llm_client = llm_client
@@ -39,6 +40,7 @@ class Provider:
         self._model_routing_provider = model_routing_provider
         self._env = env
         self._settings = settings
+        self._pricing = pricing
 
     @property
     def cost_tracker(self) -> ICostTracker:
@@ -96,6 +98,7 @@ class Provider:
             self.get_model_config("ragas_judge"),
             env=self.env,
             cost_tracker=self._cost_tracker,
+            pricing=self._pricing,
         )
 
     def build_ragas_embeddings(self) -> Any:

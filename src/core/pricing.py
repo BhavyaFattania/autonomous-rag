@@ -32,9 +32,20 @@ def _pricing_for(provider: str) -> dict[str, tuple[float, float]]:
     return loader() if loader else {}
 
 
-def compute_cost(provider: str, model_id: str, prompt_tokens: int, completion_tokens: int) -> float:
-    """USD cost for a call; 0.0 (with a warning) when the model has no price."""
-    pricing = _pricing_for(provider)
+def compute_cost(
+    provider: str,
+    model_id: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+    pricing: dict[str, tuple[float, float]] | None = None,
+) -> float:
+    """USD cost for a call; 0.0 (with a warning) when the model has no price.
+
+    ``pricing`` is an optional injected map (e.g. live OpenRouter rates resolved
+    at startup); when omitted, the static per-provider registry is used.
+    """
+    if pricing is None:
+        pricing = _pricing_for(provider)
     if model_id not in pricing:
         log.warning(
             "pricing_missing",

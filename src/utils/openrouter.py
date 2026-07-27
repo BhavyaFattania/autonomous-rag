@@ -13,8 +13,18 @@ from __future__ import annotations
 
 import os
 
+import httpx
+
+from src.utils.logger import get_logger
+
+log = get_logger("openrouter")
+
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
+# Static fallback prices (USD per million tokens). Only used when the live
+# Models API is unreachable, so a network blip can never silently zero out cost
+# tracking (and the hard budget ceiling that reads it). Live pricing from
+# fetch_openrouter_pricing() is authoritative and always current.
 MODEL_PRICING = {
     "deepseek/deepseek-v4-pro": (0.435, 0.870),
     "deepseek/deepseek-v4-flash": (0.140, 0.280),
@@ -23,6 +33,38 @@ MODEL_PRICING = {
     "qwen/qwen3.5-flash-02-23": (0.065, 0.260),
     "openai/gpt-oss-20b": (0.050, 0.200),
 }
+
+
+def fetch_openrouter_pricing(timeout: float = 10.0) -> dict[str, tuple[float, float]] | None:
+    """Fetch live (prompt, completion) USD-per-million pricing for every OpenRouter
+    model from the public Models API (no API key required).
+
+    Returns a ``{model_id: (prompt_per_M, completion_per_M)}`` map, or ``None`` on
+    any failure so callers fall back to the static ``MODEL_PRICING`` table. The
+    API reports per-token prices, converted here to the per-million convention the
+    cost path uses. Conditional ``pricing.overrides`` (long-context / time-window
+    tiers) are intentionally ignored — only the base rate is read.
+    """
+    try:
+        resp = httpx.get(f"{OPENROUTER_BASE_URL}/models", timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json().get("data", [])
+    except Exception as exc:  # network error, non-200, malformed JSON
+        log.warning("openrouter_pricing_fetch_failed", error=str(exc))
+        return None
+
+    pricing: dict[str, tuple[float, float]] = {}
+    for model in data:
+        model_id = model.get("id")
+        rates = model.get("pricing") or {}
+        try:
+            prompt = float(rates.get("prompt", 0.0)) * 1_000_000
+            completion = float(rates.get("completion", 0.0)) * 1_000_000
+        except (TypeError, ValueError):
+            continue
+        if model_id:
+            pricing[model_id] = (prompt, completion)
+    return pricing or None
 
 
 def build_openrouter_headers(api_key: str | None = None) -> dict:

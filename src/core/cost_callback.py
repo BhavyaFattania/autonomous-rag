@@ -44,14 +44,22 @@ def _usage_from_result(response: LLMResult) -> tuple[str | None, int, int]:
 class CostTrackingCallback(BaseCallbackHandler):
     raise_error = True  # propagate BudgetExceededError from add_cost
 
-    def __init__(self, cost_tracker: ICostTracker, provider: str):
+    def __init__(
+        self,
+        cost_tracker: ICostTracker,
+        provider: str,
+        pricing: dict[str, tuple[float, float]] | None = None,
+    ):
         self._cost_tracker = cost_tracker
         self._provider = provider
+        self._pricing = pricing
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         model_id, prompt_tokens, completion_tokens = _usage_from_result(response)
         if not model_id:
             log.warning("cost_callback_no_model_name")
             return
-        cost = compute_cost(self._provider, model_id, prompt_tokens, completion_tokens)
+        cost = compute_cost(
+            self._provider, model_id, prompt_tokens, completion_tokens, pricing=self._pricing
+        )
         self._cost_tracker.add_cost(cost)

@@ -39,3 +39,11 @@ def test_callback_raise_error_is_true():
     # so BudgetExceededError from add_cost propagates out of ainvoke
     cb = CostTrackingCallback(cost_tracker=_Tracker(), provider="openai")
     assert cb.raise_error is True
+
+
+def test_callback_uses_injected_pricing_map():
+    tracker = _Tracker()
+    injected = {"some/model": (3.0, 5.0)}
+    cb = CostTrackingCallback(cost_tracker=tracker, provider="openrouter", pricing=injected)
+    cb.on_llm_end(_llm_result("some/model", 1_000_000, 1_000_000))
+    assert round(tracker.total, 4) == round(3.0 + 5.0, 4)

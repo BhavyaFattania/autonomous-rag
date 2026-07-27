@@ -13,6 +13,36 @@ class _Settings:
         llm_provider = "openrouter"
 
 
+@pytest.fixture(autouse=True)
+def _no_live_pricing_fetch(monkeypatch):
+    """build_provider() fetches live OpenRouter pricing at startup; keep every
+    test in this module offline by default (returns None -> static fallback).
+    Tests that assert the live-injection path override this explicitly."""
+    monkeypatch.setattr("src.utils.openrouter.fetch_openrouter_pricing", lambda *a, **k: None)
+
+
+def test_build_provider_injects_live_pricing_map(monkeypatch):
+    live = {"deepseek/deepseek-v4-pro": (1.0, 2.0)}
+    monkeypatch.setattr("src.utils.openrouter.fetch_openrouter_pricing", lambda *a, **k: live)
+
+    provider = build_provider(_Settings, env={"OPENROUTER_API_KEY": "sk-test"})
+
+    # live rate layered over the static table, injected into client + provider
+    assert provider._pricing["deepseek/deepseek-v4-pro"] == (1.0, 2.0)
+    assert provider.llm_client._pricing["deepseek/deepseek-v4-pro"] == (1.0, 2.0)
+    # static entries survive as fallback for ids the live list omits
+    assert "deepseek/deepseek-v4-flash:free" in provider._pricing
+
+
+def test_build_provider_falls_back_to_static_when_fetch_fails(monkeypatch):
+    monkeypatch.setattr("src.utils.openrouter.fetch_openrouter_pricing", lambda *a, **k: None)
+
+    provider = build_provider(_Settings, env={"OPENROUTER_API_KEY": "sk-test"})
+
+    # None injected -> cost path uses the static per-provider registry
+    assert provider._pricing is None
+
+
 def test_build_provider_wires_openrouter_by_default():
     provider = build_provider(_Settings, env={"OPENROUTER_API_KEY": "sk-test"})
 

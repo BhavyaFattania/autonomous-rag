@@ -92,6 +92,26 @@ def _unknown_provider_error(provider_name: str) -> ValueError:
     return ValueError(f"Unknown llm_provider {provider_name!r}. Supported providers: {supported}.")
 
 
+def _resolve_pricing_map(provider_name: str) -> dict[str, tuple[float, float]] | None:
+    """Resolve the pricing map to inject into cost tracking, fetched once here at
+    startup (never in the per-call hot path).
+
+    For OpenRouter, fetch live rates from the Models API and layer them over the
+    static table (static covers any id the live list omits, e.g. `:free` aliases).
+    Returns None on fetch failure — the cost path then falls back to the static
+    per-provider registry, so a network blip never breaks the budget ceiling.
+    Non-OpenRouter providers return None (their static registry is authoritative).
+    """
+    if provider_name != "openrouter":
+        return None
+    from src.utils.openrouter import MODEL_PRICING, fetch_openrouter_pricing
+
+    live = fetch_openrouter_pricing()
+    if live is None:
+        return None
+    return {**MODEL_PRICING, **live}
+
+
 def build_provider(
     settings: Any, env: dict | None = None, model_routing: Any | None = None
 ) -> Provider:
@@ -116,18 +136,21 @@ def build_provider(
         hard_ceiling=settings.run.cost_hard_ceiling_usd,
         warning_threshold=settings.run.cost_warning_threshold_usd,
     )
+    pricing = _resolve_pricing_map(provider_name)
     llm_client = LangChainLLMClient(
         provider=provider_name,
         api_key=api_key,
         base_url=spec.base_url,
         default_headers=spec.headers(api_key),
         cost_tracker=cost_tracker,
+        pricing=pricing,
     )
     return Provider(
         cost_tracker=cost_tracker,
         llm_client=llm_client,
         env=env,
         settings=settings,
+        pricing=pricing,
         **_provider_kwargs(model_routing),
     )
 

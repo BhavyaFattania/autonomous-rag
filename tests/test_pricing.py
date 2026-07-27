@@ -18,3 +18,12 @@ def test_unknown_model_is_zero_cost(caplog):
         "pricing_missing" in record.getMessage() or "pricing_missing" in str(record.msg)
         for record in caplog.records
     ), "Expected warning with 'pricing_missing' was not logged"
+
+
+def test_compute_cost_prefers_injected_pricing_over_registry():
+    # injected map overrides the static registry for the same model
+    injected = {"deepseek/deepseek-v4-pro": (1.0, 2.0)}
+    cost = compute_cost(
+        "openrouter", "deepseek/deepseek-v4-pro", 1_000_000, 1_000_000, pricing=injected
+    )
+    assert round(cost, 4) == round(1.0 + 2.0, 4)

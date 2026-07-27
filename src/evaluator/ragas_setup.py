@@ -56,6 +56,7 @@ def build_ragas_llm(
     env=None,
     api_key: str | None = None,
     cost_tracker=None,
+    pricing: dict[str, tuple[float, float]] | None = None,
 ) -> LangchainLLMWrapper:
     """Build a RAGAS-compatible LLM wrapper for the judge's configured provider."""
     install_ragas_output_parser_compat_patch()
@@ -79,7 +80,9 @@ def build_ragas_llm(
         reasoning_effort=judge_config.reasoning_effort,
         temperature=judge_config.temperature,
         response_format=judge_config.response_format,
-        callbacks=[CostTrackingCallback(cost_tracker, provider)] if cost_tracker else [],
+        callbacks=(
+            [CostTrackingCallback(cost_tracker, provider, pricing=pricing)] if cost_tracker else []
+        ),
     )
 
     return LangchainLLMWrapper(llm, is_finished_parser=_ragas_generation_finished)

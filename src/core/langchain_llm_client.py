@@ -107,17 +107,19 @@ class LangChainLLMClient:
         base_url: str,
         default_headers: dict,
         cost_tracker: ICostTracker | None = None,
+        pricing: dict[str, tuple[float, float]] | None = None,
     ):
         self._provider = provider
         self._api_key = api_key
         self._base_url = base_url
         self._default_headers = default_headers
         self._cost_tracker: ICostTracker | None = cost_tracker
+        self._pricing = pricing
 
     def _callbacks(self) -> list[BaseCallbackHandler]:
         if self._cost_tracker is None:
             return []
-        return [CostTrackingCallback(self._cost_tracker, self._provider)]
+        return [CostTrackingCallback(self._cost_tracker, self._provider, pricing=self._pricing)]
 
     async def _invoke(
         self,
