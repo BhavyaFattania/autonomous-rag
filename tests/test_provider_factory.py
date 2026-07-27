@@ -1,6 +1,7 @@
 """Tests for provider selection via src.core.provider_factory.build_provider."""
 
 import pytest
+from config.models import ModelConfig
 from src.core.interfaces import ICostTracker, ILLMClient
 from src.core.provider_factory import build_provider
 
@@ -51,7 +52,7 @@ def test_build_provider_tolerates_missing_env():
 
 
 def test_build_provider_wires_openai():
-    from src.utils.openai_client import OpenAIClient
+    from src.core.langchain_llm_client import LangChainLLMClient
 
     class Settings:
         class run:
@@ -61,9 +62,17 @@ def test_build_provider_wires_openai():
 
     provider = build_provider(Settings, env={"OPENAI_API_KEY": "sk-test"})
 
-    assert isinstance(provider.llm_client, OpenAIClient)
+    assert isinstance(provider.llm_client, LangChainLLMClient)
     assert isinstance(provider.llm_client, ILLMClient)
     assert isinstance(provider.cost_tracker, ICostTracker)
+
+
+def test_build_provider_uses_langchain_llm_client():
+    from src.core.langchain_llm_client import LangChainLLMClient
+
+    provider = build_provider(_Settings, env={"OPENROUTER_API_KEY": "sk-test"})
+    assert isinstance(provider.llm_client, LangChainLLMClient)
+    assert provider.llm_client._cost_tracker is provider.cost_tracker  # type: ignore[attr-defined]
 
 
 def test_build_provider_openrouter_client_shares_provider_cost_tracker():
@@ -74,6 +83,19 @@ def test_build_provider_openrouter_client_shares_provider_cost_tracker():
     provider = build_provider(_Settings, env={"OPENROUTER_API_KEY": "sk-test"})
 
     assert provider.llm_client._cost_tracker is provider.cost_tracker  # type: ignore[attr-defined]
+
+
+def test_build_provider_exposes_configured_model_roles():
+    class Routing:
+        scientist = ModelConfig(model_id="openrouter/scientist", task="scientist")
+
+    provider = build_provider(
+        _Settings,
+        env={"OPENROUTER_API_KEY": "sk-test"},
+        model_routing=Routing(),
+    )
+
+    assert provider.get_model_config("scientist").model_id == "openrouter/scientist"
 
 
 def test_build_provider_openai_client_shares_provider_cost_tracker():
