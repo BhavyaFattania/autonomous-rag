@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import openai
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
@@ -181,8 +182,9 @@ class LangChainLLMClient:
 
 
 def _is_rate_limit(exc: Exception) -> bool:
-    name = exc.__class__.__name__.lower()
-    return "ratelimit" in name or "429" in str(exc)
+    if isinstance(exc, openai.RateLimitError):
+        return True
+    return "ratelimit" in type(exc).__name__.lower()
 
 
 def _reasoning_from_message(message: Any) -> str:
