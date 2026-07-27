@@ -12,6 +12,14 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
+from src.core.cost_callback import CostTrackingCallback
+from src.core.interfaces import ICostTracker
+from src.utils.langfuse_compat import observe
+from src.utils.logger import get_logger
+from src.utils.openrouter import _extract_reasoning_text
+
+log = get_logger("langchain_llm_client")
+
 _OPENAI_REASONING_PREFIXES = ("o1", "o3", "o4")
 
 
@@ -82,3 +90,104 @@ def build_chat_model(
         model_kwargs=mk,
         callbacks=callbacks or None,
     )
+
+
+class LLMClientError(Exception):
+    pass
+
+
+class LangChainLLMClient:
+    """ILLMClient implementation backed by langchain-openai ChatOpenAI."""
+
+    def __init__(
+        self,
+        provider: str,
+        api_key: str,
+        base_url: str,
+        default_headers: dict,
+        cost_tracker: ICostTracker | None = None,
+    ):
+        self._provider = provider
+        self._api_key = api_key
+        self._base_url = base_url
+        self._default_headers = default_headers
+        self._cost_tracker: ICostTracker | None = cost_tracker
+
+    def _callbacks(self) -> list[BaseCallbackHandler]:
+        if self._cost_tracker is None:
+            return []
+        return [CostTrackingCallback(self._cost_tracker, self._provider)]
+
+    async def _invoke(
+        self,
+        model_id: str,
+        messages: list[dict],
+        max_tokens: int,
+        reasoning_effort: str | None,
+        temperature: float | None,
+        response_format: str | None,
+    ) -> Any:
+        chat = build_chat_model(
+            provider=self._provider,
+            model_id=model_id,
+            api_key=self._api_key,
+            base_url=self._base_url,
+            default_headers=self._default_headers,
+            max_tokens=max_tokens,
+            reasoning_effort=reasoning_effort,
+            temperature=temperature,
+            response_format=response_format,
+            callbacks=self._callbacks(),
+        )
+        return await chat.ainvoke(messages)
+
+    @observe(name="langchain_llm_call")
+    async def call(
+        self,
+        model_id: str,
+        messages: list[dict],
+        max_tokens: int,
+        task: str,
+        reasoning_effort: str | None = None,
+        temperature: float | None = 0.1,
+        fallback_model_id: str | None = None,
+        return_reasoning: bool = False,
+        response_format: str | None = None,
+    ) -> str | dict:
+        try:
+            message = await self._invoke(
+                model_id, messages, max_tokens, reasoning_effort, temperature, response_format
+            )
+        except (
+            Exception
+        ) as exc:  # rate-limit / transient -> single fallback, mirrors current 429 path
+            if fallback_model_id and _is_rate_limit(exc):
+                log.warning("rate_limit_fallback", primary=model_id, fallback=fallback_model_id)
+                message = await self._invoke(
+                    fallback_model_id, messages, max_tokens, None, temperature, response_format
+                )
+            else:
+                raise
+
+        content = message.content if isinstance(message.content, str) else str(message.content)
+        finish_reason = (message.response_metadata or {}).get("finish_reason")
+        if not content:
+            raise LLMClientError(f"Empty content for {model_id}; finish_reason={finish_reason}")
+        if finish_reason == "length":
+            log.warning("completion_truncated", model=model_id, task=task, max_tokens=max_tokens)
+        if return_reasoning:
+            return {"content": content, "reasoning": _reasoning_from_message(message)}
+        return content
+
+
+def _is_rate_limit(exc: Exception) -> bool:
+    name = exc.__class__.__name__.lower()
+    return "ratelimit" in name or "429" in str(exc)
+
+
+def _reasoning_from_message(message: Any) -> str:
+    reasoning = message.additional_kwargs.get("reasoning")
+    if isinstance(reasoning, str) and reasoning.strip():
+        return reasoning.strip()
+    # reuse the OpenRouter reasoning_details parser on the raw dict shape
+    return _extract_reasoning_text(message.additional_kwargs)
