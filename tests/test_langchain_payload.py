@@ -38,3 +38,20 @@ def test_openai_o_series_uses_top_level_reasoning_effort():
     p = _payload(provider="openai", model_id="o3-mini", reasoning_effort="high", temperature=0.1)
     assert p.get("reasoning_effort") == "high"
     assert "temperature" not in p
+
+
+def test_build_chat_model_emits_no_langchain_model_kwargs_warning(recwarn):
+    build_chat_model(
+        provider="openrouter",
+        model_id="deepseek/deepseek-v4-pro",
+        api_key="k",
+        base_url="https://openrouter.ai/api/v1",
+        default_headers={},
+        max_tokens=256,
+        reasoning_effort="high",
+        temperature=0.1,
+        response_format=None,
+        callbacks=[],
+    )
+    msgs = [str(w.message) for w in recwarn.list]
+    assert not any("should be specified explicitly" in m for m in msgs), msgs

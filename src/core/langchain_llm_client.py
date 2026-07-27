@@ -67,7 +67,9 @@ def build_chat_model(
     callbacks: list[BaseCallbackHandler],
 ) -> ChatOpenAI:
     mk = _model_kwargs_for(provider, reasoning_effort, temperature, response_format, model_id)
-    temp = mk.pop("temperature", None)  # ChatOpenAI takes temperature as a top-level arg
+    temp = mk.pop("temperature", None)
+    extra_body = mk.pop("extra_body", None)
+    top_reasoning_effort = mk.pop("reasoning_effort", None)
     return ChatOpenAI(
         model=model_id,
         base_url=base_url,
@@ -75,6 +77,8 @@ def build_chat_model(
         default_headers=default_headers or None,
         max_completion_tokens=max_tokens,
         temperature=temp,
+        extra_body=extra_body,
+        reasoning_effort=top_reasoning_effort,
         model_kwargs=mk,
         callbacks=callbacks or None,
     )
