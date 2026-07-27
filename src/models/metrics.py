@@ -18,7 +18,22 @@ class SingleRunMetrics(BaseModel):
 
     @property
     def weighted_score(self) -> float:
-        """Composite score: 35% recall_at_k + 25% ndcg + 20% mrr + 10% precision + 10% context_recall."""
+        """Composite retrieval-quality score driving the optimization loop.
+
+        Weights (sum to 1.0) and their rationale:
+
+        - recall_at_k (35%, highest): a chunk missing from the top-k is
+          unrecoverable downstream, so retrieval coverage matters most.
+        - ndcg_at_k (25%, above MRR): rewards ranking all relevant chunks near
+          the top, a better multi-chunk signal than MRR's first-hit-only view.
+        - mrr (20%): position of the first relevant chunk; narrower than NDCG.
+        - precision_at_k (10%): a few irrelevant chunks are cheap, so this
+          matters far less than recall.
+        - context_recall (10%): groundedness signal; low because it overlaps
+          with recall_at_k and is noisier to measure.
+
+        Weights are hardcoded; making them configurable is tracked in issue #22.
+        """
         return (
             0.35 * self.recall_at_k
             + 0.25 * self.ndcg_at_k
