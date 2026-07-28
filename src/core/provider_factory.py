@@ -102,14 +102,15 @@ def _resolve_pricing_map(provider_name: str) -> dict[str, tuple[float, float]] |
     per-provider registry, so a network blip never breaks the budget ceiling.
     Non-OpenRouter providers return None (their static registry is authoritative).
     """
-    if provider_name != "openrouter":
-        return None
-    from src.utils.openrouter import MODEL_PRICING, fetch_openrouter_pricing
+    if provider_name == "openrouter":
+        from src.utils.openrouter import MODEL_PRICING, fetch_openrouter_pricing
 
-    live = fetch_openrouter_pricing()
-    if live is None:
+        live = fetch_openrouter_pricing()
+        if live is None:
+            return None
+        return {**MODEL_PRICING, **live}
+    else:
         return None
-    return {**MODEL_PRICING, **live}
 
 
 def build_provider(
