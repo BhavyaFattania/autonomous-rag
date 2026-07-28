@@ -30,13 +30,11 @@ class _NoopContext:
 class _AutoCommitContext:
     """Context manager that creates a new connection, commits on success, and always closes it.
 
-    Sets busy_timeout explicitly (Python's sqlite3 already defaults new
-    connections to a 5s timeout, but a longer, explicit value here is cheap
-    insurance against a writer that's still slow to release the lock after
-    that window -- see src/storage/event_log.py's _insert_with_lock_retry()
-    for the actual fix for the "database is locked" collision observed
-    between this context and recorder_node()'s own connection in a real run;
-    a bare timeout bump alone did not make that error stop occurring)."""
+    Sets busy_timeout explicitly as cheap insurance for the legacy/read path.
+    The "database is locked" collision between concurrent write connections is
+    fixed at the root by routing every write through the single serialized
+    src.storage.write_coordinator.WriteCoordinator; this standalone-connection
+    path remains for reads and for callers that pass no coordinator."""
 
     async def __aenter__(self):
         self._db = await aiosqlite.connect(Database.default_path)

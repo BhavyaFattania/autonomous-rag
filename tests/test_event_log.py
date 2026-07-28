@@ -3,7 +3,6 @@ that must persist every tick without ever affecting the live run."""
 
 import asyncio
 import os
-import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -128,75 +127,28 @@ async def test_persist_events_skips_bad_tick_without_dying(temp_db, monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_persist_events_retries_and_recovers_from_database_locked(temp_db, monkeypatch):
-    """Reproduces the exact failure observed in a real overnight run: the
-    acceptance/recorder tick's insert collided with recorder_node()'s own
-    write and raised sqlite3.OperationalError('database is locked'). Before
-    the retry fix, this dropped the tick permanently; it must now recover
-    once the lock clears."""
+async def test_persist_events_serializes_writes_through_coordinator(temp_db):
+    """With a WriteCoordinator injected, concurrent ticks are serialized onto
+    one connection -- the fix that replaced the old lock-retry loop. Every
+    published tick still lands, with no `database is locked`."""
+    from src.storage.write_coordinator import WriteCoordinator
+
     await Database().init()
+    writer = WriteCoordinator(temp_db)
     bus = EventBus()
+    task = asyncio.create_task(persist_events(bus, run_id="run-1", writer=writer))
+    await asyncio.sleep(0)
 
-    calls = {"n": 0}
-    real_insert = NodeEventRepository.insert
-
-    async def _locked_then_ok(self, event):
-        calls["n"] += 1
-        if calls["n"] <= 2:
-            raise sqlite3.OperationalError("database is locked")
-        return await real_insert(self, event)
-
-    monkeypatch.setattr(NodeEventRepository, "insert", _locked_then_ok)
-    monkeypatch.setattr("src.storage.event_log._LOCK_RETRY_BASE_DELAY_SEC", 0.01)
-
-    task = asyncio.create_task(persist_events(bus, run_id="run-1"))
-    await asyncio.sleep(0)  # let persist_events reach bus.subscribe() before we publish
-    bus.publish(_event(node="acceptance"))
-    await asyncio.sleep(0.2)
+    for i in range(10):
+        bus.publish(_event(node=f"node-{i}", status="RUNNING"))
+    await asyncio.sleep(0.1)
 
     task.cancel()
     try:
         await task
     except asyncio.CancelledError:
         pass
+    await writer.aclose()
 
-    assert calls["n"] == 3
-    [row] = await NodeEventRepository().find_by_experiment_uuid("uuid-1")
-    assert row.node == "acceptance"
-
-
-@pytest.mark.asyncio
-async def test_persist_events_gives_up_after_max_lock_retries(temp_db, monkeypatch):
-    """A permanently locked/unwritable database must not retry forever --
-    the tick is logged and dropped after the retry budget is exhausted,
-    same crash-isolation guarantee as any other unwritable tick."""
-    await Database().init()
-    bus = EventBus()
-
-    calls = {"n": 0}
-
-    async def _always_locked(self, event):
-        calls["n"] += 1
-        raise sqlite3.OperationalError("database is locked")
-
-    monkeypatch.setattr(NodeEventRepository, "insert", _always_locked)
-    monkeypatch.setattr("src.storage.event_log._LOCK_RETRY_BASE_DELAY_SEC", 0.01)
-
-    task = asyncio.create_task(persist_events(bus, run_id="run-1"))
-    await asyncio.sleep(0)  # let persist_events reach bus.subscribe() before we publish
-    bus.publish(_event(node="acceptance"))
-    await asyncio.sleep(0.3)
-
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
-
-    from src.storage.event_log import _LOCK_RETRY_ATTEMPTS
-
-    assert (
-        calls["n"] == _LOCK_RETRY_ATTEMPTS
-    )  # exhausted the retry budget, then gave up on this tick
     rows = await NodeEventRepository().find_by_experiment_uuid("uuid-1")
-    assert rows == []
+    assert len(rows) == 10

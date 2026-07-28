@@ -104,7 +104,7 @@ def main(max_exp, max_hours, dry_run, resume):
         return
 
     settings, model_routing, baseline, env = load_all()
-    provider = build_provider(settings, env)
+    provider = build_provider(settings, env, model_routing)
 
     run_id = str(uuid.uuid4())
     init_trace(run_id)
@@ -127,9 +127,15 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     from src.storage.database import Database
     from src.storage.repositories.run_repository import RunRepository
+    from src.storage.write_coordinator import WriteCoordinator
     from src.utils.function_trace import init_trace
 
-    await Database().init()
+    db = Database()
+    await db.init()
+    # One serialized writer for the whole run: the background event-log task and
+    # the pipeline nodes all write through it, so no two write transactions ever
+    # contend for SQLite's single writer lock (the `database is locked` bug).
+    writer = WriteCoordinator(db.path)
 
     run_id = None
     if resume:
@@ -172,9 +178,14 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         "reflection_summary": "",
         "eval_results": [],
         "aggregated_metrics": {},
+        "evaluation_warnings": [],
+        "run_warnings": [],
         "current_best_weighted_score": baseline_score,
+        "baseline_weighted_score": baseline_score,
         "current_best_metrics": baseline_metrics,
         "proposed_weighted_score": 0.0,
+        "reused_duplicate": False,
+        "duplicate_historical_experiment_id": None,
         "status": "PENDING",
         "failure_reason": "",
         "experiment_cost_usd": 0.0,
@@ -205,6 +216,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             model_routing=ModelRouting,
             provider=provider,
             event_bus=bus,
+            writer=writer,
         )
 
         callbacks: list[BaseCallbackHandler] = []
@@ -250,7 +262,7 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
         )
         server = uvicorn.Server(server_config)
         server_task = asyncio.create_task(server.serve())
-        event_log_task = asyncio.create_task(persist_events(bus, run_id))
+        event_log_task = asyncio.create_task(persist_events(bus, run_id, writer))
         console.print("[bold cyan]Dashboard:[/] http://127.0.0.1:8000")
 
         state_to_stream = None if state_exists else initial_state
@@ -264,25 +276,32 @@ async def _run(max_exp, max_hours, resume, settings, env, provider, trace_run_id
             for normalized_event in adapt(event, _ctx, settings, provider=provider):
                 bus.publish(normalized_event)
 
+        async with writer.transaction() as write_db:
+            await RunRepository(write_db).finish_run(
+                run_id,
+                finished_at=datetime.now(UTC).isoformat(),
+                total_cost=float(latest_state.get("total_cost_usd", 0.0)),
+                n_experiments=int(latest_state.get("experiments_completed", 0)),
+                n_accepted=int(latest_state.get("experiments_accepted", 0)),
+                best_config=json.dumps(latest_state.get("current_best_config")),
+                best_score=float(latest_state.get("current_best_weighted_score", 0.0)),
+                status="STOPPED" if _stop_requested else "COMPLETED",
+            )
+            await write_db.commit()
+
+        # Keep the dashboard (and its event log) alive through the final
+        # best-config evaluation -- it's a substantial, real-cost operation
+        # in its own right, and a browser watching should never see the
+        # websocket drop out from under it while work is still in flight.
+        if settings.evaluation.run_final_best_eval and not _stop_requested:
+            await evaluate_final_best(latest_state, settings, env, provider)
+
         server.should_exit = True
         await server_task
         event_log_task.cancel()
         with suppress(asyncio.CancelledError):
             await event_log_task
-
-        await RunRepository().finish_run(
-            run_id,
-            finished_at=datetime.now(UTC).isoformat(),
-            total_cost=float(latest_state.get("total_cost_usd", 0.0)),
-            n_experiments=int(latest_state.get("experiments_completed", 0)),
-            n_accepted=int(latest_state.get("experiments_accepted", 0)),
-            best_config=json.dumps(latest_state.get("current_best_config")),
-            best_score=float(latest_state.get("current_best_weighted_score", 0.0)),
-            status="STOPPED" if _stop_requested else "COMPLETED",
-        )
-
-    if settings.evaluation.run_final_best_eval and not _stop_requested:
-        await evaluate_final_best(latest_state, settings, env, provider)
+        await writer.aclose()
 
 
 async def _validate_environment(settings):
