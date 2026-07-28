@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>graphify - graphify-out\index.html</title>
+  <title>graphify - graphify-out\graph.html</title>
   <script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"
     integrity="sha384-Ux6phic9PEHJ38YtrijhkzyJ8yQlH8i/+buBR8s3mAZOJrP1gwyvAcIYl3GWtpX1"
     crossorigin="anonymous"></script>
@@ -286,11 +286,11 @@
       </div>
       <div id="legend"></div>
     </div>
-    <div id="stats">1046 nodes &middot; 2239 edges &middot; 76 communities</div>
+    <div id="stats">1474 nodes &middot; 2846 edges &middot; 107 communities</div>
   </div>
   <script src="graph-data.js"></script>
-<script>
-            
+  <script>
+
     // HTML-escape helper — prevents XSS when injecting graph data into innerHTML
     function esc(s) {
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -325,16 +325,16 @@
           springLength: 120,
           springConstant: 0.08,
           damping: 0.4,
-          avoidOverlap: 1,
+          avoidOverlap: 0.8,
         },
         stabilization: { iterations: 200, fit: true },
       },
       interaction: {
         hover: true,
         tooltipDelay: 100,
-        hideEdgesOnDrag: false,
-        navigationButtons: true,
-        keyboard: true,
+        hideEdgesOnDrag: true,
+        navigationButtons: false,
+        keyboard: false,
       },
       nodes: { shape: 'dot', borderWidth: 1.5 },
       edges: { smooth: { type: 'continuous', roundness: 0.2 }, selectionWidth: 3 },
@@ -499,7 +499,7 @@
   </script>
   <script>
     // Render hyperedges as shaded regions
-        // afterDrawing passes ctx already transformed to network coordinate space.
+    // afterDrawing passes ctx already transformed to network coordinate space.
     // Draw node positions raw — no manual pan/zoom/DPR math needed.
     network.on('afterDrawing', function (ctx) {
       hyperedges.forEach(h => {
