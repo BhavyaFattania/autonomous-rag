@@ -50,17 +50,20 @@ models:
     base_url: "https://openrouter.ai/api/v1"  
 
   ragas_judge:
-    model_id: "qwen/qwen3.5-flash-02-23"
+    model_id: "openai/gpt-oss-safeguard-20b"
     reasoning_effort: null
     temperature: 0.0
     max_tokens: 4096
     response_format: "json_object"
-    reasoning: false
+    # This OpenRouter endpoint requires reasoning; do not send an explicit
+    # disable request or it returns HTTP 400.
+    reasoning: null
     task: "ragas_judge"
     base_url: "https://openrouter.ai/api/v1"  
+    provider: "openrouter"
 
   smoke_tester:
-    model_id: "qwen/qwen3.5-flash-02-23"
+    model_id: "openai/gpt-oss-safeguard-20b"
     reasoning_effort: null
     temperature: 0.1
     max_tokens: 256

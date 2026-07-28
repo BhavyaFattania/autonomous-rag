@@ -80,7 +80,17 @@ def load_env() -> dict[str, str]:
     src.core.provider_factory.build_provider — it is not yet required
     unconditionally since nothing else in the pipeline needs it.
     """
-    env = {"OPENROUTER_API_KEY": os.environ["OPENROUTER_API_KEY"]}
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    if not openrouter_key or not openrouter_key.strip():
+        # Reject blank/missing loudly here rather than let it surface far
+        # downstream as `Illegal header value b'Bearer '` and a vague ragas
+        # judge "APIConnectionError" (every judge call swallowed to 0.0).
+        raise ValueError(
+            "OPENROUTER_API_KEY is not set or is empty. Set it in your .env or "
+            "environment -- every provider subsystem (embeddings, reranker, "
+            "Ragas judge) requires it regardless of settings.run.llm_provider."
+        )
+    env = {"OPENROUTER_API_KEY": openrouter_key}
     if "OPENAI_API_KEY" in os.environ:
         env["OPENAI_API_KEY"] = os.environ["OPENAI_API_KEY"]
     return env

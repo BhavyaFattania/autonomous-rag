@@ -37,6 +37,7 @@ reports/
 *.swp
 *.swo
 docs/debug_reports
+docs/debug_files
 # Local editor/tool state
 .vscode/
 .idea/

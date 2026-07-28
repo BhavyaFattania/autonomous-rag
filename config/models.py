@@ -37,3 +37,4 @@ class ModelRouting(BaseModel):
     report_writer: ModelConfig
     ragas_embedding_model: ModelConfig
     reflection: ModelConfig
+    conversation_summary: ModelConfig | None = None
