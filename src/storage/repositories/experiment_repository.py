@@ -84,7 +84,7 @@ class ExperimentRepository:
         async with db_or_connect(self._db) as db:
             cursor = await db.execute(
                 f"""
-                SELECT proposed_score, metrics_json, status, hypothesis
+                SELECT experiment_id, proposed_score, metrics_json, status, hypothesis
                 FROM experiments
                 WHERE config_hash = ?
                   AND status NOT IN ({placeholders})
@@ -96,7 +96,7 @@ class ExperimentRepository:
             row = await cursor.fetchone()
             if not row:
                 return HistoricalRecord()
-            proposed_score, metrics_json, status, hypothesis = row
+            experiment_id, proposed_score, metrics_json, status, hypothesis = row
             metrics = {}
             if metrics_json:
                 try:
@@ -105,6 +105,7 @@ class ExperimentRepository:
                     metrics = {}
             return HistoricalRecord(
                 score=proposed_score,
+                experiment_id=experiment_id,
                 metrics=metrics,
                 status=status,
                 hypothesis=hypothesis or "",

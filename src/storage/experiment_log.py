@@ -9,10 +9,10 @@ import json
 import uuid
 from datetime import UTC, datetime
 
-from src.storage.database import Database
 from src.storage.models import Experiment
 from src.storage.repositories.config_hash_repository import ConfigHashRepository
 from src.storage.repositories.experiment_repository import ExperimentRepository
+from src.storage.write_coordinator import write_transaction
 from src.utils.config_helpers import logical_config
 from src.utils.hashing import get_config_hash
 
@@ -22,6 +22,18 @@ PIPELINE_FAILURE_STATUSES = {
     "FAILED_API_ERROR",
     "FAILED_VALIDATION",
 }
+
+
+def _serialize_metrics(
+    metrics: dict, evaluation_warnings: list[str], reused_from_experiment_id: int | None
+) -> str | None:
+    """Serialize aggregate metrics with any non-fatal evaluation warnings."""
+    payload = dict(metrics)
+    if evaluation_warnings:
+        payload["evaluation_warnings"] = evaluation_warnings
+    if reused_from_experiment_id is not None:
+        payload["reused_from_experiment_id"] = reused_from_experiment_id
+    return json.dumps(payload) if payload else None
 
 
 def _config_summary(config: dict) -> str:
@@ -39,7 +51,7 @@ def _config_summary(config: dict) -> str:
     )
 
 
-async def recorder_node(state, provider) -> dict:
+async def recorder_node(state, provider, writer=None) -> dict:
     """Persist experiment result to database and update run statistics."""
     experiment_uuid = state.get("experiment_uuid") or str(uuid.uuid4())
     config_source = state.get("validated_config") or state.get("proposed_config", {})
@@ -50,10 +62,14 @@ async def recorder_node(state, provider) -> dict:
     failure_reason = state.get("failure_reason", "")
 
     metrics = state.get("aggregated_metrics", {})
-    metrics_json = json.dumps(metrics) if metrics else None
+    evaluation_warnings = state.get("evaluation_warnings", [])
+    reused_from_experiment_id = state.get("duplicate_historical_experiment_id")
+    metrics_json = _serialize_metrics(metrics, evaluation_warnings, reused_from_experiment_id)
 
     proposed_score = state.get("proposed_weighted_score", 0.0)
-    baseline_score = state.get("current_best_weighted_score", 0.0)
+    baseline_score = state.get(
+        "baseline_weighted_score", state.get("current_best_weighted_score", 0.0)
+    )
     cost = state.get("experiment_cost_usd", 0.0)
 
     started_at = state.get("experiment_started_at", datetime.now(UTC).isoformat())
@@ -75,7 +91,7 @@ async def recorder_node(state, provider) -> dict:
         finished_at=finished_at,
     )
 
-    async with Database().connect() as db:
+    async with write_transaction(writer) as db:
         exp_repo = ExperimentRepository(db)
         ch_repo = ConfigHashRepository(db)
 
@@ -107,14 +123,28 @@ async def recorder_node(state, provider) -> dict:
     failed = list(state.get("failed_patterns", []))
     summary = _config_summary(config_dict)
 
+    reuse_prefix = ""
+    if state.get("reused_duplicate"):
+        reuse_prefix = (
+            "REUSED_DUPLICATE "
+            f"prior_experiment={state.get('duplicate_historical_experiment_id')}; "
+            f"prior_hypothesis={state.get('duplicate_historical_hypothesis', '')}; "
+        )
     if status == "ACCEPTED":
         gain = proposed_score - baseline_score
         successful.append(
-            f"{summary} score={proposed_score:.4f} gain={gain:+.4f}: {state.get('hypothesis', '')}"
+            f"{reuse_prefix}{summary} score={proposed_score:.4f} gain={gain:+.4f}: "
+            f"{state.get('hypothesis', '')}"
         )
     elif status == "COMPETITIVE":
         successful.append(
-            f"COMPETITIVE {summary} score={proposed_score:.4f} best={baseline_score:.4f}: {state.get('hypothesis', '')}"
+            f"{reuse_prefix}COMPETITIVE {summary} score={proposed_score:.4f} "
+            f"best={baseline_score:.4f}: {state.get('hypothesis', '')}"
+        )
+    elif status == "FAILED_DUPLICATE":
+        failed.append(
+            f"DUPLICATE {summary}: {failure_reason}; "
+            f"previous hypothesis={state.get('duplicate_historical_hypothesis', '')}"
         )
     elif (status.startswith("FAILED_") and status != "FAILED_DUPLICATE") or status == "REJECTED":
         failed.append(

@@ -38,6 +38,7 @@ class HistoricalRecord:
     """Best result retrieved for a given config hash from experiment history."""
 
     score: float | None = None
+    experiment_id: int | None = None
     metrics: dict = field(default_factory=dict)
     status: str = "unknown"
     hypothesis: str = ""

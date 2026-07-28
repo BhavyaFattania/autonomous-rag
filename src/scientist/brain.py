@@ -4,8 +4,6 @@ import re
 import time
 import uuid
 
-from config.loader import load_model_routing
-
 from src.core.provider import Provider
 from src.scientist.prompt_builder import build_history_lines, build_scientist_prompt
 from src.scientist.proposal import (
@@ -19,8 +17,6 @@ from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
 
 log = get_logger("scientist")
-model_routing = load_model_routing()
-scientist_llm = model_routing.scientist
 
 
 @trace_call
@@ -34,6 +30,19 @@ def _should_force_reranker_probe(state, settings) -> bool:
     every_n = settings.explore_exploit.reranker_probe_every_n_experiments
     experiment_number = state.get("experiments_completed", 0) + 1
     return every_n > 0 and experiment_number % every_n == 0
+
+
+def _fresh_experiment_state(current_best_score: float) -> dict:
+    """Clear result fields that belong to the previous experiment attempt."""
+    return {
+        "eval_results": [],
+        "aggregated_metrics": {},
+        "proposed_weighted_score": 0.0,
+        "baseline_weighted_score": current_best_score,
+        "evaluation_warnings": [],
+        "reused_duplicate": False,
+        "duplicate_historical_experiment_id": None,
+    }
 
 
 @observe(name="scientist_node")
@@ -53,13 +62,21 @@ async def scientist_node(state, settings, provider: Provider) -> dict:
     if _should_run_structured_exploration(state, settings):
         result = await structured_exploration_proposal(state, settings)
         if result is not None:
-            return {**result, "history_summary": new_history_summary}
+            return {
+                **result,
+                "history_summary": new_history_summary,
+                **_fresh_experiment_state(state.get("current_best_weighted_score", 0.0)),
+            }
         log.info("structured_exploration_exhausted_falling_through_to_llm")
 
     if _should_force_reranker_probe(state, settings):
         result = await reranker_probe_proposal(state, settings)
         if result is not None:
-            return {**result, "history_summary": new_history_summary}
+            return {
+                **result,
+                "history_summary": new_history_summary,
+                **_fresh_experiment_state(state.get("current_best_weighted_score", 0.0)),
+            }
         log.info("reranker_probe_exhausted_falling_through_to_llm")
 
     exploit = random.random() < settings.explore_exploit.exploit_probability
@@ -74,15 +91,10 @@ async def scientist_node(state, settings, provider: Provider) -> dict:
     try:
         started = time.perf_counter()
         log.info("scientist_llm_start", exploit=exploit)
-        raw_response = await provider.llm_client.call(
-            model_id=scientist_llm.model_id,
+        raw_response = await provider.call_model(
+            "scientist",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=scientist_llm.max_tokens,
-            task=scientist_llm.task,
-            reasoning_effort=scientist_llm.reasoning_effort,
-            temperature=scientist_llm.temperature,
             return_reasoning=True,
-            response_format=scientist_llm.response_format,
         )
         log.info("scientist_llm_complete", elapsed_sec=round(time.perf_counter() - started, 2))
     except BudgetExceededError as e:
@@ -94,11 +106,16 @@ async def scientist_node(state, settings, provider: Provider) -> dict:
             "status": "BUDGET_EXCEEDED",
             "failure_reason": str(e),
             "history_summary": new_history_summary,
+            **_fresh_experiment_state(state.get("current_best_weighted_score", 0.0)),
         }
     except Exception as e:
         log.error("scientist_llm_failed", error=str(e))
         fallback = await fallback_proposal(state, f"Scientist API call failed: {e}", settings)
-        return {**fallback, "history_summary": new_history_summary}
+        return {
+            **fallback,
+            "history_summary": new_history_summary,
+            **_fresh_experiment_state(state.get("current_best_weighted_score", 0.0)),
+        }
 
     reasoning_text = ""
     if isinstance(raw_response, dict):
@@ -108,7 +125,11 @@ async def scientist_node(state, settings, provider: Provider) -> dict:
     if not isinstance(raw_response, str) or not raw_response.strip():
         log.warning("scientist_empty_response")
         fallback = await fallback_proposal(state, "Scientist returned empty content", settings)
-        return {**fallback, "history_summary": new_history_summary}
+        return {
+            **fallback,
+            "history_summary": new_history_summary,
+            **_fresh_experiment_state(state.get("current_best_weighted_score", 0.0)),
+        }
 
     cleaned = raw_response.strip()
     cleaned = re.sub(r"```(?:json)?", "", cleaned).strip().rstrip("`").strip()
@@ -118,7 +139,11 @@ async def scientist_node(state, settings, provider: Provider) -> dict:
     except json.JSONDecodeError as e:
         log.warning("scientist_json_parse_failed", raw=cleaned[-500:], error=str(e))
         fallback = await fallback_proposal(state, f"Scientist returned invalid JSON: {e}", settings)
-        return {**fallback, "history_summary": new_history_summary}
+        return {
+            **fallback,
+            "history_summary": new_history_summary,
+            **_fresh_experiment_state(state.get("current_best_weighted_score", 0.0)),
+        }
 
     hypothesis = config_dict.pop("hypothesis", "")
     if len(hypothesis) > 500:
@@ -133,4 +158,5 @@ async def scientist_node(state, settings, provider: Provider) -> dict:
         "scientist_reasoning": reasoning_text,
         "status": "RUNNING",
         "history_summary": new_history_summary,
+        **_fresh_experiment_state(state.get("current_best_weighted_score", 0.0)),
     }

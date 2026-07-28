@@ -3,6 +3,8 @@ from pathlib import Path
 
 import aiosqlite
 import pytest
+from src.orchestrator.graph import _after_deduplicator
+from src.scientist.deduplicator import _reuse_historical_result
 from src.scientist.proposal import select_unused_candidate as _select_unused_candidate
 from src.storage.database import Database
 from src.utils.config_helpers import logical_config as _logical_config
@@ -32,6 +34,35 @@ def test_deduplicator_hash_ignores_internal_config_keys():
     }
 
     assert get_config_hash(_logical_config(validated_config)) == get_config_hash(stored_config)
+
+
+def test_duplicate_with_metrics_reuses_historical_result_for_acceptance():
+    historical = {
+        "experiment_id": 12,
+        "score": 0.82,
+        "metrics": {"median_weighted_score": 0.82, "median_recall_at_k": 0.9},
+        "status": "ACCEPTED",
+        "hypothesis": "A prior retrieval hypothesis.",
+    }
+
+    reused = _reuse_historical_result({"run_warnings": []}, historical)
+
+    assert reused is not None
+    assert reused["proposed_weighted_score"] == 0.82
+    assert reused["duplicate_historical_experiment_id"] == 12
+    assert _after_deduplicator(reused) == "acceptance"
+
+
+def test_duplicate_without_metrics_remains_a_duplicate():
+    historical = {
+        "experiment_id": 12,
+        "score": 0.82,
+        "metrics": {},
+        "status": "FAILED_API_ERROR",
+        "hypothesis": "A prior failed hypothesis.",
+    }
+
+    assert _reuse_historical_result({}, historical) is None
 
 
 async def test_scientist_candidate_selection_skips_reserved_hash(local_tmp_path):

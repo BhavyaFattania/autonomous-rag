@@ -16,6 +16,7 @@ def build_graph(
     env=None,
     model_routing=None,
     event_bus=None,
+    writer=None,
 ) -> CompiledStateGraph:
     workflow = StateGraph(WorkflowState)
 
@@ -33,7 +34,7 @@ def build_graph(
 
     workflow.add_node("scientist", partial(scientist_node, settings=settings, provider=provider))
     workflow.add_node("validator", partial(validator_node, settings=settings, env=env))
-    workflow.add_node("deduplicator", deduplicator_node)
+    workflow.add_node("deduplicator", partial(deduplicator_node, writer=writer))
     workflow.add_node(
         "budget_guard", partial(budget_guard_node, settings=settings, provider=provider)
     )
@@ -53,7 +54,7 @@ def build_graph(
         ),
     )
     workflow.add_node("acceptance", partial(acceptance_node, settings=settings))
-    workflow.add_node("recorder", partial(recorder_node, provider=provider))
+    workflow.add_node("recorder", partial(recorder_node, provider=provider, writer=writer))
     workflow.add_node("reflection", partial(reflection_node, settings=settings, provider=provider))
     workflow.add_node(
         "report_writer", partial(report_writer_node, settings=settings, provider=provider)
@@ -84,6 +85,8 @@ def _after_validator(state: WorkflowState) -> str:
 
 
 def _after_deduplicator(state: WorkflowState) -> str:
+    if state.get("reused_duplicate"):
+        return "acceptance"
     if state["status"] == "FAILED_DUPLICATE":
         return "recorder"
     return "budget_guard"

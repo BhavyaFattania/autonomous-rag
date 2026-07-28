@@ -104,6 +104,7 @@ def _accept_best_config(
     )
     return {
         "status": "ACCEPTED",
+        "baseline_weighted_score": baseline_score,
         "current_best_config": logical_config(state["validated_config"]),
         "current_best_weighted_score": proposed_score,
         "current_best_metrics": {

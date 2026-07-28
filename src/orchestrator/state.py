@@ -26,9 +26,14 @@ class WorkflowState(TypedDict):
     # Evaluation
     eval_results: list[dict]  # List of SingleRunMetrics dicts (3 items after eval)
     aggregated_metrics: dict  # AggregatedMetrics dict
+    evaluation_warnings: list[str]  # Non-fatal RAGAS availability warnings for this experiment
+    run_warnings: list[str]  # Non-fatal warnings accumulated across the run
     current_best_weighted_score: float  # Score of current_best_config
+    baseline_weighted_score: float  # Score to beat when the current experiment began
     current_best_metrics: dict  # Median metric values for current_best_config
     proposed_weighted_score: float  # Score of proposed config
+    reused_duplicate: bool  # True when acceptance reuses a historical configuration result
+    duplicate_historical_experiment_id: int | None
 
     # Status
     status: str  # Mirrors ExperimentStatus
