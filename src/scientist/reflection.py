@@ -5,8 +5,6 @@ Summarizes recent successes/failures to extract actionable rules for
 guiding the next generation of experiments.
 """
 
-from config.loader import load_model_routing
-
 from src.core.provider import Provider
 from src.prompts.templates import REFLECTION_TEMPLATE
 from src.utils.context_budget import truncate_to_token_budget
@@ -14,8 +12,6 @@ from src.utils.function_trace import trace_call
 from src.utils.langfuse_compat import observe
 from src.utils.logger import get_logger
 
-model_routing = load_model_routing()
-reflection_llm = model_routing.reflection
 log = get_logger("reflection")
 
 # Roughly equivalent to the previous 4000-character budget, expressed in tokens.
@@ -34,13 +30,9 @@ async def reflection_node(state, settings, provider: Provider) -> dict:
 
     prompt = _build_reflection_prompt(state)
     try:
-        summary = await provider.llm_client.call(
-            model_id=reflection_llm.model_id,
+        summary = await provider.call_model(
+            "reflection",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=reflection_llm.max_tokens,
-            task=reflection_llm.task,
-            reasoning_effort=reflection_llm.reasoning_effort,
-            temperature=reflection_llm.temperature,
         )
     except Exception as e:
         log.warning("reflection_failed", error=str(e))

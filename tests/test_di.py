@@ -162,6 +162,7 @@ class TestProvider:
         provider = Provider(
             cost_tracker=MockCostTracker(),
             llm_client=mock_llm,
+            model_routing_provider=MockModelRoutingProvider(),
         )
 
         state = {
