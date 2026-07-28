@@ -4,13 +4,8 @@ import json
 from pathlib import Path
 from typing import cast
 
-from config.loader import load_model_routing
-
 from src.core.provider import Provider
 from src.prompts.templates import REPORT_TEMPLATE
-
-model_routing = load_model_routing()
-report_llm = model_routing.report_writer
 
 
 async def report_writer_node(state, settings, provider: Provider) -> dict:
@@ -24,13 +19,9 @@ async def report_writer_node(state, settings, provider: Provider) -> dict:
 
     prompt = _build_report_prompt(state)
     try:
-        report = await provider.llm_client.call(
-            model_id=report_llm.model_id,
+        report = await provider.call_model(
+            "report_writer",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=report_llm.max_tokens,
-            task=report_llm.task,
-            reasoning_effort=report_llm.reasoning_effort,
-            temperature=report_llm.temperature,
         )
         if isinstance(report, dict):
             report = report.get("content", "")
@@ -55,6 +46,7 @@ def _build_report_prompt(state) -> str:
         "current_best_metrics": state.get("current_best_metrics", {}),
         "successful_patterns": state.get("successful_patterns", []),
         "failed_patterns": state.get("failed_patterns", []),
+        "run_warnings": state.get("run_warnings", []),
         "reflection_summary": state.get("reflection_summary", ""),
     }
     return REPORT_TEMPLATE.format(payload_json=json.dumps(payload, indent=2))
@@ -73,6 +65,15 @@ def _fallback_report(state, error: str) -> str:
             f"Experiments Accepted:    {state.get('experiments_accepted', 0)}",
             f"Experiments Competitive: {state.get('experiments_competitive', 0)}",
             f"Experiments Repeated:    {state.get('experiments_repeated', 0)}",
+            *(
+                [
+                    "",
+                    "## Evaluation Warnings",
+                    *[f"- {warning}" for warning in state["run_warnings"]],
+                ]
+                if state.get("run_warnings")
+                else []
+            ),
             "",
             "## Best Configuration",
             "```json",

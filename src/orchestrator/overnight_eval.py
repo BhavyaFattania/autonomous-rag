@@ -88,6 +88,7 @@ async def evaluate_baseline(
             run_ragas=False,
             timeout_sec=eval_settings.max_runtime_sec_per_ragas,
             metrics=eval_settings.ragas_metrics,
+            provider=provider,
         )
         runs.append(metrics)
         console.print(f"  Baseline run {run_num}: weighted={metrics.weighted_score:.4f}")
@@ -157,6 +158,7 @@ async def evaluate_final_best(state: dict, settings, env=None, provider=None) ->
             max_timeout_sec=eval_settings.ragas_max_timeout_sec,
             timeout_retries=eval_settings.ragas_timeout_retries,
             metrics=eval_settings.ragas_metrics,
+            provider=provider,
         )
         runs.append(metrics)
         console.print(f"  Final eval run {run_num}: weighted={metrics.weighted_score:.4f}")

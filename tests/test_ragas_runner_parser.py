@@ -2,6 +2,7 @@ from langchain_core.prompt_values import StringPromptValue
 from pydantic import BaseModel
 from ragas.prompt.pydantic_prompt import RagasOutputParser
 from src.evaluator.ragas_setup import (
+    _build_default_headers,
     _build_openrouter_extra_body,
     _build_openrouter_model_kwargs,
 )
@@ -130,12 +131,30 @@ def test_ragas_judge_openrouter_kwargs_force_json_without_reasoning():
     }
 
 
+def test_ragas_judge_can_leave_mandatory_reasoning_enabled():
+    from config.models import ModelConfig
+
+    judge_config = ModelConfig(
+        model_id="openai/gpt-oss-safeguard-20b",
+        reasoning=None,
+        task="ragas_judge",
+    )
+
+    assert _build_openrouter_extra_body(judge_config) == {}
+
+
 def test_ragas_judge_defaults_to_openrouter_provider():
     from config.models import ModelConfig
 
     judge_config = ModelConfig(model_id="openrouter/test-model", task="ragas_judge")
 
     assert judge_config.provider == "openrouter"
+
+
+def test_ragas_openrouter_headers_use_the_resolved_key_not_import_time_client():
+    headers = _build_default_headers("openrouter", "fresh-key-from-dotenv")
+
+    assert headers["Authorization"] == "Bearer fresh-key-from-dotenv"
 
 
 def test_resolve_api_key_uses_provider_specific_env_var():

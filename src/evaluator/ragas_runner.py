@@ -31,6 +31,36 @@ def _safe_mean(df, column: str) -> float:
     return float(value)
 
 
+def _all_rows_failed(df, column: str) -> bool:
+    """True when every row for this metric is NaN (the judge never produced a
+    single valid score) rather than a mix that happens to average out."""
+    if column not in df or len(df) == 0:
+        return False
+    return bool(df[column].isna().all())
+
+
+def _metric_availability_warning(df, metric_names: list[str], questions: int) -> str | None:
+    """Describe judge metrics that RAGAS could not score without failing the run."""
+    all_failed = [name for name in metric_names if _all_rows_failed(df, name)]
+    partial_failed = [
+        name
+        for name in metric_names
+        if name in df and name not in all_failed and bool(df[name].isna().any())
+    ]
+    if not all_failed and not partial_failed:
+        return None
+
+    details = []
+    if all_failed:
+        details.append(f"no usable scores for {', '.join(all_failed)}")
+    if partial_failed:
+        details.append(f"partial scoring failures for {', '.join(partial_failed)}")
+    return (
+        f"RAGAS judge warning across {questions} question(s): {'; '.join(details)}. "
+        "Unavailable values are represented as 0.0 and must not be interpreted as quality scores."
+    )
+
+
 async def run_single_eval(
     questions: list[str],
     answers: list[str] | None,
@@ -47,6 +77,8 @@ async def run_single_eval(
     timeout_retries: int = 1,
     metrics: list[str] | None = None,
     env: dict | None = None,
+    warning_messages: list[str] | None = None,
+    provider=None,
 ) -> SingleRunMetrics:
     """Run IR metrics immediately, then conditionally run RAGAS metrics with retry logic.
 
@@ -82,15 +114,25 @@ async def run_single_eval(
     }
     dataset = Dataset.from_dict(data)
     metric_names = metrics or ["context_precision", "context_recall", "context_utilization"]
-    ragas_metrics = build_ragas_metrics(metric_names)
+    ragas_metrics = (
+        provider.build_ragas_metrics(metric_names)
+        if provider
+        else build_ragas_metrics(metric_names)
+    )
     if not ragas_metrics:
         return fast_metrics
-    ragas_llm = build_ragas_llm(model_routing=load_model_routing(), env=env or load_env())
-    ragas_embeddings = (
-        build_ragas_embeddings(model_routing=load_model_routing(), env=env or load_env())
-        if "answer_relevancy" in metric_names
-        else None
+    ragas_llm = (
+        provider.build_ragas_llm()
+        if provider
+        else build_ragas_llm(load_model_routing(), env=env or load_env())
     )
+    ragas_embeddings = None
+    if "answer_relevancy" in metric_names:
+        ragas_embeddings = (
+            provider.build_ragas_embeddings()
+            if provider
+            else build_ragas_embeddings(load_model_routing(), env=env or load_env())
+        )
     loop = asyncio.get_running_loop()
     started = time.perf_counter()
     log.info("ragas_eval_start", questions=len(questions))
@@ -101,7 +143,13 @@ async def run_single_eval(
     for attempt in range(timeout_retries + 1):
         run_config = RunConfig(
             timeout=current_timeout,
-            max_retries=0,
+            # ragas swallows every per-job exception (raise_exceptions=False below)
+            # into a NaN row instead of raising, so it never reaches the
+            # `except TimeoutError` below — max_retries=0 previously disabled
+            # the only retry mechanism that can actually see those errors
+            # (ragas's own internal tenacity retry, which covers any Exception
+            # including transient APIConnectionError, not just timeouts).
+            max_retries=2,
             max_wait=5,
             max_workers=worker_count,
         )
@@ -143,6 +191,12 @@ async def run_single_eval(
 
     assert result is not None, "result should be set if we reach here"
     df = result.to_pandas()
+    availability_warning = _metric_availability_warning(df, metric_names, len(questions))
+    if availability_warning:
+        log.warning("ragas_judge_metrics_unavailable", warning=availability_warning)
+        if warning_messages is not None:
+            warning_messages.append(availability_warning)
+
     metric_values = {
         name: _safe_mean(df, name)
         for name in (

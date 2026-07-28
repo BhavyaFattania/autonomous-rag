@@ -43,6 +43,7 @@ async def evaluator_node(state, settings, env=None, model_routing=None, provider
     )
 
     runs: list[SingleRunMetrics] = []
+    evaluation_warnings: list[str] = []
     cost_this_node = 0.0
 
     n_runs = eval_settings.n_eval_runs
@@ -100,6 +101,8 @@ async def evaluator_node(state, settings, env=None, model_routing=None, provider
                 timeout_retries=ragas_timeout_retries,
                 metrics=eval_settings.ragas_metrics,
                 env=env,
+                warning_messages=evaluation_warnings,
+                provider=provider,
             )
             runs.append(metrics)
             log.info("eval_run_complete", run=run_num, weighted_score=metrics.weighted_score)
@@ -142,5 +145,10 @@ async def evaluator_node(state, settings, env=None, model_routing=None, provider
         "proposed_weighted_score": aggregated.median_weighted_score,
         "current_best_weighted_score": state.get("current_best_weighted_score", 0.0),
         "experiment_cost_usd": state.get("experiment_cost_usd", 0.0) + cost_this_node,
+        "evaluation_warnings": evaluation_warnings,
+        "run_warnings": [
+            *state.get("run_warnings", []),
+            *[f"Experiment {experiment_number}: {warning}" for warning in evaluation_warnings],
+        ],
         "status": "RUNNING",
     }
