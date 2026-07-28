@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 
+from src.core.dashboard_state import DashboardState
 from src.core.events import EventBus
 from src.web.live import consume_events
 
@@ -45,6 +46,7 @@ def create_app(event_bus: EventBus) -> FastAPI:
     app = FastAPI(title="Autonomous RAG Optimizer Dashboard")
     app.state.event_bus = event_bus
     app.state.connections = ConnectionManager()
+    app.state.dashboard_state = DashboardState()
 
     from src.web.history import router as history_router
     from src.web.live import router as live_router

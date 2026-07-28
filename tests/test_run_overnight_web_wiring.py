@@ -218,3 +218,76 @@ async def test_run_creates_and_finishes_run_row(monkeypatch, _cwd_in_pytest_temp
     assert run.total_cost == 0.42
     assert run.best_score == 0.75
     assert run.finished_at is not None
+
+
+@pytest.mark.asyncio
+async def test_dashboard_stays_up_through_final_best_eval(monkeypatch, _cwd_in_pytest_temp):
+    """The visibility-gap fix: evaluate_final_best() must run while the
+    dashboard server is still serving, not after it's already been told to
+    shut down. Regression test for the browser seeing
+    net::ERR_CONNECTION_REFUSED during the final evaluation phase."""
+    monkeypatch.setattr(run_overnight, "EventBus", lambda: EventBus())
+
+    servers = []
+
+    class _TrackedFakeServer(_FakeUvicornServer):
+        def __init__(self, config):
+            super().__init__(config)
+            servers.append(self)
+
+    monkeypatch.setattr(
+        run_overnight,
+        "uvicorn",
+        type("_M", (), {"Server": _TrackedFakeServer, "Config": lambda **kw: kw}),
+    )
+    monkeypatch.setattr(run_overnight, "create_app", lambda bus: object())
+
+    ticks = [{"scientist": {"status": "RUNNING", "hypothesis": "h"}}]
+    monkeypatch.setattr(run_overnight, "build_graph", lambda **kwargs: _FakeGraph(ticks))
+
+    class _Settings:
+        class run:
+            cost_hard_ceiling_usd = 10.0
+
+        class evaluation:
+            baseline_score_override = 0.5
+            run_final_best_eval = True
+
+    class _Provider:
+        class cost_tracker:
+            @staticmethod
+            def initialize(**kwargs):
+                pass
+
+            @staticmethod
+            def get_total():
+                return 0.0
+
+    async def _async_result(value):
+        return value
+
+    monkeypatch.setattr(
+        run_overnight, "evaluate_baseline", lambda *a, **k: (_async_result((0.5, {})))
+    )
+
+    should_exit_during_final_eval = []
+
+    async def _fake_evaluate_final_best(state, settings, env, provider):
+        should_exit_during_final_eval.append(servers[0].should_exit)
+
+    monkeypatch.setattr(run_overnight, "evaluate_final_best", _fake_evaluate_final_best)
+
+    try:
+        await run_overnight._run(
+            max_exp=1,
+            max_hours=1.0,
+            resume=False,
+            settings=_Settings(),
+            env=None,
+            provider=_Provider(),
+        )
+    finally:
+        close_trace()
+
+    assert should_exit_during_final_eval == [False]
+    assert servers[0].should_exit is True

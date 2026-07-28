@@ -44,7 +44,9 @@ export function PipelineStrip({ state, onSelectNode }: Props) {
                 )}
               </span>
               <span className={styles.nodeName}>{node.replace(/_/g, " ")}</span>
-              <span className={styles.nodeStatus}>{status ?? "Pending"}</span>
+              <span className={styles.nodeStatus}>
+                {isActive ? status : isDone ? "Done" : (status ?? "Pending")}
+              </span>
             </button>
             {index < order.length - 1 && (
               <div className={styles.connector} data-charged={isDone}>
