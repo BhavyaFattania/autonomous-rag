@@ -21,6 +21,7 @@ evaluation:
   ragas_audit_score_tolerance: 0.02  # Candidate must be within this absolute score of best.
   ragas_metrics: ["faithfulness", "answer_relevancy", "context_precision", "context_recall", "context_utilization"]
   smoke_test_n_questions: 2         # Questions for smoke test (subset of the eval set).
+  smoke_test_timeout_sec: 180.0     # Max wall-clock time for the smoke test retrieval call; raise on slower hardware.
   max_runtime_sec_per_eval: 300     # 5 minutes. Kill eval if exceeded.
   max_runtime_sec_per_ragas: 120    # Bound external judge scoring separately.
   ragas_timeout_backoff_factor: 2.0 # If RAGAS times out, retry with a larger per-judge timeout.
