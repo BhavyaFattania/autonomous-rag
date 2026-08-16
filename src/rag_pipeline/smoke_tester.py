@@ -17,13 +17,18 @@ async def smoke_test_node(state, settings) -> dict:
     questions, _ = load_eval_questions(n=settings.evaluation.smoke_test_n_questions)
     collection_name = state["validated_config"].get("_collection_name")
 
+    timeout_sec = settings.evaluation.smoke_test_timeout_sec
+
     try:
         contexts, cost = await asyncio.wait_for(
             retrieve_contexts(config, questions, settings, collection_name=collection_name),
-            timeout=180.0,
+            timeout=timeout_sec,
         )
     except TimeoutError:
-        return {"status": "FAILED_SMOKE", "failure_reason": "Smoke test timed out after 180s"}
+        return {
+            "status": "FAILED_SMOKE",
+            "failure_reason": f"Smoke test timed out after {timeout_sec}s",
+        }
     except Exception as e:
         log.error("smoke_test_error", error=str(e), exc_info=True)
         return {"status": "FAILED_SMOKE", "failure_reason": f"Pipeline error: {e}"}

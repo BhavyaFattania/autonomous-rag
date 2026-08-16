@@ -40,6 +40,7 @@ class EvalSettings(BaseModel):
         "context_utilization",
     ]
     smoke_test_n_questions: int = 2
+    smoke_test_timeout_sec: float = 180.0
     max_runtime_sec_per_eval: int = 300
     max_runtime_sec_per_ragas: int = 120
     ragas_timeout_backoff_factor: float = 2.0
