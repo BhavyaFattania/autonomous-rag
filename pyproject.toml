@@ -9,7 +9,7 @@ package-mode = false
 python = "^3.11"
 
 # LlamaIndex — modular (NOT the old monolithic llamaindex package)
-llama-index-core = "0.12.5"
+llama-index-core = "0.12.41"
 llama-index-vector-stores-chroma = ">=0.4.0"
 llama-index-embeddings-openai = ">=0.3.0"
 llama-index-embeddings-cohere = ">=0.3.0"
